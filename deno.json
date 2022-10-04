@@ -1,0 +1,30 @@
+{
+	"compilerOptions": {
+		"jsxFactory": "h",
+		"jsxFragmentFactory": "Fragment",
+		"lib": [
+			"deno.ns",
+			"dom"
+		]
+	},
+	"tasks": {},
+	"lint": {
+		"files": {
+			"exclude": ["dist/"]
+		}
+	},
+	"fmt": {
+		"files": {
+			"exclude": ["dist/"]
+		},
+		"options": {
+			"useTabs": true,
+			"lineWidth": 180
+		}
+	},
+	"test": {
+		"files": {
+			"exclude": ["dist/"]
+		}
+	}
+}
