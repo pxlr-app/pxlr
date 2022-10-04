@@ -1,6 +1,5 @@
 import { Image } from "../../libpxlr/image.ts";
-export { Image, ImageFormat } from "../../libpxlr/image.ts";
 
-export interface AssetManager {
+export interface AssetLoader {
 	loadImage(path: string, options?: { signal: AbortSignal }): Promise<Image>;
 }
