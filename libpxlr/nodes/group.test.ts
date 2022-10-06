@@ -1,6 +1,8 @@
 import { assert, assertEquals, assertNotEquals, assertThrows } from "https://deno.land/std/testing/asserts.ts";
+import { Buffer } from "https://deno.land/std@0.158.0/streams/mod.ts";
 import { autoid } from "../autoid.ts";
 import { AddChildCommand, MoveChildCommand, RemoveChildCommand, RenameCommand } from "../commands/mod.ts";
+import { TreeObjectSerializer } from "../objects/tree.ts";
 import { GroupNode } from "./group.ts";
 
 Deno.test("GroupNode", async (t) => {
@@ -12,6 +14,7 @@ Deno.test("GroupNode", async (t) => {
 
 	await t.step("immutable structure", () => {
 		const node1 = GroupNode.new("Name", []);
+		assertEquals(node1.kind, "group");
 		assertEquals(node1.name, "Name");
 		assertEquals(node1.children, []);
 		assertThrows(() => {
@@ -104,5 +107,21 @@ Deno.test("GroupNode", async (t) => {
 		assertEquals(iter1.next(), { done: false, value: child1 });
 		assertEquals(iter1.next(), { done: false, value: child2 });
 		assertEquals(iter1.next(), { done: true, value: undefined });
+	});
+
+	await t.step("serialize and deserialize", async () => {
+		const ser = new TreeObjectSerializer();
+		const child1 = GroupNode.new("Child1", []);
+		const child2 = GroupNode.new("Child2", []);
+		const parent1 = GroupNode.new("Parent", [child1, child2]);
+		const buf = new Buffer();
+		const obj1 = parent1.toObject();
+		await ser.serialize(buf.writable, obj1);
+		const obj2 = await ser.deserialize(buf.readable);
+		assertEquals(obj2.id, obj1.id);
+		assertEquals(obj2.name, obj1.name);
+		assertEquals(obj2.items.length, obj1.items.length);
+		assertEquals(obj2.items[0].id, obj1.items[0].id);
+		assertEquals(obj2.items[1].id, obj1.items[1].id);
 	});
 });

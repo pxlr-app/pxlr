@@ -1,8 +1,10 @@
-import { autoid } from "../autoid.ts";
+import { AutoId, autoid } from "../autoid.ts";
 import { Command, RenameCommand, SetContentCommand } from "../commands/mod.ts";
 import { Node } from "./node.ts";
+import { Object, ObjectSerializer } from "../objects/object.ts";
+import { simpleDeserialize, simpleSerialize } from "../objects/helper.ts";
 
-export class NoteNode extends Node {
+export class NoteNode extends Node<NoteObject> {
 	#content: string;
 
 	public constructor(
@@ -10,7 +12,7 @@ export class NoteNode extends Node {
 		name: string,
 		content: string,
 	) {
-		super(id, name);
+		super(id, "note", name);
 		this.#content = content;
 	}
 
@@ -31,5 +33,24 @@ export class NoteNode extends Node {
 			}
 		}
 		return this;
+	}
+
+	toObject() {
+		return new NoteObject(this.id, this.name, this.content);
+	}
+}
+export class NoteObject extends Object {
+	constructor(id: AutoId, public name: string, public content: string) {
+		super(id, "note");
+	}
+}
+export class NoteObjectSerializer extends ObjectSerializer<NoteObject> {
+	async serialize(stream: WritableStream, object: NoteObject) {
+		await simpleSerialize(stream, { id: object.id, name: object.name }, object.content);
+	}
+	async deserialize(stream: ReadableStream) {
+		const { headers, body } = await simpleDeserialize(stream);
+		const message = await new Response(body).text();
+		return new NoteObject(headers.get("id")!, headers.get("name")!, message);
 	}
 }

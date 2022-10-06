@@ -11,7 +11,7 @@ Deno.test("CommitObject", async (t) => {
 		await ser.serialize(buf.writable, obj1);
 		const obj2 = await ser.deserialize(buf.readable);
 		assertEquals(obj2.id, obj1.id);
-		assertEquals(obj2.type, obj1.type);
+		assertEquals(obj2.kind, obj1.kind);
 		assertEquals(obj2.parent, obj1.parent);
 		assertEquals(obj2.tree, obj1.tree);
 		assertEquals(obj2.commiter, obj1.commiter);

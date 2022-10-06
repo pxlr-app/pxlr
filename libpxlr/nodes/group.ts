@@ -1,28 +1,29 @@
 import { autoid } from "../autoid.ts";
 import { AddChildCommand, Command, MoveChildCommand, RemoveChildCommand, RenameCommand } from "../commands/mod.ts";
 import { Node } from "./node.ts";
+import { TreeObject } from "../objects/tree.ts";
 
-export class GroupNode extends Node {
-	#children: Node[];
+export class GroupNode extends Node<TreeObject> {
+	#children: Node<any>[];
 
 	public constructor(
 		id: string,
 		name: string,
-		children: Node[],
+		children: Node<any>[],
 	) {
-		super(id, name);
+		super(id, "group", name);
 		this.#children = [...children];
 	}
 
-	static new(name: string, children: Node[]) {
+	static new(name: string, children: Node<any>[]) {
 		return new GroupNode(autoid(), name, children);
 	}
 
-	get children(): ReadonlyArray<Node> {
+	get children(): ReadonlyArray<Node<any>> {
 		return this.#children;
 	}
 
-	*iter(): IterableIterator<Node> {
+	*iter(): IterableIterator<Node<any>> {
 		yield this;
 		for (const child of this.#children) {
 			yield* child.iter();
@@ -71,5 +72,9 @@ export class GroupNode extends Node {
 			return new GroupNode(autoid(), this.name, children);
 		}
 		return this;
+	}
+
+	toObject() {
+		return new TreeObject(this.id, "group", this.name, this.#children.map((child) => ({ id: child.id, kind: child.kind, name: child.name })));
 	}
 }

@@ -2,16 +2,16 @@ import { AutoId } from "../autoid.ts";
 
 export abstract class Object {
 	#id: AutoId;
-	#type: string;
-	constructor(id: string, type: string) {
+	#kind: string;
+	constructor(id: string, kind: string) {
 		this.#id = id;
-		this.#type = type;
+		this.#kind = kind;
 	}
 	get id() {
 		return this.#id;
 	}
-	get type() {
-		return this.#type;
+	get kind() {
+		return this.#kind;
 	}
 }
 

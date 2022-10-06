@@ -1,10 +1,10 @@
 import { AutoId, isAutoid } from "../autoid.ts";
-import { readResponse, writeResponse } from "./helper.ts";
+import { simpleDeserialize, simpleSerialize } from "./helper.ts";
 import { Object, ObjectSerializer } from "./object.ts";
 
 export type TreeObjectItem = {
 	readonly id: string;
-	readonly type: string;
+	readonly kind: string;
 	readonly name: string;
 };
 
@@ -13,11 +13,11 @@ export class TreeObject extends Object {
 	#items: TreeObjectItem[];
 	public constructor(
 		id: AutoId,
-		type: string,
+		kind: string,
 		name: string,
 		items: TreeObjectItem[],
 	) {
-		super(id, type);
+		super(id, kind);
 		if (!isAutoid(id)) {
 			throw new TypeError(`Parameter "id" does not appear to be an AutoId.`);
 		}
@@ -36,18 +36,18 @@ export class TreeObject extends Object {
 
 export class TreeObjectSerializer extends ObjectSerializer<TreeObject> {
 	async serialize(stream: WritableStream, object: TreeObject) {
-		await writeResponse(stream, { id: object.id, type: object.type, name: object.name }, object.items.map((item) => `${item.type} ${item.id} ${item.name}`).join(`\r\n`));
+		await simpleSerialize(stream, { id: object.id, kind: object.kind, name: object.name }, object.items.map((item) => `${item.kind} ${item.id} ${item.name}`).join(`\r\n`));
 	}
 	async deserialize(stream: ReadableStream) {
-		const { headers, body } = await readResponse(stream);
+		const { headers, body } = await simpleDeserialize(stream);
 		const itemLines = await new Response(body).text();
 		const items = itemLines.split(`\r\n`).map((line) => {
-			const [type, id, ...name] = line.split(" ");
-			return { type, id, name: name.join(" ") };
+			const [kind, id, ...name] = line.split(" ");
+			return { kind, id, name: name.join(" ") };
 		});
 		return new TreeObject(
 			headers.get("id")!,
-			headers.get("type")!,
+			headers.get("kind")!,
 			headers.get("name")!,
 			items,
 		);

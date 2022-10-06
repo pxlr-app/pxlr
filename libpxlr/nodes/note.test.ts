@@ -1,6 +1,7 @@
 import { assert, assertEquals, assertNotEquals, assertThrows } from "https://deno.land/std/testing/asserts.ts";
+import { Buffer } from "https://deno.land/std@0.158.0/streams/mod.ts";
 import { RenameCommand, SetContentCommand } from "../commands/mod.ts";
-import { NoteNode } from "./note.ts";
+import { NoteNode, NoteObject, NoteObjectSerializer } from "./note.ts";
 
 Deno.test("NoteNode", async (t) => {
 	await t.step("valide if provided id is an AutoId", () => {
@@ -11,6 +12,7 @@ Deno.test("NoteNode", async (t) => {
 
 	await t.step("immutable structure", () => {
 		const node1 = NoteNode.new("A", "Content");
+		assertEquals(node1.kind, "note");
 		assertEquals(node1.name, "A");
 		assertEquals(node1.content, "Content");
 		assertThrows(() => {
@@ -45,5 +47,17 @@ Deno.test("NoteNode", async (t) => {
 		const iter1 = node1.iter();
 		assertEquals(iter1.next(), { done: false, value: node1 });
 		assertEquals(iter1.next(), { done: true, value: undefined });
+	});
+
+	await t.step("serialize and deserialize", async () => {
+		const ser = new NoteObjectSerializer();
+		const node1 = NoteNode.new("A", "Content");
+		const buf = new Buffer();
+		const obj1 = node1.toObject();
+		await ser.serialize(buf.writable, obj1);
+		const obj2 = await ser.deserialize(buf.readable);
+		assertEquals(obj2.id, obj1.id);
+		assertEquals(obj2.name, obj1.name);
+		assertEquals(obj2.content, obj1.content);
 	});
 });

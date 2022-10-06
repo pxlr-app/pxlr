@@ -1,4 +1,4 @@
-export async function writeResponse(stream: WritableStream, headers: Record<string, string> | Map<string, string>, body?: ReadableStream | ArrayBuffer | string | undefined) {
+export async function simpleSerialize(stream: WritableStream, headers: Record<string, string> | Map<string, string>, body?: ReadableStream | ArrayBuffer | string | undefined) {
 	headers = headers instanceof Map ? headers : new Map(Object.entries(headers));
 
 	// TODO validate for \r\n in keys and values -> break deserialize
@@ -17,7 +17,7 @@ export async function writeResponse(stream: WritableStream, headers: Record<stri
 	}
 }
 
-export async function readResponse(stream: ReadableStream): Promise<{ headers: Map<string, string>; body: ReadableStream | undefined }> {
+export async function simpleDeserialize(stream: ReadableStream): Promise<{ headers: Map<string, string>; body: ReadableStream | undefined }> {
 	const decoder = new TextDecoder();
 	const reader = stream.getReader();
 	const headers = new Map<string, string>();

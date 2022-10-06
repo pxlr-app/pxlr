@@ -1,22 +1,22 @@
 import { assertEquals } from "https://deno.land/std/testing/asserts.ts";
 import { Buffer } from "https://deno.land/std@0.158.0/streams/mod.ts";
 import { autoid } from "../autoid.ts";
-import { readResponse, writeResponse } from "./helper.ts";
+import { simpleDeserialize, simpleSerialize } from "./helper.ts";
 import { Object, ObjectSerializer } from "./object.ts";
 
 Deno.test("Object", async (t) => {
 	class DummyObject extends Object {
-		constructor(id: string, type: string) {
-			super(id, type);
+		constructor(id: string, kind: string) {
+			super(id, kind);
 		}
 	}
 	class DummyObjectSerializer extends ObjectSerializer<DummyObject> {
 		async serialize(stream: WritableStream, object: DummyObject) {
-			await writeResponse(stream, { id: object.id, type: object.type });
+			await simpleSerialize(stream, { id: object.id, kind: object.kind });
 		}
 		async deserialize(stream: ReadableStream) {
-			const { headers } = await readResponse(stream);
-			return new DummyObject(headers.get("id")!, headers.get("type")!);
+			const { headers } = await simpleDeserialize(stream);
+			return new DummyObject(headers.get("id")!, headers.get("kind")!);
 		}
 	}
 	await t.step("serialize and deserialize", async () => {
@@ -26,6 +26,6 @@ Deno.test("Object", async (t) => {
 		await ser.serialize(buf.writable, obj1);
 		const obj2 = await ser.deserialize(buf.readable);
 		assertEquals(obj2.id, obj1.id);
-		assertEquals(obj2.type, obj1.type);
+		assertEquals(obj2.kind, obj1.kind);
 	});
 });

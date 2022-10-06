@@ -1,5 +1,5 @@
 import { AutoId, isAutoid } from "../autoid.ts";
-import { readResponse, writeResponse } from "./helper.ts";
+import { simpleDeserialize, simpleSerialize } from "./helper.ts";
 import { Object, ObjectSerializer } from "./object.ts";
 
 export class CommitObject extends Object {
@@ -53,10 +53,10 @@ export class CommitObject extends Object {
 
 export class CommitObjectSerializer extends ObjectSerializer<CommitObject> {
 	async serialize(stream: WritableStream, object: CommitObject) {
-		await writeResponse(stream, { id: object.id, parent: object.parent, tree: object.tree, commiter: object.commiter, date: object.date.toISOString() }, object.message);
+		await simpleSerialize(stream, { id: object.id, parent: object.parent, tree: object.tree, commiter: object.commiter, date: object.date.toISOString() }, object.message);
 	}
 	async deserialize(stream: ReadableStream) {
-		const { headers, body } = await readResponse(stream);
+		const { headers, body } = await simpleDeserialize(stream);
 		const message = await new Response(body).text();
 		return new CommitObject(
 			headers.get("id")!,
