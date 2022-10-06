@@ -1,10 +1,9 @@
-import { autoid, isAutoid } from "../autoid.ts";
+import { autoid } from "../autoid.ts";
+import { Command, RenameCommand, SetContentCommand } from "../commands/mod.ts";
 import { Object } from "../object.ts";
 import { Node } from "./mod.ts";
 
-export class NoteNode implements Node {
-	#id: string;
-	#name: string;
+export class NoteNode extends Node {
 	#content: string;
 
 	public constructor(
@@ -12,11 +11,7 @@ export class NoteNode implements Node {
 		name: string,
 		content: string,
 	) {
-		if (!isAutoid(id)) {
-			throw new TypeError(`Parameter "id" does not appear to be an AutoId.`);
-		}
-		this.#id = id;
-		this.#name = name;
+		super(id, name);
 		this.#content = content;
 	}
 
@@ -24,24 +19,19 @@ export class NoteNode implements Node {
 		return new NoteNode(autoid(), name, content);
 	}
 
-	get id() {
-		return this.#id;
-	}
-
-	get name() {
-		return this.#name;
-	}
-
-	setName(name: string) {
-		return new NoteNode(autoid(), name, this.#content);
-	}
-
 	get content() {
 		return this.#content;
 	}
 
-	setContent(content: string) {
-		return new NoteNode(autoid(), this.#name, content);
+	executeCommand(command: Command) {
+		if (command.target === this.id) {
+			if (command instanceof RenameCommand) {
+				return new NoteNode(autoid(), command.renameTo, this.#content);
+			} else if (command instanceof SetContentCommand) {
+				return new NoteNode(autoid(), this.name, command.setContent);
+			}
+		}
+		return this;
 	}
 
 	// static async deserialize(object: Object) {
@@ -52,6 +42,6 @@ export class NoteNode implements Node {
 	// }
 
 	serializeToObject(): Object {
-		return Object.new(this.#id, "note", { name: this.name }, this.content);
+		return Object.new(this.id, "note", { name: this.name }, this.content);
 	}
 }

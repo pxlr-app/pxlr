@@ -24,5 +24,5 @@ export function autoid(): AutoId {
  * @returns If value is an AutoId
  */
 export function isAutoid(value: unknown): value is AutoId {
-	return !!value && typeof value === 'string' && value.length === AutoIdSize;
+	return !!value && typeof value === "string" && value.length === AutoIdSize;
 }

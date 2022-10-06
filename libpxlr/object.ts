@@ -1,4 +1,4 @@
-import { isAutoid, AutoId, autoid } from "./autoid.ts";
+import { AutoId, autoid, isAutoid } from "./autoid.ts";
 
 export type ObjectHeaders = Map<string, string>;
 export type ObjectBody = ReadableStream | ArrayBuffer | string | undefined;
@@ -13,15 +13,15 @@ export class Object {
 		id: AutoId,
 		type: string,
 		headers: ObjectHeaders,
-		body?: ObjectBody
+		body?: ObjectBody,
 	) {
 		if (!isAutoid(id)) {
 			throw new TypeError(`Parameter "id" does not appear to be an AutoId.`);
 		}
-		if (typeof headers !== 'object') {
+		if (typeof headers !== "object") {
 			throw new TypeError(`Parameter "headers" does not appear to be an dictionnary of key-value.`);
 		}
-		if (!!body && !(body instanceof ReadableStream || body instanceof ArrayBuffer || typeof body === 'string')) {
+		if (!!body && !(body instanceof ReadableStream || body instanceof ArrayBuffer || typeof body === "string")) {
 			throw new TypeError(`Parameter "body" must be either a ReadableStream, ArrayBuffer, string or undefined.`);
 		}
 		this.#id = id;
@@ -62,7 +62,7 @@ export class Object {
 		return this.#body;
 	}
 
-	async serialize(stream: WritableStream)  {
+	async serialize(stream: WritableStream) {
 		const encoder = new TextEncoder();
 		const writer = stream.getWriter();
 		await writer.write(encoder.encode(`id: ${this.#id}\r\n`));
@@ -73,11 +73,9 @@ export class Object {
 		await writer.write(encoder.encode(`\r\n`));
 		if (this.#body instanceof ReadableStream) {
 			await this.#body.pipeTo(stream);
-		}
-		else if (this.#body instanceof ArrayBuffer) {
+		} else if (this.#body instanceof ArrayBuffer) {
 			await writer.write(this.#body);
-		}
-		else if (typeof this.#body === 'string') {
+		} else if (typeof this.#body === "string") {
 			await writer.write(encoder.encode(this.#body));
 		}
 	}
@@ -95,7 +93,7 @@ export class Object {
 		let tmp = "";
 		reader:
 		while (true) {
-			const { done, value }  = await reader.read();
+			const { done, value } = await reader.read();
 			if (done) {
 				break;
 			}
@@ -107,19 +105,17 @@ export class Object {
 					inKey = false;
 					inValue = true;
 					++i;
-				}
-				else if (chunk.at(i) === `\r` && chunk.at(i + 1) === `\n`) {
+				} else if (chunk.at(i) === `\r` && chunk.at(i + 1) === `\n`) {
 					if (inValue) {
 						headers.set(key, tmp);
 						tmp = "";
 						inKey = true;
 						inValue = false;
 						++i;
-					}
-					else if (inKey) {
+					} else if (inKey) {
 						body = new ReadableStream({
 							start(controller) {
-								controller.enqueue(value.slice(i+2))
+								controller.enqueue(value.slice(i + 2));
 							},
 							async pull(controller) {
 								const { done, value } = await reader.read();
@@ -128,12 +124,11 @@ export class Object {
 								} else {
 									controller.enqueue(value);
 								}
-							}
+							},
 						});
 						break reader;
 					}
-				}
-				else {
+				} else {
 					tmp += chunk.at(i);
 				}
 			}
@@ -142,16 +137,16 @@ export class Object {
 			id = headers.get("id")!;
 			headers.delete("id");
 			if (!isAutoid(id)) {
-				throw new SyntaxError(`Object's "id" is not a valid AutoId.`)
+				throw new SyntaxError(`Object's "id" is not a valid AutoId.`);
 			}
 		} else {
-			throw new SyntaxError(`Object's headers did not contain an "id" key.`)
+			throw new SyntaxError(`Object's headers did not contain an "id" key.`);
 		}
 		if (headers.has("type")) {
 			type = headers.get("type")!;
 			headers.delete("type");
 		} else {
-			throw new SyntaxError(`Object header's did not contain an "type" key.`)
+			throw new SyntaxError(`Object header's did not contain an "type" key.`);
 		}
 		return new Object(id, type, headers, body);
 	}

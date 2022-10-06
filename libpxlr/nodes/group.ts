@@ -1,10 +1,9 @@
-import { AutoId, autoid, isAutoid } from "../autoid.ts";
+import { autoid } from "../autoid.ts";
 import { Object } from "../object.ts";
+import { AddChildCommand, Command, MoveChildCommand, RemoveChildCommand, RenameCommand } from "../commands/mod.ts";
 import { Node } from "./mod.ts";
 
-export class GroupNode implements Node {
-	#id: string;
-	#name: string;
+export class GroupNode extends Node {
 	#children: Node[];
 
 	public constructor(
@@ -12,11 +11,7 @@ export class GroupNode implements Node {
 		name: string,
 		children: Node[],
 	) {
-		if (!isAutoid(id)) {
-			throw new TypeError(`Parameter "id" does not appear to be an AutoId.`);
-		}
-		this.#id = id;
-		this.#name = name;
+		super(id, name);
 		this.#children = [...children];
 	}
 
@@ -24,49 +19,50 @@ export class GroupNode implements Node {
 		return new GroupNode(autoid(), name, children);
 	}
 
-	get id() {
-		return this.#id;
-	}
-
-	get name() {
-		return this.#name;
-	}
-
-	setName(name: string) {
-		return new GroupNode(autoid(), name, this.#children);
-	}
-
 	get children() {
 		return this.#children;
 	}
 
-	addChild(node: Node) {
-		const children = Array.from(new Set(this.#children.concat(node)));
-		return new GroupNode(autoid(), this.#name, children);
-	}
-
-	removeChild(id: AutoId) {
-		const childIndex = this.#children.findIndex(node => node.id === id);
-		if (childIndex > -1) {
-			const children = [
-				...this.#children.slice(0, childIndex),
-				...this.#children.slice(childIndex + 1)
-			];
-			return new GroupNode(autoid(), this.#name, children);
+	executeCommand(command: Command) {
+		if (command.target === this.id) {
+			if (command instanceof RenameCommand) {
+				return new GroupNode(autoid(), command.renameTo, this.#children);
+			} else if (command instanceof AddChildCommand) {
+				const children = Array.from(new Set(this.#children.concat(command.child)));
+				return new GroupNode(autoid(), this.name, children);
+			} else if (command instanceof RemoveChildCommand) {
+				const childIndex = this.#children.findIndex((node) => node.id === command.childId);
+				if (childIndex > -1) {
+					const children = [
+						...this.#children.slice(0, childIndex),
+						...this.#children.slice(childIndex + 1),
+					];
+					return new GroupNode(autoid(), this.name, children);
+				}
+			} else if (command instanceof MoveChildCommand) {
+				const childIndex = this.#children.findIndex((node) => node.id === command.childId);
+				if (childIndex > -1) {
+					const child = this.#children.at(childIndex)!;
+					const children = [
+						...this.#children.slice(0, command.position),
+						child,
+						...this.#children.slice(command.position + 1),
+					];
+					return new GroupNode(autoid(), this.name, children);
+				}
+			}
+			return this;
 		}
-		return this;
-	}
-
-	moveChild(id: AutoId, position: number) {
-		const childIndex = this.#children.findIndex(node => node.id === id);
-		if (childIndex > -1) {
-			const child = this.#children.at(childIndex)!;
-			const children = [
-				...this.#children.slice(0, position),
-				child,
-				...this.#children.slice(position + 1)
-			];
-			return new GroupNode(autoid(), this.#name, children);
+		let mutated = false;
+		const children = this.#children.map(node => {
+			const newNode = node.executeCommand(command);
+			if (newNode !== node) {
+				mutated = true;
+			}
+			return newNode;
+		});
+		if (mutated) {
+			return new GroupNode(autoid(), this.name, children);
 		}
 		return this;
 	}
@@ -79,6 +75,6 @@ export class GroupNode implements Node {
 	// }
 
 	serializeToObject(): Object {
-		return Object.new(this.#id, "group", { name: this.name }, this.#children.map(node => node.id).join(`\n`));
+		return Object.new(this.id, "group", { name: this.name }, this.#children.map((node) => node.id).join(`\n`));
 	}
 }
