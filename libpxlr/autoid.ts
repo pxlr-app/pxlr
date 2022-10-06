@@ -1,6 +1,6 @@
 export type AutoId = string;
 
-const AutoIdSize = 20;
+const AutoIdSize = 30;
 const AutoIdChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 const AutoIdCharsLength = AutoIdChars.length;
 

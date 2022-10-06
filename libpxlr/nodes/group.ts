@@ -1,7 +1,7 @@
 import { autoid } from "../autoid.ts";
 import { Object } from "../object.ts";
 import { AddChildCommand, Command, MoveChildCommand, RemoveChildCommand, RenameCommand } from "../commands/mod.ts";
-import { Node } from "./mod.ts";
+import { Node } from "./node.ts";
 
 export class GroupNode extends Node {
 	#children: Node[];
@@ -19,8 +19,15 @@ export class GroupNode extends Node {
 		return new GroupNode(autoid(), name, children);
 	}
 
-	get children() {
+	get children(): ReadonlyArray<Node> {
 		return this.#children;
+	}
+
+	*iter(): IterableIterator<Node> {
+		yield this;
+		for (const child of this.#children) {
+			yield* child.iter();
+		}
 	}
 
 	executeCommand(command: Command) {
@@ -54,7 +61,7 @@ export class GroupNode extends Node {
 			return this;
 		}
 		let mutated = false;
-		const children = this.#children.map(node => {
+		const children = this.#children.map((node) => {
 			const newNode = node.executeCommand(command);
 			if (newNode !== node) {
 				mutated = true;

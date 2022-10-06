@@ -39,4 +39,11 @@ Deno.test("NoteNode", async (t) => {
 		assertNotEquals(node2.id, node1.id);
 		assertEquals(node2.content, "New content");
 	});
+
+	await t.step("iterate note", () => {
+		const node1 = NoteNode.new("A", "Content");
+		const iter1 = node1.iter();
+		assertEquals(iter1.next(), { done: false, value: node1 });
+		assertEquals(iter1.next(), { done: true, value: undefined });
+	});
 });
