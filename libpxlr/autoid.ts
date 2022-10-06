@@ -1,6 +1,9 @@
 export type AutoId = string;
 
-const AutoIdSize = 30;
+// // Git
+// const AutoIdSize = 40;
+// const AutoIdChars = "abcdef0123456789";
+const AutoIdSize = 20;
 const AutoIdChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 const AutoIdCharsLength = AutoIdChars.length;
 
