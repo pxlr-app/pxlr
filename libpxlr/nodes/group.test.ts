@@ -1,4 +1,5 @@
 import { assert, assertEquals, assertNotEquals, assertThrows } from "https://deno.land/std/testing/asserts.ts";
+import { autoid } from "../autoid.ts";
 import { AddChildCommand, MoveChildCommand, RemoveChildCommand, RenameCommand } from "../commands/mod.ts";
 import { GroupNode } from "./group.ts";
 
@@ -88,6 +89,8 @@ Deno.test("GroupNode", async (t) => {
 		assertNotEquals(child1p.id, child1.id);
 		assertEquals(child1p.name, "NewChild");
 		assert(child2p === child2);
+		const root1pp = root1.executeCommand(new RenameCommand(autoid(), "Foo"));
+		assert(root1pp === root1);
 	});
 
 	await t.step("iterate group", () => {
