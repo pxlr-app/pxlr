@@ -1,6 +1,5 @@
 import { autoid } from "../autoid.ts";
 import { Command, RenameCommand, SetContentCommand } from "../commands/mod.ts";
-import { Object } from "../object.ts";
 import { Node } from "./node.ts";
 
 export class NoteNode extends Node {
@@ -32,16 +31,5 @@ export class NoteNode extends Node {
 			}
 		}
 		return this;
-	}
-
-	// static async deserialize(object: Object) {
-	// 	if (object.type !== "note") {
-	// 		throw new TypeError(`Object's type is not a note, got ${object.type}.`);
-	// 	}
-	// 	return new NoteNode(object.id, object.headers.get("name") ?? "", await object.text());
-	// }
-
-	serializeToObject(): Object {
-		return Object.new(this.id, "note", { name: this.name }, this.content);
 	}
 }

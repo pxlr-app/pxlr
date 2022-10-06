@@ -1,5 +1,4 @@
 import { autoid } from "../autoid.ts";
-import { Object } from "../object.ts";
 import { AddChildCommand, Command, MoveChildCommand, RemoveChildCommand, RenameCommand } from "../commands/mod.ts";
 import { Node } from "./node.ts";
 
@@ -72,16 +71,5 @@ export class GroupNode extends Node {
 			return new GroupNode(autoid(), this.name, children);
 		}
 		return this;
-	}
-
-	// static async deserialize(object: Object) {
-	// 	if (object.type !== "note") {
-	// 		throw new TypeError(`Object's type is not a note, got ${object.type}.`);
-	// 	}
-	// 	return new GroupNode(object.id, object.headers.get("name") ?? "", await object.text());
-	// }
-
-	serializeToObject(): Object {
-		return Object.new(this.id, "group", { name: this.name }, this.#children.map((node) => node.id).join(`\n`));
 	}
 }

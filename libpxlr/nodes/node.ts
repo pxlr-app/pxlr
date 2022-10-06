@@ -1,6 +1,5 @@
 import { AutoId, isAutoid } from "../autoid.ts";
 import { Command } from "../commands/mod.ts";
-import { Object } from "../object.ts";
 
 export abstract class Node {
 	#id: string;
@@ -32,5 +31,4 @@ export abstract class Node {
 		return this.iter();
 	}
 	abstract executeCommand(command: Command): Node;
-	abstract serializeToObject(): Object;
 }

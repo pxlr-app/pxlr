@@ -1,18 +1,19 @@
-import { AutoId, autoid, isAutoid } from "./autoid.ts";
+import { AutoId, isAutoid } from "../autoid.ts";
 
-export type ObjectHeaders = Map<string, string>;
+export interface ObjectStatic<T extends Object> {
+	new (id: AutoId, type: string, headers: Map<string, string>, body?: ObjectBody): T;
+}
 export type ObjectBody = ReadableStream | ArrayBuffer | string | undefined;
-
-export class Object {
+export abstract class Object {
 	#id: AutoId;
 	#type: string;
 	#headers: Map<string, string>;
 	#body: ObjectBody;
 
-	public constructor(
+	constructor(
 		id: AutoId,
 		type: string,
-		headers: ObjectHeaders,
+		headers: Record<string, string> | Map<string, string>,
 		body?: ObjectBody,
 	) {
 		if (!isAutoid(id)) {
@@ -26,12 +27,8 @@ export class Object {
 		}
 		this.#id = id;
 		this.#type = type.toString();
-		this.#headers = headers;
+		this.#headers = headers instanceof Map ? new Map(headers) : new Map(globalThis.Object.entries(headers));
 		this.#body = body;
-	}
-
-	static new(id: AutoId, type: string, headers: Record<string, string>, body?: ObjectBody) {
-		return new Object(id, type, new Map(globalThis.Object.entries(headers)), body);
 	}
 
 	get id() {
@@ -47,22 +44,28 @@ export class Object {
 	}
 
 	async arrayBuffer() {
-		if (!(this.#body instanceof ArrayBuffer)) {
+		if (this.#body instanceof ReadableStream) {
 			const resp = new Response(this.#body);
 			this.#body = await resp.arrayBuffer();
+		} else if (typeof this.#body === "string") {
+			return new TextEncoder().encode(this.#body);
 		}
 		return this.#body;
 	}
 
 	async text() {
-		if (typeof this.#body !== "string") {
+		if (this.#body instanceof ReadableStream) {
 			const resp = new Response(this.#body);
-			this.#body = await resp.text();
+			this.#body = await resp.arrayBuffer();
+		}
+		if (this.#body instanceof ArrayBuffer) {
+			return new TextDecoder().decode(this.#body);
 		}
 		return this.#body;
 	}
 
 	async serialize(stream: WritableStream) {
+		// TODO validate for \r\n in keys and values -> break deserialize
 		const encoder = new TextEncoder();
 		const writer = stream.getWriter();
 		await writer.write(encoder.encode(`id: ${this.#id}\r\n`));
@@ -80,7 +83,7 @@ export class Object {
 		}
 	}
 
-	static async deserialize(stream: ReadableStream) {
+	static async deserialize<T extends Object>(this: ObjectStatic<T>, stream: ReadableStream) {
 		const decoder = new TextDecoder();
 		const reader = stream.getReader();
 		let id: AutoId | undefined;
@@ -148,6 +151,6 @@ export class Object {
 		} else {
 			throw new SyntaxError(`Object header's did not contain an "type" key.`);
 		}
-		return new Object(id, type, headers, body);
+		return new this(id, type, headers, body);
 	}
 }
