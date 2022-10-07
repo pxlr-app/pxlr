@@ -25,9 +25,13 @@ export class MemoryFilesystem extends Filesystem {
 	}
 
 	async *list(path: string) {
-		const entries = Array.from(new Set(Array.from(this.entries.keys())
-							.filter(key => key.substring(0, path.length) === path && key.substring(path.length, path.length + 1) === "/")
-							.map(key => key.substring(path.length + 1).split('/').shift()!)));
+		const entries = Array.from(
+			new Set(
+				Array.from(this.entries.keys())
+					.filter((key) => key.substring(0, path.length) === path && key.substring(path.length, path.length + 1) === "/")
+					.map((key) => key.substring(path.length + 1).split("/").shift()!),
+			),
+		);
 		yield* entries;
 	}
 
@@ -42,10 +46,8 @@ export class MemoryFilesystem extends Filesystem {
 
 	// deno-lint-ignore require-await
 	async write(path: string): Promise<WritableStream> {
-		const buffer = this.entries.get(path);
-		if (!buffer) {
-			throw new Error(`File not found.`);
-		}
+		const buffer = new Buffer();
+		this.entries.set(path, buffer);
 		return buffer.writable;
 	}
 }

@@ -6,6 +6,7 @@ export type AutoId = string;
 const AutoIdSize = 20;
 const AutoIdChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 const AutoIdCharsLength = AutoIdChars.length;
+const AutoIdRegExp = new RegExp(`^[${AutoIdChars}]{${AutoIdSize}}$`);
 
 /**
  * Generate an AutoId
@@ -26,6 +27,13 @@ export function autoid(): AutoId {
  * @param value The value to test
  * @returns If value is an AutoId
  */
-export function isAutoid(value: unknown): value is AutoId {
-	return !!value && typeof value === "string" && value.length === AutoIdSize;
+export function isAutoId(value?: unknown): value is AutoId {
+	return !!value && typeof value === "string" && AutoIdRegExp.test(value);
+}
+
+export class InvalidAutoIdError extends Error {
+	public name = "InvalidAutoIdError";
+	public constructor(value: string) {
+		super(`Invalid AutoId, got ${value}.`);
+	}
 }

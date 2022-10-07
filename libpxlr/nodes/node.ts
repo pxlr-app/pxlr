@@ -1,24 +1,22 @@
-import { AutoId, isAutoid } from "../autoid.ts";
+import { AutoId, InvalidAutoIdError, isAutoId } from "../autoid.ts";
 import { Command } from "../commands/mod.ts";
-import { Object } from "../objects/object.ts";
 
-export abstract class Node<O extends Object> {
+export abstract class Node {
 	public constructor(
 		public readonly id: AutoId,
 		public readonly kind: string,
 		public readonly name: string,
 	) {
-		if (!isAutoid(id)) {
-			throw new TypeError(`Parameter "id" does not appear to be an AutoId.`);
+		if (!isAutoId(id)) {
+			throw new InvalidAutoIdError(id);
 		}
 	}
 
-	*iter(): IterableIterator<Node<any>> {
+	*iter(): IterableIterator<Node> {
 		yield this;
 	}
-	[Symbol.iterator](): Iterator<Node<any>> {
+	[Symbol.iterator](): Iterator<Node> {
 		return this.iter();
 	}
-	abstract executeCommand(command: Command): Node<O>;
-	abstract toObject(): O;
+	abstract executeCommand(command: Command): Node;
 }

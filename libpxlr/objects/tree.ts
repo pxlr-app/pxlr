@@ -1,43 +1,51 @@
-import { AutoId, isAutoid } from "../autoid.ts";
-import { simpleDeserialize, simpleSerialize } from "./helper.ts";
-import { Object, ObjectSerializer } from "./object.ts";
+import { AutoId, InvalidAutoIdError, isAutoId } from "../autoid.ts";
+import { Object } from "./object.ts";
 
-export type TreeObjectItem = {
+export type TreeItem = {
 	readonly id: string;
 	readonly kind: string;
 	readonly name: string;
 };
 
-export class TreeObject extends Object {
+export class Tree {
 	public constructor(
-		id: AutoId,
-		kind: string,
+		public readonly id: AutoId,
+		public readonly subKind: string,
 		public readonly name: string,
-		public readonly items: ReadonlyArray<TreeObjectItem>,
+		public readonly items: ReadonlyArray<TreeItem>,
 	) {
-		super(id, kind);
-		if (!isAutoid(id)) {
-			throw new TypeError(`Parameter "id" does not appear to be an AutoId.`);
+		if (!isAutoId(id)) {
+			throw new InvalidAutoIdError(id);
 		}
+		if (subKind === "") {
+			throw new InvalidTreeError();
+		}
+		// TODO validate items
 	}
-}
 
-export class TreeObjectSerializer extends ObjectSerializer<TreeObject> {
-	async serialize(stream: WritableStream, object: TreeObject) {
-		await simpleSerialize(stream, { id: object.id, kind: object.kind, name: object.name }, object.items.map((item) => `${item.kind} ${item.id} ${item.name}`).join(`\r\n`));
+	toObject(): Object {
+		return new Object(this.id, {
+			kind: "tree",
+			"sub-kind": this.subKind,
+			name: this.name,
+		}, this.items.map((item) => `${item.kind} ${item.id} ${item.name}`).join(`\r\n`));
 	}
-	async deserialize(stream: ReadableStream) {
-		const { headers, body } = await simpleDeserialize(stream);
-		const itemLines = await new Response(body).text();
+
+	static async fromObject(object: Object): Promise<Tree> {
+		const itemLines = await object.text();
 		const items = itemLines.split(`\r\n`).map((line) => {
 			const [kind, id, ...name] = line.split(" ");
 			return { kind, id, name: name.join(" ") };
 		});
-		return new TreeObject(
-			headers.get("id")!,
-			headers.get("kind")!,
-			headers.get("name")!,
+		return new Tree(
+			object.id,
+			object.headers.get("sub-kind") ?? "",
+			object.headers.get("name") ?? "",
 			items,
 		);
 	}
+}
+
+export class InvalidTreeError extends Error {
+	public name = "InvalidTreeError";
 }

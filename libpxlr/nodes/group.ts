@@ -1,22 +1,21 @@
 import { autoid } from "../autoid.ts";
 import { AddChildCommand, Command, MoveChildCommand, RemoveChildCommand, RenameCommand } from "../commands/mod.ts";
 import { Node } from "./node.ts";
-import { TreeObject } from "../objects/tree.ts";
 
-export class GroupNode extends Node<TreeObject> {
+export class GroupNode extends Node {
 	public constructor(
 		id: string,
 		name: string,
-		public readonly children: ReadonlyArray<Node<any>>,
+		public readonly children: ReadonlyArray<Node>,
 	) {
 		super(id, "group", name);
 	}
 
-	static new(name: string, children: Node<any>[]) {
+	static new(name: string, children: Node[]) {
 		return new GroupNode(autoid(), name, children);
 	}
 
-	*iter(): IterableIterator<Node<any>> {
+	*iter(): IterableIterator<Node> {
 		yield this;
 		for (const child of this.children) {
 			yield* child.iter();
@@ -28,7 +27,7 @@ export class GroupNode extends Node<TreeObject> {
 			if (command instanceof RenameCommand) {
 				return new GroupNode(autoid(), command.renameTo, this.children);
 			} else if (command instanceof AddChildCommand) {
-				const children = Array.from(new Set(this.children.concat(command.child)));
+				const children = Array.from(new Set(this.children.concat(command.childNode)));
 				return new GroupNode(autoid(), this.name, children);
 			} else if (command instanceof RemoveChildCommand) {
 				const childIndex = this.children.findIndex((node) => node.id === command.childId);
@@ -66,9 +65,5 @@ export class GroupNode extends Node<TreeObject> {
 			return new GroupNode(autoid(), this.name, children);
 		}
 		return this;
-	}
-
-	toObject() {
-		return new TreeObject(this.id, "group", this.name, this.children.map((child) => ({ id: child.id, kind: child.kind, name: child.name })));
 	}
 }

@@ -1,40 +1,51 @@
-import { AutoId, isAutoid } from "../autoid.ts";
-import { simpleDeserialize, simpleSerialize } from "./helper.ts";
-import { Object, ObjectSerializer } from "./object.ts";
+import { AutoId, InvalidAutoIdError, isAutoId } from "../autoid.ts";
+import { Object } from "./object.ts";
 
-export class CommitObject extends Object {
+export class Commit {
 	constructor(
-		id: AutoId,
+		public readonly id: AutoId,
 		public readonly parent: AutoId,
 		public readonly tree: AutoId,
 		public readonly commiter: string,
 		public readonly date: Date,
 		public readonly message: string,
 	) {
-		super(id, "commit");
-		if (parent && !isAutoid(parent)) {
-			throw new TypeError(`Parameter "parent" does not appear to be an AutoId.`);
+		if (!isAutoId(id)) {
+			throw new InvalidAutoIdError(id);
 		}
-		if (!isAutoid(tree)) {
-			throw new TypeError(`Parameter "tree" does not appear to be an AutoId.`);
+		if (parent && !isAutoId(parent)) {
+			throw new InvalidAutoIdError(parent);
 		}
+		if (tree && !isAutoId(tree)) {
+			throw new InvalidAutoIdError(tree);
+		}
+		// TODO validate commiter
+		// TODO validate date
+		// TODO validate message
+	}
+
+	toObject(): Object {
+		return new Object(this.id, {
+			kind: "commit",
+			parent: this.parent,
+			tree: this.tree,
+			commiter: this.commiter,
+			date: this.date.toISOString(),
+		}, this.message);
+	}
+
+	static async fromObject(object: Object): Promise<Commit> {
+		return new Commit(
+			object.id,
+			object.headers.get("parent") ?? "",
+			object.headers.get("tree") ?? "",
+			object.headers.get("commiter") ?? "",
+			new Date(object.headers.get("date") ?? ""),
+			await object.text().catch((_) => ""),
+		);
 	}
 }
 
-export class CommitObjectSerializer extends ObjectSerializer<CommitObject> {
-	async serialize(stream: WritableStream, object: CommitObject) {
-		await simpleSerialize(stream, { id: object.id, parent: object.parent ?? "", tree: object.tree, commiter: object.commiter, date: object.date.toISOString() }, object.message);
-	}
-	async deserialize(stream: ReadableStream) {
-		const { headers, body } = await simpleDeserialize(stream);
-		const message = await new Response(body).text();
-		return new CommitObject(
-			headers.get("id")!,
-			headers.get("parent")!,
-			headers.get("tree")!,
-			headers.get("commiter")!,
-			new Date(headers.get("date")!),
-			message,
-		);
-	}
+export class InvalidCommitError extends Error {
+	public name = "InvalidCommitError";
 }

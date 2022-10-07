@@ -1,21 +1,17 @@
 import { assertEquals } from "https://deno.land/std/testing/asserts.ts";
-import { Buffer } from "https://deno.land/std@0.158.0/streams/mod.ts";
 import { autoid } from "../autoid.ts";
-import { CommitObject, CommitObjectSerializer } from "./commit.ts";
+import { Commit } from "./commit.ts";
 
 Deno.test("CommitObject", async (t) => {
 	await t.step("serialize and deserialize", async () => {
-		const ser = new CommitObjectSerializer();
-		const obj1 = new CommitObject(autoid(), autoid(), autoid(), "John Doe <jdoe@example.org>", new Date(), "init");
-		const buf = new Buffer();
-		await ser.serialize(buf.writable, obj1);
-		const obj2 = await ser.deserialize(buf.readable);
-		assertEquals(obj2.id, obj1.id);
-		assertEquals(obj2.kind, obj1.kind);
-		assertEquals(obj2.parent, obj1.parent);
-		assertEquals(obj2.tree, obj1.tree);
-		assertEquals(obj2.commiter, obj1.commiter);
-		assertEquals(obj2.date, obj1.date);
-		assertEquals(obj2.message, obj1.message);
+		const commit1 = new Commit(autoid(), autoid(), autoid(), "John Doe <jdoe@example.org>", new Date(), "init");
+		const obj1 = commit1.toObject();
+		const commit2 = await Commit.fromObject(obj1);
+		assertEquals(commit2.id, commit1.id);
+		assertEquals(commit2.parent, commit1.parent);
+		assertEquals(commit2.tree, commit1.tree);
+		assertEquals(commit2.commiter, commit1.commiter);
+		assertEquals(commit2.date, commit1.date);
+		assertEquals(commit2.message, commit1.message);
 	});
 });
