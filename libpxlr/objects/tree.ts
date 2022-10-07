@@ -9,28 +9,16 @@ export type TreeObjectItem = {
 };
 
 export class TreeObject extends Object {
-	#name: string;
-	#items: TreeObjectItem[];
 	public constructor(
 		id: AutoId,
 		kind: string,
-		name: string,
-		items: TreeObjectItem[],
+		public readonly name: string,
+		public readonly items: ReadonlyArray<TreeObjectItem>,
 	) {
 		super(id, kind);
 		if (!isAutoid(id)) {
 			throw new TypeError(`Parameter "id" does not appear to be an AutoId.`);
 		}
-		this.#name = name;
-		this.#items = items;
-	}
-
-	get name() {
-		return this.#name;
-	}
-
-	get items(): ReadonlyArray<TreeObjectItem> {
-		return this.#items;
 	}
 }
 

@@ -15,15 +15,6 @@ Deno.test("NoteNode", async (t) => {
 		assertEquals(node1.kind, "note");
 		assertEquals(node1.name, "A");
 		assertEquals(node1.content, "Content");
-		assertThrows(() => {
-			(node1 as any).id = "id";
-		});
-		assertThrows(() => {
-			(node1 as any).name = "Foo";
-		});
-		assertThrows(() => {
-			(node1 as any).content = "Bar";
-		});
 	});
 
 	await t.step("handles rename command", () => {

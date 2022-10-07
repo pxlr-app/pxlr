@@ -6,11 +6,11 @@ import { TreeObject, TreeObjectSerializer } from "./tree.ts";
 Deno.test("TreeObject", async (t) => {
 	await t.step("serialize and deserialize", async () => {
 		const ser = new TreeObjectSerializer();
-		const obj1 = new TreeObject(autoid(), "group", "Dummy", [{ id: autoid(), kind: "blob", name: "a" }, { id: autoid(), kind: "tree", name: "b" }, {
-			id: autoid(),
-			kind: "blob",
-			name: "c",
-		}]);
+		const obj1 = new TreeObject(autoid(), "group", "Dummy", [
+			{ id: autoid(), kind: "blob", name: "a" },
+			{ id: autoid(), kind: "tree", name: "b" },
+			{ id: autoid(), kind: "blob", name: "c" },
+		]);
 		const buf = new Buffer();
 		await ser.serialize(buf.writable, obj1);
 		const obj2 = await ser.deserialize(buf.readable);

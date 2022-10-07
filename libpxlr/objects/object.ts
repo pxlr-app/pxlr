@@ -1,17 +1,10 @@
-import { AutoId } from "../autoid.ts";
+import { AutoId, isAutoid } from "../autoid.ts";
 
 export abstract class Object {
-	#id: AutoId;
-	#kind: string;
-	constructor(id: string, kind: string) {
-		this.#id = id;
-		this.#kind = kind;
-	}
-	get id() {
-		return this.#id;
-	}
-	get kind() {
-		return this.#kind;
+	constructor(public readonly id: AutoId, public readonly kind: string) {
+		if (!isAutoid(id)) {
+			throw new TypeError(`Parameter "id" does not appear to be an AutoId.`);
+		}
 	}
 }
 

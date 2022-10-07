@@ -5,29 +5,22 @@ import { Object, ObjectSerializer } from "../objects/object.ts";
 import { simpleDeserialize, simpleSerialize } from "../objects/helper.ts";
 
 export class NoteNode extends Node<NoteObject> {
-	#content: string;
-
 	public constructor(
 		id: string,
 		name: string,
-		content: string,
+		public readonly content: string,
 	) {
 		super(id, "note", name);
-		this.#content = content;
 	}
 
 	static new(name: string, content: string) {
 		return new NoteNode(autoid(), name, content);
 	}
 
-	get content() {
-		return this.#content;
-	}
-
 	executeCommand(command: Command) {
 		if (command.target === this.id) {
 			if (command instanceof RenameCommand) {
-				return new NoteNode(autoid(), command.renameTo, this.#content);
+				return new NoteNode(autoid(), command.renameTo, this.content);
 			} else if (command instanceof SetContentCommand) {
 				return new NoteNode(autoid(), this.name, command.setContent);
 			}

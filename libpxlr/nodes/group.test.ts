@@ -17,15 +17,6 @@ Deno.test("GroupNode", async (t) => {
 		assertEquals(node1.kind, "group");
 		assertEquals(node1.name, "Name");
 		assertEquals(node1.children, []);
-		assertThrows(() => {
-			(node1 as any).id = "id";
-		});
-		assertThrows(() => {
-			(node1 as any).name = "Foo";
-		});
-		assertThrows(() => {
-			(node1 as any).children = [];
-		});
 	});
 
 	await t.step("handles rename command name", () => {

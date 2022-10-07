@@ -3,18 +3,13 @@ import { simpleDeserialize, simpleSerialize } from "./helper.ts";
 import { Object, ObjectSerializer } from "./object.ts";
 
 export class CommitObject extends Object {
-	#parent: AutoId;
-	#tree: AutoId;
-	#commiter: string;
-	#date: Date;
-	#message: string;
 	constructor(
 		id: AutoId,
-		parent: AutoId,
-		tree: AutoId,
-		commiter: string,
-		date: Date,
-		message: string,
+		public readonly parent: AutoId,
+		public readonly tree: AutoId,
+		public readonly commiter: string,
+		public readonly date: Date,
+		public readonly message: string,
 	) {
 		super(id, "commit");
 		if (!isAutoid(parent)) {
@@ -23,31 +18,6 @@ export class CommitObject extends Object {
 		if (!isAutoid(tree)) {
 			throw new TypeError(`Parameter "tree" does not appear to be an AutoId.`);
 		}
-		this.#parent = parent;
-		this.#tree = tree;
-		this.#commiter = commiter;
-		this.#date = date;
-		this.#message = message;
-	}
-
-	get parent() {
-		return this.#parent;
-	}
-
-	get tree() {
-		return this.#tree;
-	}
-
-	get commiter() {
-		return this.#commiter;
-	}
-
-	get date() {
-		return new Date(this.#date);
-	}
-
-	get message() {
-		return this.#message;
 	}
 }
 
