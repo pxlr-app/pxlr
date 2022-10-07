@@ -12,7 +12,7 @@ export class CommitObject extends Object {
 		public readonly message: string,
 	) {
 		super(id, "commit");
-		if (!isAutoid(parent)) {
+		if (parent && !isAutoid(parent)) {
 			throw new TypeError(`Parameter "parent" does not appear to be an AutoId.`);
 		}
 		if (!isAutoid(tree)) {
@@ -23,7 +23,7 @@ export class CommitObject extends Object {
 
 export class CommitObjectSerializer extends ObjectSerializer<CommitObject> {
 	async serialize(stream: WritableStream, object: CommitObject) {
-		await simpleSerialize(stream, { id: object.id, parent: object.parent, tree: object.tree, commiter: object.commiter, date: object.date.toISOString() }, object.message);
+		await simpleSerialize(stream, { id: object.id, parent: object.parent ?? "", tree: object.tree, commiter: object.commiter, date: object.date.toISOString() }, object.message);
 	}
 	async deserialize(stream: ReadableStream) {
 		const { headers, body } = await simpleDeserialize(stream);
