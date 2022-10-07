@@ -39,7 +39,7 @@ export class NoteObject extends Object {
 }
 export class NoteObjectSerializer extends ObjectSerializer<NoteObject> {
 	async serialize(stream: WritableStream, object: NoteObject) {
-		await simpleSerialize(stream, { id: object.id, name: object.name }, object.content);
+		await simpleSerialize(stream, { id: object.id, kind: object.kind, name: object.name }, object.content);
 	}
 	async deserialize(stream: ReadableStream) {
 		const { headers, body } = await simpleDeserialize(stream);
