@@ -1,9 +1,9 @@
-import { Filesystem, IOError } from "./filesystem/filesystem.ts";
-import { Commit } from "./objects/commit.ts";
-import { Object } from "./objects/object.ts";
-import { Tree } from "./objects/tree.ts";
-import { assertReference, Reference } from "./objects/reference.ts";
-import { assertAutoId, AutoId } from "./autoid.ts";
+import { Filesystem, IOError } from "../filesystem/filesystem.ts";
+import { Commit } from "./commit.ts";
+import { Object } from "./object.ts";
+import { Tree } from "./tree.ts";
+import { assertReference, Reference } from "./reference.ts";
+import { assertAutoId, AutoId } from "../autoid.ts";
 
 async function readAsText(rs: ReadableStream) {
 	return await new Response(rs).text();
