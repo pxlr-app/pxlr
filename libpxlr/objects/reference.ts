@@ -7,13 +7,15 @@ const RefRegExp = new RegExp(`^refs/[a-z]+/[^/\\.%&;]+$`);
  * @param value The value to test
  * @returns If value is a Reference
  */
-export function isReference(value?: unknown): value is Reference {
-	return !!value && typeof value === "string" && RefRegExp.test(value);
+export function assertReference(value?: unknown): asserts value is Reference {
+	if (!value || typeof value !== "string" || !RefRegExp.test(value)) {
+		throw new InvalidReferenceError(value);
+	}
 }
 
 export class InvalidReferenceError extends Error {
 	public name = "InvalidReferenceError";
-	public constructor(value: string) {
+	public constructor(value: unknown) {
 		super(`Invalid Reference, got ${value}.`);
 	}
 }

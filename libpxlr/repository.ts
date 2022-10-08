@@ -2,7 +2,7 @@ import { Filesystem, IOError } from "./filesystem/filesystem.ts";
 import { Commit } from "./objects/commit.ts";
 import { Object } from "./objects/object.ts";
 import { Tree } from "./objects/tree.ts";
-import { InvalidReferenceError, isReference, Reference } from "./objects/reference.ts";
+import { assertReference, Reference } from "./objects/reference.ts";
 import { assertAutoId, AutoId } from "./autoid.ts";
 
 async function readAsText(rs: ReadableStream) {
@@ -21,9 +21,7 @@ export class Repository {
 		try {
 			const headReadableStream = await this.fs.read("/HEAD");
 			const ref = await readAsText(headReadableStream);
-			if (!isReference(ref)) {
-				throw new InvalidReferenceError(ref);
-			}
+			assertReference(ref);
 			return ref;
 		} catch (error) {
 			throw new IOError(error);
@@ -31,9 +29,7 @@ export class Repository {
 	}
 
 	async setHead(ref: Reference): Promise<void> {
-		if (!isReference(ref)) {
-			throw new InvalidReferenceError(ref);
-		}
+		assertReference(ref);
 		try {
 			const headWritableStream = await this.fs.write("/HEAD");
 			const headWriter = headWritableStream.getWriter();
@@ -45,9 +41,7 @@ export class Repository {
 	}
 
 	async getReference(ref: Reference): Promise<AutoId> {
-		if (!isReference(ref)) {
-			throw new InvalidReferenceError(ref);
-		}
+		assertReference(ref);
 		try {
 			const refReadableStream = await this.fs.read(`/${ref}`);
 			const commitId = await readAsText(refReadableStream);
@@ -59,9 +53,7 @@ export class Repository {
 	}
 
 	async setReference(ref: Reference, commitId: AutoId): Promise<void> {
-		if (!isReference(ref)) {
-			throw new InvalidReferenceError(ref);
-		}
+		assertReference(ref);
 		assertAutoId(commitId);
 		try {
 			const refWritableStream = await this.fs.write(`/${ref}`);
