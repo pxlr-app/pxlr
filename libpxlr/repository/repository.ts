@@ -118,4 +118,15 @@ export class Repository {
 			yield tree;
 		}
 	}
+
+	async *walkHistory(commitId: AutoId, abortSignal?: AbortSignal): AsyncIterableIterator<Commit> {
+		while (commitId) {
+			if (abortSignal?.aborted === true) {
+				break;
+			}
+			const commit = await this.getCommit(commitId);
+			commitId = commit.parent;
+			yield commit;
+		}
+	}
 }

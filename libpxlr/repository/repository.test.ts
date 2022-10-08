@@ -69,6 +69,22 @@ Deno.test("Repository", async (t) => {
 		const res3 = await iter.next();
 		assert(res3.done);
 	});
+
+	await t.step("walk history", async () => {
+		const repo = new Repository(fs1);
+		const iter = repo.walkHistory("Wop7bFXo65cxSUFvDcJK");
+		
+		const res1 = await iter.next();
+		assertFalse(res1.done);
+		assertEquals(res1.value.id, "Wop7bFXo65cxSUFvDcJK");
+
+		const res2 = await iter.next();
+		assertFalse(res2.done);
+		assertEquals(res2.value.id, "NYyv8vVWdRah1NLmXcpD");
+
+		const res3 = await iter.next();
+		assert(res3.done);
+	});
 });
 
 function makeVirtualFs(files: Record<string, string>) {
