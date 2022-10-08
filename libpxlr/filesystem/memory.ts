@@ -44,7 +44,7 @@ export class MemoryFilesystem extends Filesystem {
 			pull(controller) {
 				controller.enqueue(new Uint8Array(buffer));
 				controller.close();
-			}
+			},
 		});
 	}
 
@@ -66,7 +66,7 @@ export class MemoryFilesystem extends Filesystem {
 					offset += chunk.byteLength;
 				}
 				this.entries.set(path, buffer);
-			}
+			},
 		});
 	}
 }

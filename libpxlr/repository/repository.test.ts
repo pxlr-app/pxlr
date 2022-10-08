@@ -9,7 +9,8 @@ Deno.test("Repository", async (t) => {
 		[`/objects/J/z/JzF21pOr54Xn0fGrhQG6`]: `id JzF21pOr54Xn0fGrhQG6\r\nkind note\r\nname README\r\n\r\nTest`,
 		[`/objects/Z/z/ZzF21pOr54Xn0fGrhQG6`]: `id ZzF21pOr54Xn0fGrhQG6\r\nkind note\r\nname README\r\n\r\nTest`,
 		[`/objects/Z/t/ZtBjcuH46AeQaczTdC12`]: `id ZtBjcuH46AeQaczTdC12\r\nkind tree\r\nsub-kind group\r\nname My%20Project\r\n\r\nnote ZzF21pOr54Xn0fGrhQG6 README`,
-		[`/objects/u/t/utBjcuH46AeQaczTdC12`]: `id utBjcuH46AeQaczTdC12\r\nkind tree\r\nsub-kind group\r\nname Root\r\n\r\nnote JzF21pOr54Xn0fGrhQG6 README\r\ntree ZtBjcuH46AeQaczTdC12 My%20Project`,
+		[`/objects/u/t/utBjcuH46AeQaczTdC12`]:
+			`id utBjcuH46AeQaczTdC12\r\nkind tree\r\nsub-kind group\r\nname Root\r\n\r\nnote JzF21pOr54Xn0fGrhQG6 README\r\ntree ZtBjcuH46AeQaczTdC12 My%20Project`,
 		[`/objects/N/Y/NYyv8vVWdRah1NLmXcpD`]:
 			`id NYyv8vVWdRah1NLmXcpD\r\nparent \r\ntree utBjcuH46AeQaczTdC12\r\ncommiter John Doe <jd@test.local>\r\ndate 2022-10-07T02:14:56.247Z\r\n\r\ninit`,
 		[`/objects/W/o/Wop7bFXo65cxSUFvDcJK`]:
@@ -57,7 +58,7 @@ Deno.test("Repository", async (t) => {
 	await t.step("walk tree", async () => {
 		const repo = new Repository(fs1);
 		const iter = repo.walkTree("utBjcuH46AeQaczTdC12");
-		
+
 		const res1 = await iter.next();
 		assertFalse(res1.done);
 		assertEquals(res1.value.id, "utBjcuH46AeQaczTdC12");
@@ -73,7 +74,7 @@ Deno.test("Repository", async (t) => {
 	await t.step("walk history", async () => {
 		const repo = new Repository(fs1);
 		const iter = repo.walkHistory("Wop7bFXo65cxSUFvDcJK");
-		
+
 		const res1 = await iter.next();
 		assertFalse(res1.done);
 		assertEquals(res1.value.id, "Wop7bFXo65cxSUFvDcJK");
