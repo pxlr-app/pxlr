@@ -13,8 +13,6 @@ export class Object {
 	) {
 		assertAutoId(id);
 		this.headers = headers instanceof Map ? headers : new Map(globalThis.Object.entries(headers));
-		// TODO validate for white-space in keys -> break deserialize
-		// TODO validate for \r\n in  -> break deserialize
 	}
 
 	async serialize(stream: WritableStream) {
@@ -22,7 +20,7 @@ export class Object {
 		const writer = stream.getWriter();
 		await writer.write(encoder.encode(`id ${this.id}\r\n`));
 		for (const [key, value] of this.headers) {
-			await writer.write(encoder.encode(`${key} ${value}\r\n`));
+			await writer.write(encoder.encode(`${encodeURIComponent(key)} ${encodeURIComponent(value)}\r\n`));
 		}
 		await writer.write(encoder.encode(`\r\n`));
 		if (this.body instanceof ReadableStream) {
@@ -82,7 +80,7 @@ export class Object {
 					inValue = true;
 				} else if (chunk.at(i) === `\r` && chunk.at(i + 1) === `\n`) {
 					if (inValue) {
-						headers.set(key, tmp);
+						headers.set(decodeURIComponent(key), decodeURIComponent(tmp));
 						tmp = "";
 						inKey = true;
 						inValue = false;
