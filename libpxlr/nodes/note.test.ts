@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertNotEquals, assertThrows } from "https://deno.land/std/testing/asserts.ts";
+import { assert, assertEquals, assertNotEquals, assertThrows } from "https://deno.land/std@0.158.0/testing/asserts.ts";
 import { RenameCommand, SetContentCommand } from "../commands/mod.ts";
 import { NoteNode } from "./note.ts";
 

@@ -1,4 +1,4 @@
-import { assertEquals } from "https://deno.land/std/testing/asserts.ts";
+import { assertEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
 import { autoid } from "../autoid.ts";
 import { Commit } from "./commit.ts";
 

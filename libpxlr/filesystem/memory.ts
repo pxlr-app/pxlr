@@ -1,11 +1,10 @@
 import { Buffer } from "https://deno.land/std@0.158.0/streams/mod.ts";
-import { dirname } from "https://deno.land/std@0.156.0/path/mod.ts";
 import { Filesystem } from "./filesystem.ts";
 
 export class MemoryFilesystem extends Filesystem {
-	public entries: Map<string, Buffer>;
+	public entries: Map<string, ArrayBuffer>;
 	constructor(
-		entries: Record<string, Buffer>,
+		entries: Record<string, ArrayBuffer>,
 	) {
 		super();
 		this.entries = new Map(Object.entries(entries));
@@ -36,18 +35,38 @@ export class MemoryFilesystem extends Filesystem {
 	}
 
 	// deno-lint-ignore require-await
-	async read(path: string): Promise<ReadableStream> {
+	async read(path: string): Promise<ReadableStream<Uint8Array>> {
 		const buffer = this.entries.get(path);
 		if (!buffer) {
 			throw new Error(`File not found.`);
 		}
-		return buffer.readable;
+		return new ReadableStream({
+			pull(controller) {
+				controller.enqueue(new Uint8Array(buffer));
+				controller.close();
+			}
+		});
 	}
 
 	// deno-lint-ignore require-await
-	async write(path: string): Promise<WritableStream> {
-		const buffer = new Buffer();
-		this.entries.set(path, buffer);
-		return buffer.writable;
+	async write(path: string): Promise<WritableStream<Uint8Array>> {
+		const chunks: Uint8Array[] = [];
+		return new WritableStream({
+			write(chunk) {
+				if (!(chunk instanceof Uint8Array)) {
+					throw new TypeError(`Expected chunk to be an Uint8Array, got ${chunk}.`);
+				}
+				chunks.push(chunk);
+			},
+			close: () => {
+				const buffer = new Uint8Array(chunks.reduce((size, chunk) => size + chunk.byteLength, 0));
+				let offset = 0;
+				for (const chunk of chunks) {
+					buffer.set(chunk, offset);
+					offset += chunk.byteLength;
+				}
+				this.entries.set(path, buffer);
+			}
+		});
 	}
 }

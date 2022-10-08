@@ -102,4 +102,20 @@ export class Repository {
 	async setTree(tree: Tree): Promise<void> {
 		return await this.setObject(tree.toObject());
 	}
+
+	async *walkTree(rootId: AutoId, abortSignal?: AbortSignal): AsyncIterableIterator<Tree> {
+		const queue: AutoId[] = [rootId];
+		for (let id = queue.shift(); id; id = queue.shift()) {
+			if (abortSignal?.aborted === true) {
+				break;
+			}
+			const tree = await this.getTree(id);
+			for (const item of tree.items) {
+				if (item.kind === "tree") {
+					queue.push(item.id);
+				}
+			}
+			yield tree;
+		}
+	}
 }

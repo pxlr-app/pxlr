@@ -114,7 +114,3 @@ export class Object {
 		return new Object(id, headers, body);
 	}
 }
-
-export class InvalidObjectError extends Error {
-	public name = "InvalidObjectError";
-}

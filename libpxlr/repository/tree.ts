@@ -1,39 +1,55 @@
 import { assertAutoId, AutoId } from "../autoid.ts";
 import { Object } from "./object.ts";
 
-export type TreeItem = {
-	readonly id: string;
-	readonly kind: string;
-	readonly name: string;
-};
+export interface TreeItem {
+	id: AutoId;
+	kind: string;
+	name: string;
+}
 
-export class Tree {
+export class Tree<T extends Record<string, string> = Record<never, never>> {
 	public constructor(
 		public readonly id: AutoId,
 		public readonly subKind: string,
 		public readonly name: string,
-		public readonly items: ReadonlyArray<TreeItem>,
+		public readonly items: ReadonlyArray<T & TreeItem>,
 	) {
 		assertAutoId(id);
 		if (subKind === "") {
 			throw new InvalidTreeError();
 		}
-		// TODO validate items
 	}
 
-	toObject(): Object {
-		return new Object(this.id, {
-			kind: "tree",
-			"sub-kind": this.subKind,
-			name: this.name,
-		}, this.items.map((item) => `${item.kind} ${item.id} ${item.name}`).join(`\r\n`));
+	toObject(otherFieldOrder: (keyof T)[] = []): Object {
+		return new Object(
+			this.id,
+			{
+				kind: "tree",
+				"sub-kind": this.subKind,
+				name: this.name,
+			},
+			this.items.map((item) => {
+				const { kind, id, name, ...rest } = item;
+				assertAutoId(id);
+				const other = otherFieldOrder.reduce((other, name) => {
+					other.push(encodeURIComponent(rest[name as string]));
+					return other;
+				}, [] as string[]);
+				return `${encodeURIComponent(kind)} ${encodeURIComponent(id)} ${encodeURIComponent(name)} ${other.join(" ")}`;
+			}).join(`\r\n`),
+		);
 	}
 
-	static async fromObject(object: Object): Promise<Tree> {
+	static async fromObject<T extends Record<string, string> = Record<never, never>>(object: Object, otherFieldOrder: (keyof T)[] = []): Promise<Tree<T>> {
 		const itemLines = await object.text();
 		const items = itemLines.split(`\r\n`).map((line) => {
-			const [kind, id, ...name] = line.split(" ");
-			return { kind, id, name: name.join(" ") };
+			const [kind, id, name, ...rest] = line.split(" ");
+			assertAutoId(id);
+			const other = otherFieldOrder.reduce((other, name, i) => {
+				other[name] = decodeURIComponent(rest[i] ?? "") as T[keyof T];
+				return other;
+			}, {} as T);
+			return { kind: decodeURIComponent(kind), id: decodeURIComponent(id), name: decodeURIComponent(name), ...other };
 		});
 		return new Tree(
 			object.id,
