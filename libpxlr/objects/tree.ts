@@ -1,4 +1,4 @@
-import { AutoId, InvalidAutoIdError, isAutoId } from "../autoid.ts";
+import { assertAutoId, AutoId } from "../autoid.ts";
 import { Object } from "./object.ts";
 
 export type TreeItem = {
@@ -14,9 +14,7 @@ export class Tree {
 		public readonly name: string,
 		public readonly items: ReadonlyArray<TreeItem>,
 	) {
-		if (!isAutoId(id)) {
-			throw new InvalidAutoIdError(id);
-		}
+		assertAutoId(id);
 		if (subKind === "") {
 			throw new InvalidTreeError();
 		}

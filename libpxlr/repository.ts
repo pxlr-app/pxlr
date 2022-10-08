@@ -3,7 +3,7 @@ import { Commit } from "./objects/commit.ts";
 import { Object } from "./objects/object.ts";
 import { Tree } from "./objects/tree.ts";
 import { InvalidReferenceError, isReference, Reference } from "./objects/reference.ts";
-import { AutoId, InvalidAutoIdError, isAutoId } from "./autoid.ts";
+import { assertAutoId, AutoId } from "./autoid.ts";
 
 async function readAsText(rs: ReadableStream) {
 	return await new Response(rs).text();
@@ -51,9 +51,7 @@ export class Repository {
 		try {
 			const refReadableStream = await this.fs.read(`/${ref}`);
 			const commitId = await readAsText(refReadableStream);
-			if (!isAutoId(commitId)) {
-				throw new InvalidAutoIdError(commitId);
-			}
+			assertAutoId(commitId);
 			return commitId;
 		} catch (error) {
 			throw new IOError(error);
@@ -64,9 +62,7 @@ export class Repository {
 		if (!isReference(ref)) {
 			throw new InvalidReferenceError(ref);
 		}
-		if (!isAutoId(commitId)) {
-			throw new InvalidAutoIdError(commitId);
-		}
+		assertAutoId(commitId);
 		try {
 			const refWritableStream = await this.fs.write(`/${ref}`);
 			const refWriter = refWritableStream.getWriter();
@@ -78,9 +74,7 @@ export class Repository {
 	}
 
 	async getObject(id: AutoId): Promise<Object> {
-		if (!isAutoId(id)) {
-			throw new InvalidAutoIdError(id);
-		}
+		assertAutoId(id);
 		let objectReadableStream;
 		try {
 			objectReadableStream = await this.fs.read(`/objects/${id[0]}/${id[1]}/${id}`);

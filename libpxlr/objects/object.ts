@@ -1,4 +1,4 @@
-import { AutoId, InvalidAutoIdError, isAutoId } from "../autoid.ts";
+import { assertAutoId, AutoId } from "../autoid.ts";
 
 const textDecoder = new TextDecoder("utf-8");
 const textEncoder = new TextEncoder();
@@ -11,9 +11,7 @@ export class Object {
 		headers: Record<string, string> | Map<string, string>,
 		public readonly body?: ReadableStream | ArrayBuffer | string | undefined,
 	) {
-		if (!isAutoId(id)) {
-			throw new InvalidAutoIdError(id);
-		}
+		assertAutoId(id);
 		this.headers = headers instanceof Map ? headers : new Map(globalThis.Object.entries(headers));
 		// TODO validate for white-space in keys -> break deserialize
 		// TODO validate for \r\n in  -> break deserialize
@@ -112,9 +110,7 @@ export class Object {
 		}
 		const id = headers.get("id") ?? "";
 		headers.delete("id");
-		if (!isAutoId(id)) {
-			throw new InvalidObjectError();
-		}
+		assertAutoId(id);
 		return new Object(id, headers, body);
 	}
 }

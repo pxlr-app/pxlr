@@ -1,4 +1,4 @@
-import { AutoId, InvalidAutoIdError, isAutoId } from "../autoid.ts";
+import { assertAutoId, AutoId } from "../autoid.ts";
 import { Command } from "../commands/mod.ts";
 
 export abstract class Node {
@@ -7,9 +7,7 @@ export abstract class Node {
 		public readonly kind: string,
 		public readonly name: string,
 	) {
-		if (!isAutoId(id)) {
-			throw new InvalidAutoIdError(id);
-		}
+		assertAutoId(id);
 	}
 
 	*iter(): IterableIterator<Node> {

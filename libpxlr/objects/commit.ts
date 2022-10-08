@@ -1,4 +1,4 @@
-import { AutoId, InvalidAutoIdError, isAutoId } from "../autoid.ts";
+import { assertAutoId, AutoId } from "../autoid.ts";
 import { Object } from "./object.ts";
 
 export class Commit {
@@ -10,15 +10,9 @@ export class Commit {
 		public readonly date: Date,
 		public readonly message: string,
 	) {
-		if (!isAutoId(id)) {
-			throw new InvalidAutoIdError(id);
-		}
-		if (parent && !isAutoId(parent)) {
-			throw new InvalidAutoIdError(parent);
-		}
-		if (tree && !isAutoId(tree)) {
-			throw new InvalidAutoIdError(tree);
-		}
+		assertAutoId(id);
+		parent && assertAutoId(parent);
+		tree && assertAutoId(tree);
 		// TODO validate commiter
 		// TODO validate date
 		// TODO validate message

@@ -27,13 +27,15 @@ export function autoid(): AutoId {
  * @param value The value to test
  * @returns If value is an AutoId
  */
-export function isAutoId(value?: unknown): value is AutoId {
-	return !!value && typeof value === "string" && AutoIdRegExp.test(value);
+export function assertAutoId(value?: unknown): asserts value is AutoId {
+	if (!value || typeof value !== "string" || !AutoIdRegExp.test(value)) {
+		throw new InvalidAutoIdError(value);
+	}
 }
 
 export class InvalidAutoIdError extends Error {
 	public name = "InvalidAutoIdError";
-	public constructor(value: string) {
+	public constructor(value: unknown) {
 		super(`Invalid AutoId, got ${value}.`);
 	}
 }
