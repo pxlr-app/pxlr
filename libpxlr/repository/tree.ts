@@ -23,8 +23,8 @@ export class Tree<T extends Record<string, string> = Record<never, never>> {
 	toObject(otherFieldOrder: (keyof T)[] = []): Object {
 		return new Object(
 			this.id,
+			"tree",
 			{
-				kind: "tree",
 				"sub-kind": this.subKind,
 				name: this.name,
 			},

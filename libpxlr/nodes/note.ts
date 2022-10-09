@@ -28,10 +28,10 @@ export class NoteNode extends Node {
 	}
 
 	toObject(): Object {
-		return new Object(this.id, { name: this.name }, this.content);
+		return new Object(this.id, "note", { name: this.name }, this.content);
 	}
 
-	static async fromObject(object: Object, _repo: Repository): Promise<NoteNode> {
+	static async fromObject(object: Object): Promise<NoteNode> {
 		return new NoteNode(object.id, object.headers.get("name") ?? "", await object.text());
 	}
 }

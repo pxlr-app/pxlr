@@ -8,7 +8,8 @@ export class Object {
 
 	constructor(
 		public readonly id: AutoId,
-		headers: Record<string, string> | Map<string, string>,
+		public readonly kind: string,
+		headers: Record<string, string> | Map<string, string> = {},
 		public readonly body?: ReadableStream | ArrayBuffer | string | undefined,
 	) {
 		assertAutoId(id);
@@ -19,6 +20,7 @@ export class Object {
 		const encoder = new TextEncoder();
 		const writer = stream.getWriter();
 		await writer.write(encoder.encode(`id ${this.id}\r\n`));
+		await writer.write(encoder.encode(`kind ${this.kind}\r\n`));
 		for (const [key, value] of this.headers) {
 			await writer.write(encoder.encode(`${encodeURIComponent(key)} ${encodeURIComponent(value)}\r\n`));
 		}
@@ -109,6 +111,8 @@ export class Object {
 		const id = headers.get("id") ?? "";
 		headers.delete("id");
 		assertAutoId(id);
-		return new Object(id, headers, body);
+		const kind = headers.get("kind") ?? "";
+		headers.delete("kind");
+		return new Object(id, kind, headers, body);
 	}
 }

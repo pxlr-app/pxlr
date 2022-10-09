@@ -1,8 +1,9 @@
 import { autoid } from "../autoid.ts";
 import { AddChildCommand, Command, MoveChildCommand, RemoveChildCommand, RenameCommand } from "./commands/mod.ts";
 import { Object } from "../repository/object.ts";
-import { Tree } from "../repository/tree.ts";
+import { Tree, TreeItem } from "../repository/tree.ts";
 import { Node } from "./node.ts";
+import { Document } from "./document.ts";
 
 export class GroupNode extends Node {
 	public constructor(
@@ -65,6 +66,48 @@ export class GroupNode extends Node {
 		});
 		if (mutated) {
 			return new GroupNode(autoid(), this.name, children);
+		}
+		return this;
+	}
+
+	toObject(): Object {
+		return new Tree(this.id, "group", this.name, this.children.map((node) => ({ id: node.id, kind: node.kind, name: node.name }))).toObject();
+	}
+
+	static async fromObject(object: Object, document: Document, shallow: boolean): Promise<Node> {
+		const tree = await Tree.fromObject(object);
+		if (shallow) {
+			return new ShallowGroupNode(tree.id, tree.name, tree.items);
+		} else {
+			const children: Node[] = [];
+			for (const item of tree.items) {
+				const node = await document.getNode(item.id);
+				children.push(node);
+			}
+			return new GroupNode(tree.id, tree.name, children);
+		}
+	}
+}
+
+export class ShallowGroupNode extends Node {
+	public constructor(
+		id: string,
+		name: string,
+		public readonly children: ReadonlyArray<TreeItem>,
+	) {
+		super(id, "group", name);
+	}
+
+	static new(name: string, children: TreeItem[]) {
+		return new ShallowGroupNode(autoid(), name, children);
+	}
+
+	executeCommand(command: Command) {
+		if (command.target === this.id) {
+			if (command instanceof RenameCommand) {
+				return new ShallowGroupNode(autoid(), command.renameTo, this.children);
+			}
+			return this;
 		}
 		return this;
 	}

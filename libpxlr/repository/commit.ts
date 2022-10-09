@@ -19,8 +19,7 @@ export class Commit {
 	}
 
 	toObject(): Object {
-		return new Object(this.id, {
-			kind: "commit",
+		return new Object(this.id, "commit", {
 			parent: this.parent,
 			tree: this.tree,
 			commiter: this.commiter,
