@@ -1,7 +1,7 @@
 import { assertAutoId, AutoId, autoid } from "../autoid.ts";
 import { Object } from "../repository/object.ts";
 import { Tree } from "../repository/tree.ts";
-import { Command, RenameCommand } from "./commands/mod.ts";
+import { Command, MoveChildCommand, RemoveChildCommand, RenameCommand } from "./commands/mod.ts";
 import { Document } from "./document.ts";
 
 export abstract class Node {
@@ -41,14 +41,37 @@ export class UnloadedNode extends Node {
 		if (command.target === this.id) {
 			if (command instanceof RenameCommand) {
 				return new UnloadedNode(autoid(), this.kind, command.renameTo, this.children);
+			} else if (command instanceof RemoveChildCommand) {
+				const childIndex = this.children.findIndex((node) => node.id === command.childId);
+				if (childIndex > -1) {
+					const children = [
+						...this.children.slice(0, childIndex),
+						...this.children.slice(childIndex + 1),
+					];
+					return new UnloadedNode(autoid(), this.kind, this.name, children);
+				}
+				return this;
+			} else if (command instanceof MoveChildCommand) {
+				const childIndex = this.children.findIndex((node) => node.id === command.childId);
+				if (childIndex > -1) {
+					const children = Array.from(this.children);
+					const child = children.splice(childIndex, 1)[0];
+					if (command.position > children.length) {
+						children.push(child);
+					} else {
+						children.splice(command.position, 0, child);
+					}
+					return new UnloadedNode(autoid(), this.kind, this.name, children);
+				}
+				return this;
 			}
-			return this;
+			throw new UnloadedNodeMethodError();
 		}
 		return this;
 	}
 
 	toObject(): Object {
-		throw new UnloadedNodeToObjectError();
+		throw new UnloadedNodeMethodError();
 	}
 
 	static async fromObject(object: Object, document: Document): Promise<Node> {
@@ -65,6 +88,6 @@ export class UnloadedNode extends Node {
 	}
 }
 
-export class UnloadedNodeToObjectError extends Error {
-	public name = "UnloadedNodeToObjectError";
+export class UnloadedNodeMethodError extends Error {
+	public name = "UnloadedNodeMethodError";
 }

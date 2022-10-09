@@ -41,6 +41,7 @@ export class GroupNode extends Node {
 					];
 					return new GroupNode(autoid(), this.name, children);
 				}
+				return this;
 			} else if (command instanceof MoveChildCommand) {
 				const childIndex = this.children.findIndex((node) => node.id === command.childId);
 				if (childIndex > -1) {
@@ -53,6 +54,7 @@ export class GroupNode extends Node {
 					}
 					return new GroupNode(autoid(), this.name, children);
 				}
+				return this;
 			}
 			return this;
 		}
