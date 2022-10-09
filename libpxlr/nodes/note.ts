@@ -1,5 +1,6 @@
 import { autoid } from "../autoid.ts";
-import { Command, RenameCommand, SetContentCommand } from "../commands/mod.ts";
+import { Command, RenameCommand, SetContentCommand } from "./commands/mod.ts";
+import { Object, Repository } from "../repository/mod.ts";
 import { Node } from "./node.ts";
 
 export class NoteNode extends Node {
@@ -24,5 +25,13 @@ export class NoteNode extends Node {
 			}
 		}
 		return this;
+	}
+
+	toObject(): Object {
+		return new Object(this.id, { name: this.name }, this.content);
+	}
+
+	static async fromObject(object: Object, _repo: Repository): Promise<NoteNode> {
+		return new NoteNode(object.id, object.headers.get("name") ?? "", await object.text());
 	}
 }

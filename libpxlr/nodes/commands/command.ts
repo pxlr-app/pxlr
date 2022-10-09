@@ -1,4 +1,4 @@
-import { assertAutoId, AutoId } from "../autoid.ts";
+import { assertAutoId, AutoId } from "../../autoid.ts";
 
 export abstract class Command {
 	public constructor(

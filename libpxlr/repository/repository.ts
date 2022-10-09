@@ -1,4 +1,4 @@
-import { Filesystem, IOError } from "../filesystem/filesystem.ts";
+import { Filesystem, IOError } from "./filesystem/filesystem.ts";
 import { Commit } from "./commit.ts";
 import { Object } from "./object.ts";
 import { Tree } from "./tree.ts";

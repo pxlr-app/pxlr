@@ -1,5 +1,7 @@
 import { autoid } from "../autoid.ts";
-import { AddChildCommand, Command, MoveChildCommand, RemoveChildCommand, RenameCommand } from "../commands/mod.ts";
+import { AddChildCommand, Command, MoveChildCommand, RemoveChildCommand, RenameCommand } from "./commands/mod.ts";
+import { Object } from "../repository/object.ts";
+import { Tree } from "../repository/tree.ts";
 import { Node } from "./node.ts";
 
 export class GroupNode extends Node {
@@ -65,5 +67,9 @@ export class GroupNode extends Node {
 			return new GroupNode(autoid(), this.name, children);
 		}
 		return this;
+	}
+
+	toObject(): Object {
+		return new Tree(this.id, "group", this.name, this.children.map((node) => ({ id: node.id, kind: node.kind, name: node.name }))).toObject();
 	}
 }

@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertFalse } from "https://deno.land/std@0.158.0/testing/asserts.ts";
-import { MemoryFilesystem } from "../filesystem/memory.ts";
+import { MemoryFilesystem } from "./filesystem/memory.ts";
 import { Repository } from "./repository.ts";
 
 Deno.test("Repository", async (t) => {

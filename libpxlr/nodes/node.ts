@@ -1,5 +1,6 @@
 import { assertAutoId, AutoId } from "../autoid.ts";
-import { Command } from "../commands/mod.ts";
+import { Command } from "./commands/mod.ts";
+import { Object } from "../repository/object.ts";
 
 export abstract class Node {
 	public constructor(
@@ -17,4 +18,5 @@ export abstract class Node {
 		return this.iter();
 	}
 	abstract executeCommand(command: Command): Node;
+	abstract toObject(): Object;
 }
