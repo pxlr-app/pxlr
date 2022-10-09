@@ -73,17 +73,8 @@ Deno.test("CommitObject", async (t) => {
 	await t.step("caches node", async () => {
 		const doc = await Document.loadAtHead(repo, registry);
 		const note1 = await doc.getNode<NoteNode>("ZzF21pOr54Xn0fGrhQG6");
-		assertEquals(note1.id, "ZzF21pOr54Xn0fGrhQG6");
-		assertEquals(note1.name, "README");
-		assertEquals(note1.content, "Test2");
 		const group = await doc.getNode<GroupNode>("utBjcuH46AeQaczTdC12");
-		assertEquals(group.id, "utBjcuH46AeQaczTdC12");
-		assertEquals(group.name, "Root");
-		assertEquals(group.children.length, 2);
 		const group2 = group.children[1] as GroupNode;
-		assertEquals(group2.id, "ZtBjcuH46AeQaczTdC12");
-		assertEquals(group2.name, "My Project");
-		assertEquals(group2.children.length, 1);
 		assertEquals(group2.children[0], note1);
 	});
 });
