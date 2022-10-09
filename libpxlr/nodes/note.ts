@@ -1,6 +1,6 @@
 import { autoid } from "../autoid.ts";
 import { Command, RenameCommand, SetContentCommand } from "./commands/mod.ts";
-import { Object, Repository } from "../repository/mod.ts";
+import { Object } from "../repository/mod.ts";
 import { Node } from "./node.ts";
 
 export class NoteNode extends Node {

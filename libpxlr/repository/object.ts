@@ -36,7 +36,7 @@ export class Object {
 
 	async arrayBuffer() {
 		if (this.body instanceof ReadableStream) {
-			(this as any).body = await new Response(this.body).arrayBuffer();
+			(this as { body: ArrayBuffer }).body = await new Response(this.body).arrayBuffer();
 		}
 		if (this.body instanceof ArrayBuffer) {
 			return this.body;
@@ -48,7 +48,7 @@ export class Object {
 
 	async text() {
 		if (this.body instanceof ReadableStream) {
-			(this as any).body = await new Response(this.body).arrayBuffer();
+			(this as { body: ArrayBuffer }).body = await new Response(this.body).arrayBuffer();
 		}
 		if (this.body instanceof ArrayBuffer) {
 			return textDecoder.decode(this.body);

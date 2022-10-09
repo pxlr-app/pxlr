@@ -1,28 +1,20 @@
 import { Node } from "./node.ts";
 import { Document } from "./document.ts";
 import { Object } from "../repository/object.ts";
-import { Tree } from "../repository/tree.ts";
-import { AutoId } from "../autoid.ts";
 
 export interface NodeConstructor {
-	new (id: AutoId, name: string, ...args: any[]): Node;
-	fromObject(object: Object, document: Document): Promise<Node>;
-}
-
-export interface TreeConstructor {
-	new (id: AutoId, name: string, ...args: any[]): Node;
 	fromObject(object: Object, document: Document, shallow: boolean): Promise<Node>;
 }
 
 export class Registry {
 	#kindNodeMap = new Map<string, NodeConstructor>();
-	#subKindTreeMap = new Map<string, TreeConstructor>();
+	#subKindTreeMap = new Map<string, NodeConstructor>();
 
 	registerNodeConstructor(kind: string, nodeConstructor: NodeConstructor): void {
 		this.#kindNodeMap.set(kind, nodeConstructor);
 	}
 
-	registerTreeConstructor(subKind: string, treeConstructor: TreeConstructor): void {
+	registerTreeConstructor(subKind: string, treeConstructor: NodeConstructor): void {
 		this.#subKindTreeMap.set(subKind, treeConstructor);
 	}
 
@@ -33,7 +25,7 @@ export class Registry {
 		return this.#kindNodeMap.get(kind)!;
 	}
 
-	getTreeConstructor(subKind: string): TreeConstructor {
+	getTreeConstructor(subKind: string): NodeConstructor {
 		if (!this.#subKindTreeMap.has(subKind)) {
 			throw new UnregistedTreeConstructorError(subKind);
 		}

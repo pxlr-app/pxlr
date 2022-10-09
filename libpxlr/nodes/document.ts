@@ -1,8 +1,7 @@
 import { assertAutoId, AutoId } from "../autoid.ts";
 import { Node } from "./node.ts";
 import { assertReference, Reference, Repository, Tree } from "../repository/mod.ts";
-import { Registry } from "./mod.ts";
-import { NodeConstructor } from "./registry.ts";
+import { NodeConstructor, Registry } from "./mod.ts";
 
 export class Document {
 	#nodeCache = new Map<AutoId, WeakRef<Node>>();
@@ -40,20 +39,19 @@ export class Document {
 			}
 			this.#nodeCache.delete(id);
 		}
+		let nodeConstructor: NodeConstructor;
 		const object = await this.repository.getObject(id);
-		try {
-			let node: T;
-			if (object.kind === "tree") {
-				const tree = await Tree.fromObject(object);
-				const treeConstructor = this.registry.getTreeConstructor(tree.subKind);
-				node = await treeConstructor.fromObject(object, this, shallow) as T;
-			} else {
-				const nodeConstructor = this.registry.getNodeConstructor(object.kind);
-				node = await nodeConstructor.fromObject(object, this) as T;
-			}
+		if (object.kind === "tree") {
+			const tree = await Tree.fromObject(object);
+			nodeConstructor = this.registry.getTreeConstructor(tree.subKind);
+		} else {
+			nodeConstructor = this.registry.getNodeConstructor(object.kind);
+		}
+		const node = await nodeConstructor.fromObject(object, this, shallow) as T;
+		if (node) {
 			this.#nodeCache.set(id, new WeakRef(node));
 			return node;
-		} catch (_err) {}
+		}
 		throw new NodeNotFoundError(id);
 	}
 }

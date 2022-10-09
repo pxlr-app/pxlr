@@ -1,4 +1,3 @@
-import { Buffer } from "https://deno.land/std@0.158.0/streams/mod.ts";
 import { Filesystem } from "./filesystem.ts";
 
 export class MemoryFilesystem extends Filesystem {
