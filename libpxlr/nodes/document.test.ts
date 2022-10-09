@@ -1,7 +1,7 @@
 import { assertEquals, assertExists } from "https://deno.land/std@0.158.0/testing/asserts.ts";
 import { MemoryFilesystem } from "../repository/filesystem/memory.ts";
 import { Repository } from "../repository/mod.ts";
-import { Document, GroupNode, NoteNode, Registry, ShallowGroupNode } from "./mod.ts";
+import { Document, GroupNode, NoteNode, Registry } from "./mod.ts";
 
 Deno.test("CommitObject", async (t) => {
 	const registry = new Registry();
@@ -30,7 +30,7 @@ Deno.test("CommitObject", async (t) => {
 
 	await t.step("get node", async () => {
 		const doc = await Document.loadAtHead(repo, registry);
-		const note1 = await doc.getNode<NoteNode>("ZzF21pOr54Xn0fGrhQG6");
+		const note1 = await doc.getNode("ZzF21pOr54Xn0fGrhQG6") as NoteNode;
 		assertEquals(note1.id, "ZzF21pOr54Xn0fGrhQG6");
 		assertEquals(note1.name, "README");
 		assertEquals(note1.content, "Test2");
@@ -38,7 +38,7 @@ Deno.test("CommitObject", async (t) => {
 
 	await t.step("get tree", async () => {
 		const doc = await Document.loadAtHead(repo, registry);
-		const group = await doc.getNode<GroupNode>("utBjcuH46AeQaczTdC12");
+		const group = await doc.getNode("utBjcuH46AeQaczTdC12") as GroupNode;
 		assertEquals(group.id, "utBjcuH46AeQaczTdC12");
 		assertEquals(group.name, "Root");
 		assertEquals(group.children.length, 2);
@@ -56,24 +56,25 @@ Deno.test("CommitObject", async (t) => {
 		assertEquals(note2.content, "Test2");
 	});
 
-	await t.step("get tree shallow", async () => {
+	await t.step("get tree unloaded", async () => {
 		const doc = await Document.loadAtHead(repo, registry);
-		const group = await doc.getNode<ShallowGroupNode>("utBjcuH46AeQaczTdC12", true);
+		const group = await doc.getUnloadedNode("utBjcuH46AeQaczTdC12");
 		assertEquals(group.id, "utBjcuH46AeQaczTdC12");
 		assertEquals(group.name, "Root");
+		assertEquals(group.kind, "group");
 		assertEquals(group.children.length, 2);
 		assertEquals(group.children[0].id, "JzF21pOr54Xn0fGrhQG6");
 		assertEquals(group.children[0].kind, "note");
 		assertEquals(group.children[0].name, "README");
 		assertEquals(group.children[1].id, "ZtBjcuH46AeQaczTdC12");
-		assertEquals(group.children[1].kind, "tree");
+		assertEquals(group.children[1].kind, "group");
 		assertEquals(group.children[1].name, "My Project");
 	});
 
 	await t.step("caches node", async () => {
 		const doc = await Document.loadAtHead(repo, registry);
-		const note1 = await doc.getNode<NoteNode>("ZzF21pOr54Xn0fGrhQG6");
-		const group = await doc.getNode<GroupNode>("utBjcuH46AeQaczTdC12");
+		const note1 = await doc.getNode("ZzF21pOr54Xn0fGrhQG6") as NoteNode;
+		const group = await doc.getNode("utBjcuH46AeQaczTdC12") as GroupNode;
 		const group2 = group.children[1] as GroupNode;
 		assertEquals(group2.children[0], note1);
 	});

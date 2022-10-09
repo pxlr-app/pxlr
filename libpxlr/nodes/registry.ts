@@ -3,7 +3,7 @@ import { Document } from "./document.ts";
 import { Object } from "../repository/object.ts";
 
 export interface NodeConstructor {
-	fromObject(object: Object, document: Document, shallow: boolean): Promise<Node>;
+	fromObject(object: Object, document: Document): Promise<Node>;
 }
 
 export class Registry {
