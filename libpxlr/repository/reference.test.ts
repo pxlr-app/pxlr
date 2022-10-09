@@ -10,8 +10,8 @@ Deno.test("Reference", async (t) => {
 		assertThrows(() => assertReference(new Date()));
 		assertThrows(() => assertReference(""));
 		assertThrows(() => assertReference("foo"));
-		assertThrows(() => assertReference("a/b"));
-		assertThrows(() => assertReference("a/b/c"));
-		assertReference("refs/b/c");
+		assertReference("refs/heads/main");
+		assertReference("refs/tags/v1");
+		assertReference("objects/Z/t/ZtBjcuH46AeQaczTdC12");
 	});
 });

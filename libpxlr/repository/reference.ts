@@ -1,6 +1,6 @@
 export type Reference = string;
 
-const RefRegExp = new RegExp(`^refs/[a-z]+/[^/\\.%&;]+$`);
+const ReferenceRegExp = new RegExp(`^([a-z0-9-]+/){1,}[a-z0-9-]+$`, "i");
 
 /**
  * Test if value is a Reference
@@ -8,7 +8,7 @@ const RefRegExp = new RegExp(`^refs/[a-z]+/[^/\\.%&;]+$`);
  * @returns If value is a Reference
  */
 export function assertReference(value?: unknown): asserts value is Reference {
-	if (!value || typeof value !== "string" || !RefRegExp.test(value)) {
+	if (!value || typeof value !== "string" || !ReferenceRegExp.test(value)) {
 		throw new InvalidReferenceError(value);
 	}
 }
