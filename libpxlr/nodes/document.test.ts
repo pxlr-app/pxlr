@@ -1,6 +1,7 @@
 import { assertEquals, assertExists } from "https://deno.land/std@0.158.0/testing/asserts.ts";
 import { MemoryFilesystem } from "../repository/filesystem/memory.ts";
 import { Repository } from "../repository/mod.ts";
+import { NodeCache } from "./cache.ts";
 import { Document, GroupNode, NoteNode, Registry } from "./mod.ts";
 
 Deno.test("CommitObject", async (t) => {
@@ -24,12 +25,12 @@ Deno.test("CommitObject", async (t) => {
 	const repo = new Repository(fs1);
 
 	await t.step("loadAtHead", async () => {
-		const doc = await Document.loadAtHead(repo, registry);
+		const doc = await Document.loadAtHead(repo, registry, new NodeCache());
 		assertExists(doc);
 	});
 
 	await t.step("get node", async () => {
-		const doc = await Document.loadAtHead(repo, registry);
+		const doc = await Document.loadAtHead(repo, registry, new NodeCache());
 		const note1 = await doc.getNode("ZzF21pOr54Xn0fGrhQG6") as NoteNode;
 		assertEquals(note1.id, "ZzF21pOr54Xn0fGrhQG6");
 		assertEquals(note1.name, "README");
@@ -37,7 +38,7 @@ Deno.test("CommitObject", async (t) => {
 	});
 
 	await t.step("get tree", async () => {
-		const doc = await Document.loadAtHead(repo, registry);
+		const doc = await Document.loadAtHead(repo, registry, new NodeCache());
 		const group = await doc.getNode("utBjcuH46AeQaczTdC12") as GroupNode;
 		assertEquals(group.id, "utBjcuH46AeQaczTdC12");
 		assertEquals(group.name, "Root");
@@ -57,7 +58,7 @@ Deno.test("CommitObject", async (t) => {
 	});
 
 	await t.step("get tree unloaded", async () => {
-		const doc = await Document.loadAtHead(repo, registry);
+		const doc = await Document.loadAtHead(repo, registry, new NodeCache());
 		const group = await doc.getUnloadedNode("utBjcuH46AeQaczTdC12");
 		assertEquals(group.id, "utBjcuH46AeQaczTdC12");
 		assertEquals(group.name, "Root");
@@ -72,7 +73,7 @@ Deno.test("CommitObject", async (t) => {
 	});
 
 	await t.step("caches node", async () => {
-		const doc = await Document.loadAtHead(repo, registry);
+		const doc = await Document.loadAtHead(repo, registry, new NodeCache());
 		const note1 = await doc.getNode("ZzF21pOr54Xn0fGrhQG6") as NoteNode;
 		const group = await doc.getNode("utBjcuH46AeQaczTdC12") as GroupNode;
 		const group2 = group.children[1] as GroupNode;

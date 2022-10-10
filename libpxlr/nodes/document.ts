@@ -2,42 +2,39 @@ import { assertAutoId, AutoId } from "../autoid.ts";
 import { Node } from "./node.ts";
 import { assertReference, Reference, Repository, Tree } from "../repository/mod.ts";
 import { NodeConstructor, Registry, UnloadedNode } from "./mod.ts";
+import { NodeCache } from "./cache.ts";
 
 export class Document {
-	#nodeCache = new Map<AutoId, WeakRef<Node>>();
-
 	protected constructor(
 		protected readonly repository: Repository,
 		protected readonly registry: Registry,
+		protected readonly cache: NodeCache,
 		protected reference?: Reference,
 	) {
 		reference && assertReference(reference);
 	}
 
 	// deno-lint-ignore require-await
-	static async create(repository: Repository, registry: Registry): Promise<Document> {
-		return new Document(repository, registry);
+	static async create(repository: Repository, registry: Registry, cache: NodeCache): Promise<Document> {
+		return new Document(repository, registry, cache);
 	}
 
-	static async loadAtHead(repository: Repository, registry: Registry): Promise<Document> {
+	static async loadAtHead(repository: Repository, registry: Registry, cache: NodeCache): Promise<Document> {
 		const reference = await repository.getHead();
-		return this.loadAtRef(repository, registry, reference);
+		return this.loadAtRef(repository, registry, cache, reference);
 	}
 
 	// deno-lint-ignore require-await
-	static async loadAtRef(repository: Repository, registry: Registry, reference: Reference): Promise<Document> {
+	static async loadAtRef(repository: Repository, registry: Registry, cache: NodeCache, reference: Reference): Promise<Document> {
 		assertReference(reference);
-		return new Document(repository, registry, reference);
+		return new Document(repository, registry, cache, reference);
 	}
 
 	async #getNode(id: AutoId, unloaded = false): Promise<Node> {
 		assertAutoId(id);
-		if (this.#nodeCache.has(id)) {
-			const cachedNode = this.#nodeCache.get(id)!.deref();
-			if (cachedNode) {
-				return cachedNode;
-			}
-			this.#nodeCache.delete(id);
+		const cachedNode = this.cache.get(id);
+		if (cachedNode) {
+			return cachedNode;
 		}
 		let nodeConstructor: NodeConstructor;
 		const object = await this.repository.getObject(id);
@@ -51,7 +48,7 @@ export class Document {
 		}
 		const node = await nodeConstructor.fromObject(object, this);
 		if (node) {
-			this.#nodeCache.set(id, new WeakRef(node));
+			this.cache.set(id, node);
 			return node;
 		}
 		throw new NodeNotFoundError(id);
