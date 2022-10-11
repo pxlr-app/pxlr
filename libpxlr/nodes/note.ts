@@ -1,5 +1,5 @@
 import { autoid } from "../autoid.ts";
-import { Command, RenameCommand, SetContentCommand } from "./commands/mod.ts";
+import { Command, RenameCommand, ReplaceNodeCommand, SetContentCommand } from "./commands/mod.ts";
 import { Object } from "../repository/mod.ts";
 import { Node } from "./node.ts";
 
@@ -16,12 +16,14 @@ export class NoteNode extends Node {
 		return new NoteNode(autoid(), name, content);
 	}
 
-	executeCommand(command: Command) {
+	executeCommand(command: Command): Node {
 		if (command.target === this.id) {
 			if (command instanceof RenameCommand) {
 				return new NoteNode(autoid(), command.renameTo, this.content);
 			} else if (command instanceof SetContentCommand) {
 				return new NoteNode(autoid(), this.name, command.setContent);
+			} else if (command instanceof ReplaceNodeCommand) {
+				return command.node;
 			}
 		}
 		return this;

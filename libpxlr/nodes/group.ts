@@ -1,5 +1,5 @@
 import { autoid } from "../autoid.ts";
-import { AddChildCommand, Command, MoveChildCommand, RemoveChildCommand, RenameCommand } from "./commands/mod.ts";
+import { AddChildCommand, Command, MoveChildCommand, RemoveChildCommand, RenameCommand, ReplaceNodeCommand } from "./commands/mod.ts";
 import { Object } from "../repository/object.ts";
 import { Tree } from "../repository/tree.ts";
 import { Node } from "./node.ts";
@@ -25,7 +25,7 @@ export class GroupNode extends Node {
 		}
 	}
 
-	executeCommand(command: Command) {
+	executeCommand(command: Command): Node {
 		if (command.target === this.id) {
 			if (command instanceof RenameCommand) {
 				return new GroupNode(autoid(), command.renameTo, this.children);
@@ -55,6 +55,8 @@ export class GroupNode extends Node {
 					return new GroupNode(autoid(), this.name, children);
 				}
 				return this;
+			} else if (command instanceof ReplaceNodeCommand) {
+				return command.node;
 			}
 			return this;
 		}
@@ -67,7 +69,7 @@ export class GroupNode extends Node {
 			return newNode;
 		});
 		if (mutated) {
-			return new GroupNode(autoid(), this.name, children);
+			return new GroupNode(command instanceof ReplaceNodeCommand ? this.id : autoid(), this.name, children);
 		}
 		return this;
 	}

@@ -1,57 +1,99 @@
-import { assertAutoId, AutoId } from "../autoid.ts";
+import { assertAutoId, AutoId, autoid } from "../autoid.ts";
 import { Node } from "./node.ts";
 import { assertReference, Reference, Repository, Tree } from "../repository/mod.ts";
-import { NodeConstructor, Registry, UnloadedNode } from "./mod.ts";
+import { Command, NodeConstructor, Registry, ReplaceNodeCommand, UnloadedNode } from "./mod.ts";
 import { NodeCache } from "./cache.ts";
+import { GroupNode } from "./group.ts";
 
 export class Document {
-	protected constructor(
-		protected readonly repository: Repository,
-		protected readonly registry: Registry,
-		protected readonly cache: NodeCache,
-		protected reference?: Reference,
+	#repository: Repository;
+	#registry: Registry;
+	#cache: NodeCache;
+	#rootNode: Node | undefined;
+	#reference: Reference | undefined;
+
+	constructor(
+		{
+			repository,
+			registry,
+			cache,
+		}: {
+			repository: Repository;
+			registry: Registry;
+			cache: NodeCache;
+		},
 	) {
-		reference && assertReference(reference);
+		this.#repository = repository;
+		this.#registry = registry;
+		this.#cache = cache;
+	}
+
+	get rootNode() {
+		return this.#rootNode;
+	}
+
+	get reference() {
+		return this.#reference;
 	}
 
 	// deno-lint-ignore require-await
-	static async create(repository: Repository, registry: Registry, cache: NodeCache): Promise<Document> {
-		return new Document(repository, registry, cache);
+	async create(): Promise<void> {
+		this.#rootNode = new GroupNode(autoid(), "", []);
+		this.#reference = "";
 	}
 
-	static async loadAtHead(repository: Repository, registry: Registry, cache: NodeCache): Promise<Document> {
-		const reference = await repository.getHead();
-		return this.loadAtRef(repository, registry, cache, reference);
+	async loadAtHead(): Promise<void> {
+		const reference = await this.#repository.getHead();
+		return this.loadAtRef(reference);
 	}
 
-	// deno-lint-ignore require-await
-	static async loadAtRef(repository: Repository, registry: Registry, cache: NodeCache, reference: Reference): Promise<Document> {
+	async loadAtRef(reference: Reference): Promise<void> {
 		assertReference(reference);
-		return new Document(repository, registry, cache, reference);
+		const refId = await this.#repository.getReference(reference);
+		const commit = await this.#repository.getCommit(refId);
+		this.#rootNode = await this.#getNode(commit.tree, true);
+		this.#reference = reference;
 	}
 
 	async #getNode(id: AutoId, unloaded = false): Promise<Node> {
 		assertAutoId(id);
-		const cachedNode = this.cache.get(id);
+		const cachedNode = this.#cache.get(id);
 		if (cachedNode) {
 			return cachedNode;
 		}
 		let nodeConstructor: NodeConstructor;
-		const object = await this.repository.getObject(id);
-		if (unloaded) {
+		const object = await this.#repository.getObject(id);
+		if (unloaded === true) {
 			nodeConstructor = UnloadedNode;
 		} else if (object.kind === "tree") {
 			const tree = await Tree.fromObject(object);
-			nodeConstructor = this.registry.getTreeConstructor(tree.subKind);
+			nodeConstructor = this.#registry.getTreeConstructor(tree.subKind);
 		} else {
-			nodeConstructor = this.registry.getNodeConstructor(object.kind);
+			nodeConstructor = this.#registry.getNodeConstructor(object.kind);
 		}
 		const node = await nodeConstructor.fromObject(object, this);
 		if (node) {
-			this.cache.set(id, node);
+			if (!unloaded) {
+				this.#cache.set(id, node);
+			}
 			return node;
 		}
 		throw new NodeNotFoundError(id);
+	}
+
+	applyCommand(command: Command): void {
+		const rootNode = this.#rootNode?.executeCommand(command);
+		if (rootNode && rootNode !== this.#rootNode) {
+			// TODO find diff
+			// TODO onChange callback
+			this.#rootNode = rootNode;
+		}
+	}
+
+	async loadNode(id: AutoId): Promise<void> {
+		const node = await this.getNode(id);
+		const replaceNodeCommand = new ReplaceNodeCommand(id, node);
+		this.applyCommand(replaceNodeCommand);
 	}
 
 	getNode(id: AutoId): Promise<Node> {

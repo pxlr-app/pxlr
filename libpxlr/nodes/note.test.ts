@@ -18,7 +18,7 @@ Deno.test("NoteNode", async (t) => {
 
 	await t.step("handles rename command", () => {
 		const node1 = NoteNode.new("A", "Content");
-		const node2 = node1.executeCommand(new RenameCommand(node1.id, "B"));
+		const node2 = node1.executeCommand(new RenameCommand(node1.id, "B")) as NoteNode;
 		assert(node2 !== node1);
 		assertNotEquals(node2.id, node1.id);
 		assertEquals(node2.name, "B");
@@ -26,7 +26,7 @@ Deno.test("NoteNode", async (t) => {
 
 	await t.step("handles set content command", () => {
 		const node1 = NoteNode.new("A", "Content");
-		const node2 = node1.executeCommand(new SetContentCommand(node1.id, "New content"));
+		const node2 = node1.executeCommand(new SetContentCommand(node1.id, "New content")) as NoteNode;
 		assert(node2 !== node1);
 		assertNotEquals(node2.id, node1.id);
 		assertEquals(node2.content, "New content");

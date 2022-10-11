@@ -1,7 +1,7 @@
 import { assertAutoId, AutoId, autoid } from "../autoid.ts";
 import { Object } from "../repository/object.ts";
 import { Tree } from "../repository/tree.ts";
-import { Command, MoveChildCommand, RemoveChildCommand, RenameCommand } from "./commands/mod.ts";
+import { Command, MoveChildCommand, RemoveChildCommand, RenameCommand, ReplaceNodeCommand } from "./commands/mod.ts";
 import { Document } from "./document.ts";
 
 export abstract class Node {
@@ -28,16 +28,16 @@ export class UnloadedNode extends Node {
 		id: string,
 		kind: string,
 		name: string,
-		public readonly children: ReadonlyArray<UnloadedNode>,
+		public readonly children: ReadonlyArray<Node>,
 	) {
 		super(id, kind, name);
 	}
 
-	static new(kind: string, name: string, children: UnloadedNode[]) {
+	static new(kind: string, name: string, children: Node[]) {
 		return new UnloadedNode(autoid(), kind, name, children);
 	}
 
-	executeCommand(command: Command) {
+	executeCommand(command: Command): Node {
 		if (command.target === this.id) {
 			if (command instanceof RenameCommand) {
 				return new UnloadedNode(autoid(), this.kind, command.renameTo, this.children);
@@ -64,8 +64,21 @@ export class UnloadedNode extends Node {
 					return new UnloadedNode(autoid(), this.kind, this.name, children);
 				}
 				return this;
+			} else if (command instanceof ReplaceNodeCommand) {
+				return command.node;
 			}
 			throw new UnloadedNodeMethodError();
+		}
+		let mutated = false;
+		const children = this.children.map((node) => {
+			const newNode = node.executeCommand(command);
+			if (newNode !== node) {
+				mutated = true;
+			}
+			return newNode;
+		});
+		if (mutated) {
+			return new UnloadedNode(command instanceof ReplaceNodeCommand ? this.id : autoid(), this.kind, this.name, children);
 		}
 		return this;
 	}
