@@ -4,7 +4,7 @@ import { Repository } from "../repository/mod.ts";
 import { NodeCache } from "./cache.ts";
 import { Document, GroupNode, NoteNode, Registry, ReplaceNodeCommand, UnloadedNode } from "./mod.ts";
 
-Deno.test("CommitObject", async (t) => {
+Deno.test("Document", async (t) => {
 	const registry = new Registry();
 	registry.registerNodeConstructor("note", NoteNode);
 	registry.registerTreeConstructor("group", GroupNode);
