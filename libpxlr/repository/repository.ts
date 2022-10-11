@@ -85,6 +85,15 @@ export class Repository {
 		}
 	}
 
+	async objectExists(id: AutoId): Promise<boolean> {
+		assertAutoId(id);
+		try {
+			return await this.fs.exists(`/objects/${id[0]}/${id[1]}/${id}`);
+		} catch (_error) {
+			return false;
+		}
+	}
+
 	async getCommit(id: AutoId): Promise<Commit> {
 		const object = await this.getObject(id);
 		return Commit.fromObject(object);

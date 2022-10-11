@@ -2,14 +2,14 @@ import { assertEquals, assertExists, assertInstanceOf, assertNotEquals } from "h
 import { MemoryFilesystem } from "../repository/filesystem/memory.ts";
 import { Repository } from "../repository/mod.ts";
 import { NodeCache } from "./cache.ts";
-import { Document, GroupNode, NoteNode, Registry, ReplaceNodeCommand, UnloadedNode } from "./mod.ts";
+import { Document, GroupNode, NoteNode, Registry, RenameCommand, ReplaceNodeCommand, UnloadedNode } from "./mod.ts";
 
 Deno.test("Document", async (t) => {
 	const registry = new Registry();
 	registry.registerNodeConstructor("note", NoteNode);
 	registry.registerTreeConstructor("group", GroupNode);
 
-	const fs1 = makeVirtualFs({
+	const fs = makeVirtualFs({
 		[`/HEAD`]: `refs/heads/main`,
 		[`/refs/heads/main`]: `NYyv8vVWdRah1NLmXcpD`,
 		[`/objects/J/z/JzF21pOr54Xn0fGrhQG6`]: `id JzF21pOr54Xn0fGrhQG6\r\nkind note\r\nname README\r\n\r\nTest1`,
@@ -22,7 +22,7 @@ Deno.test("Document", async (t) => {
 		[`/objects/W/o/Wop7bFXo65cxSUFvDcJK`]:
 			`id Wop7bFXo65cxSUFvDcJK\r\nparent NYyv8vVWdRah1NLmXcpD\r\ntree \r\ncommiter John Doe <jd@test.local>\r\ndate 2022-10-07T02:14:56.247Z\r\n\r\ndup`,
 	});
-	const repository = new Repository(fs1);
+	const repository = new Repository(fs);
 
 	await t.step("create", async () => {
 		const doc = new Document({ repository, registry, cache: new NodeCache() });
@@ -101,7 +101,7 @@ Deno.test("Document", async (t) => {
 		await doc.open();
 		const root1 = doc.rootNode!;
 		const note1 = await doc.getNode("JzF21pOr54Xn0fGrhQG6");
-		doc.executeCommand(new ReplaceNodeCommand(note1));
+		await doc.executeCommand(new ReplaceNodeCommand(note1));
 		const root2 = doc.rootNode! as UnloadedNode;
 		assertNotEquals(root1, root2);
 		assertEquals(root2.children[0], note1);
@@ -112,7 +112,7 @@ Deno.test("Document", async (t) => {
 		await doc.open();
 		const root1 = doc.rootNode!;
 		const group1 = await doc.getNode(root1!.id) as GroupNode;
-		doc.executeCommand(new ReplaceNodeCommand(group1));
+		await doc.executeCommand(new ReplaceNodeCommand(group1));
 		const root2 = doc.rootNode! as GroupNode;
 		assertNotEquals(root1, root2);
 		assertEquals(root2, group1);
@@ -124,6 +124,36 @@ Deno.test("Document", async (t) => {
 		const note2 = group2.children[0] as NoteNode;
 		assertInstanceOf(note2, NoteNode);
 		assertEquals(note2.content, "Test2");
+	});
+
+	await t.step("save document", async () => {
+		const fs1 = makeVirtualFs({
+			[`/HEAD`]: `refs/heads/main`,
+			[`/refs/heads/main`]: `NYyv8vVWdRah1NLmXcpD`,
+			[`/objects/J/z/JzF21pOr54Xn0fGrhQG6`]: `id JzF21pOr54Xn0fGrhQG6\r\nkind note\r\nname README\r\n\r\nTest1`,
+			[`/objects/Z/z/ZzF21pOr54Xn0fGrhQG6`]: `id ZzF21pOr54Xn0fGrhQG6\r\nkind note\r\nname README\r\n\r\nTest2`,
+			[`/objects/Z/t/ZtBjcuH46AeQaczTdC12`]: `id ZtBjcuH46AeQaczTdC12\r\nkind tree\r\nsub-kind group\r\nname My%20Project\r\n\r\nnote ZzF21pOr54Xn0fGrhQG6 README`,
+			[`/objects/u/t/utBjcuH46AeQaczTdC12`]:
+				`id utBjcuH46AeQaczTdC12\r\nkind tree\r\nsub-kind group\r\nname Root\r\n\r\nnote JzF21pOr54Xn0fGrhQG6 README\r\ntree ZtBjcuH46AeQaczTdC12 My%20Project`,
+			[`/objects/N/Y/NYyv8vVWdRah1NLmXcpD`]:
+				`id NYyv8vVWdRah1NLmXcpD\r\nparent \r\ntree utBjcuH46AeQaczTdC12\r\ncommiter John Doe <jd@test.local>\r\ndate 2022-10-07T02:14:56.247Z\r\n\r\ninit`,
+			[`/objects/W/o/Wop7bFXo65cxSUFvDcJK`]:
+				`id Wop7bFXo65cxSUFvDcJK\r\nparent NYyv8vVWdRah1NLmXcpD\r\ntree \r\ncommiter John Doe <jd@test.local>\r\ndate 2022-10-07T02:14:56.247Z\r\n\r\ndup`,
+		});
+		const repository1 = new Repository(fs1);
+
+		console.log(Deno.inspect(repository1));
+
+		const doc = new Document({ repository: repository1, registry, cache: new NodeCache() });
+		await doc.open();
+		const root1 = doc.rootNode!;
+		const group1 = await doc.getNode(root1!.id) as GroupNode;
+		await doc.executeCommand(new ReplaceNodeCommand(group1));
+		await doc.executeCommand(new RenameCommand("ZzF21pOr54Xn0fGrhQG6", "README2"));
+		const root2 = doc.rootNode! as GroupNode;
+		// console.log(Deno.inspect(root2, { depth: 100 }));
+		// console.log(Deno.inspect(repository1));
+		// console.log(fs1.read(`/`));
 	});
 });
 

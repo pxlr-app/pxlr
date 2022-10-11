@@ -37,6 +37,13 @@ export class UnloadedNode extends Node {
 		return new UnloadedNode(autoid(), kind, name, children);
 	}
 
+	*iter(): IterableIterator<Node> {
+		yield this;
+		for (const child of this.children) {
+			yield* child.iter();
+		}
+	}
+
 	executeCommand(command: Command): Node {
 		if (command.target === this.id) {
 			if (command instanceof RenameCommand) {

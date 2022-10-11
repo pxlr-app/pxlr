@@ -81,10 +81,14 @@ export class Document {
 		throw new NodeNotFoundError(id);
 	}
 
-	executeCommand(command: Command): Document {
+	async executeCommand(command: Command): Promise<Document> {
 		const rootNode = this.#rootNode?.executeCommand(command);
 		if (rootNode && rootNode !== this.#rootNode) {
-			// TODO find diff
+			for (const node of rootNode) {
+				if (!await this.#repository.objectExists(node.id)) {
+					await this.#repository.setObject(node.toObject());
+				}
+			}
 			// TODO onChange callback
 			this.#rootNode = rootNode;
 		}

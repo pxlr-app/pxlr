@@ -32,6 +32,7 @@ export class Object {
 		} else if (typeof this.body === "string") {
 			await writer.write(encoder.encode(this.body));
 		}
+		await writer.close();
 	}
 
 	async arrayBuffer() {
