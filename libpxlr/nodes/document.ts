@@ -42,12 +42,12 @@ export class Document {
 		this.#reference = "";
 	}
 
-	async loadAtHead(): Promise<void> {
+	async open(): Promise<void> {
 		const reference = await this.#repository.getHead();
-		return this.loadAtRef(reference);
+		return this.openAtRef(reference);
 	}
 
-	async loadAtRef(reference: Reference): Promise<void> {
+	async openAtRef(reference: Reference): Promise<void> {
 		assertReference(reference);
 		const refId = await this.#repository.getReference(reference);
 		const commit = await this.#repository.getCommit(refId);
@@ -81,19 +81,14 @@ export class Document {
 		throw new NodeNotFoundError(id);
 	}
 
-	applyCommand(command: Command): void {
+	executeCommand(command: Command): Document {
 		const rootNode = this.#rootNode?.executeCommand(command);
 		if (rootNode && rootNode !== this.#rootNode) {
 			// TODO find diff
 			// TODO onChange callback
 			this.#rootNode = rootNode;
 		}
-	}
-
-	async loadNode(id: AutoId): Promise<void> {
-		const node = await this.getNode(id);
-		const replaceNodeCommand = new ReplaceNodeCommand(id, node);
-		this.applyCommand(replaceNodeCommand);
+		return this;
 	}
 
 	getNode(id: AutoId): Promise<Node> {
