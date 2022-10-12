@@ -1,7 +1,7 @@
 import { assertAutoId, AutoId, autoid } from "../autoid.ts";
 import { Node } from "./node.ts";
 import { assertReference, Reference, Repository, Tree } from "../repository/mod.ts";
-import { Command, NodeConstructor, Registry, ReplaceNodeCommand, UnloadedNode } from "./mod.ts";
+import { Command, NodeConstructor, Registry } from "./mod.ts";
 import { NodeCache } from "./cache.ts";
 import { GroupNode } from "./group.ts";
 
@@ -51,11 +51,11 @@ export class Document {
 		assertReference(reference);
 		const refId = await this.#repository.getReference(reference);
 		const commit = await this.#repository.getCommit(refId);
-		this.#rootNode = await this.getNode(commit.tree, true);
+		this.#rootNode = await this.loadNodeById(commit.tree, true);
 		this.#reference = reference;
 	}
 
-	async getNode(id: AutoId, shallow = false): Promise<Node> {
+	async loadNodeById(id: AutoId, shallow = false): Promise<Node> {
 		assertAutoId(id);
 		const cachedNode = this.#cache.get(id);
 		if (cachedNode) {
@@ -82,8 +82,14 @@ export class Document {
 	async executeCommand(command: Command): Promise<Document> {
 		const rootNode = this.#rootNode?.executeCommand(command);
 		if (rootNode && rootNode !== this.#rootNode) {
+			const oldNodes = new Map<string, Node>();
+			if (this.rootNode) {
+				for (const node of this.rootNode) {
+					oldNodes.set(node.id, node);
+				}
+			}
 			for (const node of rootNode) {
-				if (!await this.#repository.objectExists(node.id)) {
+				if (!oldNodes.has(node.id)) {
 					await this.#repository.setObject(node.toObject());
 				}
 			}
@@ -91,6 +97,17 @@ export class Document {
 			this.#rootNode = rootNode;
 		}
 		return this;
+	}
+
+	getNodeById(id: AutoId): Node | undefined {
+		assertAutoId(id);
+		if (this.rootNode) {
+			for (const node of this.rootNode) {
+				if (node.id === id) {
+					return node;
+				}
+			}
+		}
 	}
 }
 

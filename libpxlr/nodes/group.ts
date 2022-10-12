@@ -1,9 +1,8 @@
-import { autoid } from "../autoid.ts";
+import { AutoId, autoid } from "../autoid.ts";
 import { AddChildCommand, Command, MoveChildCommand, RemoveChildCommand, RenameCommand, ReplaceNodeCommand } from "./commands/mod.ts";
 import { Object } from "../repository/object.ts";
 import { Tree } from "../repository/tree.ts";
 import { Node } from "./node.ts";
-import { Document } from "./document.ts";
 import { NodeConstructorOptions } from "./registry.ts";
 import { UnloadedNode } from "./mod.ts";
 
@@ -86,14 +85,26 @@ export class GroupNode extends Node {
 		for (const item of tree.items) {
 			let node: Node;
 			if (item.kind === "tree") {
-				node = await document.getNode(item.id, shallow);
+				node = await document.loadNodeById(item.id, shallow);
 			} else if (shallow) {
 				node = new UnloadedNode(item.id, item.kind, item.name);
 			} else {
-				node = await document.getNode(item.id);
+				node = await document.loadNodeById(item.id);
 			}
 			children.push(node);
 		}
 		return new GroupNode(tree.id, tree.name, children);
+	}
+
+	addChild(childNode: Node): AddChildCommand {
+		return new AddChildCommand(this.id, childNode);
+	}
+
+	moveChild(childId: AutoId, position: number): MoveChildCommand {
+		return new MoveChildCommand(this.id, childId, position);
+	}
+
+	removeChild(childId: AutoId): RemoveChildCommand {
+		return new RemoveChildCommand(this.id, childId);
 	}
 }

@@ -22,7 +22,7 @@ export class NoteNode extends Node {
 			if (command instanceof RenameCommand) {
 				return new NoteNode(autoid(), command.renameTo, this.content);
 			} else if (command instanceof SetContentCommand) {
-				return new NoteNode(autoid(), this.name, command.setContent);
+				return new NoteNode(autoid(), this.name, command.newContent);
 			} else if (command instanceof ReplaceNodeCommand) {
 				return command.node;
 			}
@@ -36,5 +36,9 @@ export class NoteNode extends Node {
 
 	static async fromObject({ object }: NodeConstructorOptions): Promise<NoteNode> {
 		return new NoteNode(object.id, object.headers.get("name") ?? "", await object.text());
+	}
+
+	setContent(newContent: string): SetContentCommand {
+		return new SetContentCommand(this.id, newContent);
 	}
 }

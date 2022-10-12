@@ -2,7 +2,7 @@ import { assertEquals, assertExists, assertInstanceOf, assertNotEquals } from "h
 import { MemoryFilesystem } from "../repository/filesystem/memory.ts";
 import { Repository } from "../repository/mod.ts";
 import { NodeCache } from "./cache.ts";
-import { Document, GroupNode, NoteNode, Registry, RenameCommand, ReplaceNodeCommand, UnloadedNode } from "./mod.ts";
+import { Document, GroupNode, NoteNode, Registry, ReplaceNodeCommand, UnloadedNode } from "./mod.ts";
 
 Deno.test("Document", async (t) => {
 	const registry = new Registry();
@@ -44,7 +44,7 @@ Deno.test("Document", async (t) => {
 	await t.step("get node", async () => {
 		const doc = new Document({ repository, registry, cache: new NodeCache() });
 		await doc.open();
-		const note1 = await doc.getNode("ZzF21pOr54Xn0fGrhQG6") as NoteNode;
+		const note1 = await doc.loadNodeById("ZzF21pOr54Xn0fGrhQG6") as NoteNode;
 		assertEquals(note1.id, "ZzF21pOr54Xn0fGrhQG6");
 		assertEquals(note1.name, "README");
 		assertEquals(note1.content, "Test2");
@@ -53,7 +53,7 @@ Deno.test("Document", async (t) => {
 	await t.step("get tree", async () => {
 		const doc = new Document({ repository, registry, cache: new NodeCache() });
 		await doc.open();
-		const group = await doc.getNode("utBjcuH46AeQaczTdC12") as GroupNode;
+		const group = await doc.loadNodeById("utBjcuH46AeQaczTdC12") as GroupNode;
 		assertEquals(group.id, "utBjcuH46AeQaczTdC12");
 		assertEquals(group.name, "Root");
 		assertEquals(group.children.length, 2);
@@ -90,8 +90,8 @@ Deno.test("Document", async (t) => {
 	await t.step("caches node", async () => {
 		const doc = new Document({ repository, registry, cache: new NodeCache() });
 		await doc.open();
-		const note1 = await doc.getNode("ZzF21pOr54Xn0fGrhQG6") as NoteNode;
-		const group = await doc.getNode("utBjcuH46AeQaczTdC12") as GroupNode;
+		const note1 = await doc.loadNodeById("ZzF21pOr54Xn0fGrhQG6") as NoteNode;
+		const group = await doc.loadNodeById("utBjcuH46AeQaczTdC12") as GroupNode;
 		const group2 = group.children[1] as GroupNode;
 		assertEquals(group2.children[0], note1);
 	});
@@ -100,7 +100,7 @@ Deno.test("Document", async (t) => {
 		const doc = new Document({ repository, registry, cache: new NodeCache() });
 		await doc.open();
 		const root1 = doc.rootNode!;
-		const note1 = await doc.getNode("JzF21pOr54Xn0fGrhQG6");
+		const note1 = await doc.loadNodeById("JzF21pOr54Xn0fGrhQG6");
 		await doc.executeCommand(new ReplaceNodeCommand(note1));
 		const root2 = doc.rootNode! as GroupNode;
 		assertNotEquals(root1, root2);
@@ -111,7 +111,7 @@ Deno.test("Document", async (t) => {
 		const doc = new Document({ repository, registry, cache: new NodeCache() });
 		await doc.open();
 		const root1 = doc.rootNode!;
-		const group1 = await doc.getNode(root1!.id) as GroupNode;
+		const group1 = await doc.loadNodeById(root1!.id) as GroupNode;
 		await doc.executeCommand(new ReplaceNodeCommand(group1));
 		const root2 = doc.rootNode! as GroupNode;
 		assertNotEquals(root1, root2);
@@ -127,7 +127,7 @@ Deno.test("Document", async (t) => {
 	});
 
 	await t.step("save document", async () => {
-		const fs1 = makeVirtualFs({
+		const fs = makeVirtualFs({
 			[`/HEAD`]: `refs/heads/main`,
 			[`/refs/heads/main`]: `NYyv8vVWdRah1NLmXcpD`,
 			[`/objects/J/z/JzF21pOr54Xn0fGrhQG6`]: `id JzF21pOr54Xn0fGrhQG6\r\nkind note\r\nname README\r\n\r\nTest1`,
@@ -140,20 +140,14 @@ Deno.test("Document", async (t) => {
 			[`/objects/W/o/Wop7bFXo65cxSUFvDcJK`]:
 				`id Wop7bFXo65cxSUFvDcJK\r\nparent NYyv8vVWdRah1NLmXcpD\r\ntree \r\ncommiter John Doe <jd@test.local>\r\ndate 2022-10-07T02:14:56.247Z\r\n\r\ndup`,
 		});
-		const repository1 = new Repository(fs1);
+		const repository = new Repository(fs);
 
-		// console.log(Deno.inspect(repository1));
-
-		const doc = new Document({ repository: repository1, registry, cache: new NodeCache() });
+		const doc = new Document({ repository, registry, cache: new NodeCache() });
 		await doc.open();
-		const root1 = doc.rootNode!;
-		const group1 = await doc.getNode(root1!.id) as GroupNode;
-		await doc.executeCommand(new ReplaceNodeCommand(group1));
-		await doc.executeCommand(new RenameCommand("ZzF21pOr54Xn0fGrhQG6", "README2"));
-		const root2 = doc.rootNode! as GroupNode;
-		// console.log(Deno.inspect(root2, { depth: 100 }));
-		// console.log(Deno.inspect(repository1));
-		// console.log(fs1.read(`/`));
+		const note1 = doc.getNodeById("ZzF21pOr54Xn0fGrhQG6") as UnloadedNode;
+		await doc.executeCommand(await note1.load(doc));
+		await doc.executeCommand(note1.rename("RENAME2"));
+		assertEquals(fs.entries.size, 11);
 	});
 });
 

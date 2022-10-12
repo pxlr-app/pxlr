@@ -1,7 +1,6 @@
 import { assertAutoId, AutoId, autoid } from "../autoid.ts";
 import { Object } from "../repository/object.ts";
-import { Tree } from "../repository/tree.ts";
-import { Command, MoveChildCommand, RemoveChildCommand, RenameCommand, ReplaceNodeCommand } from "./commands/mod.ts";
+import { Command, RenameCommand, ReplaceNodeCommand } from "./commands/mod.ts";
 import { Document } from "./document.ts";
 import { NodeConstructorOptions } from "./registry.ts";
 
@@ -22,6 +21,10 @@ export abstract class Node {
 	}
 	abstract executeCommand(command: Command): Node;
 	abstract toObject(): Object;
+
+	rename(renameTo: string): RenameCommand {
+		return new RenameCommand(this.id, renameTo);
+	}
 }
 
 export class UnloadedNode extends Node {
@@ -56,6 +59,11 @@ export class UnloadedNode extends Node {
 	// deno-lint-ignore require-await
 	static async fromObject({ object }: NodeConstructorOptions): Promise<Node> {
 		return new UnloadedNode(object.id, object.kind, object.headers.get("name") ?? "_");
+	}
+
+	async load(document: Document): Promise<ReplaceNodeCommand> {
+		const node = await document.loadNodeById(this.id);
+		return new ReplaceNodeCommand(node);
 	}
 }
 

@@ -5,7 +5,7 @@ import { Object } from "../repository/object.ts";
 export interface NodeConstructorOptions {
 	object: Object;
 	document: Document;
-	shallow: boolean
+	shallow: boolean;
 }
 
 export interface NodeConstructor {
