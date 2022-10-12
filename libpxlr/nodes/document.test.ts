@@ -53,6 +53,14 @@ Deno.test("Document", async (t) => {
 		assertEquals(note2.content, "Test2");
 	});
 
+	await t.step("get node at path", async () => {
+		const doc = new Document({ repository, registry });
+		await doc.openAtHead();
+		await doc.load();
+		assertEquals(doc.getNodeAtPath(["README"])?.id, "JzF21pOr54Xn0fGrhQG6");
+		assertEquals(doc.getNodeAtPath(["My Project", "README"])?.id, "ZzF21pOr54Xn0fGrhQG6");
+	});
+
 	await t.step("get tree", async () => {
 		const doc = new Document({ repository, registry });
 		await doc.openAtHead();

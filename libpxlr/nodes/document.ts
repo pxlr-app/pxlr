@@ -124,6 +124,12 @@ export class Document {
 		return this.#nodeMap.get(id);
 	}
 
+	getNodeAtPath(path: string[]): Node | undefined {
+		if (this.rootNode && this.rootNode instanceof GroupNode) {
+			return this.rootNode.getChildAtPath(path);
+		}
+	}
+
 	async executeCommand(command: Command): Promise<Document> {
 		const rootNode = this.#rootNode?.executeCommand(command);
 		if (rootNode && rootNode !== this.#rootNode) {

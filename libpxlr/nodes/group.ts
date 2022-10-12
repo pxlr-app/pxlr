@@ -1,4 +1,4 @@
-import { AutoId, autoid } from "../autoid.ts";
+import { assertAutoId, AutoId, autoid } from "../autoid.ts";
 import { AddChildCommand, Command, MoveChildCommand, RemoveChildCommand, RenameCommand, ReplaceNodeCommand } from "./commands/mod.ts";
 import { Object } from "../repository/object.ts";
 import { Tree } from "../repository/tree.ts";
@@ -31,6 +31,10 @@ export class GroupNode extends Node {
 			if (command instanceof RenameCommand) {
 				return new GroupNode(autoid(), command.renameTo, this.children);
 			} else if (command instanceof AddChildCommand) {
+				const name = command.childNode.name;
+				if (this.children.find((child) => child.name === name)) {
+					throw new ChildWithNameExistsError(name);
+				}
 				const children = Array.from(new Set(this.children.concat(command.childNode)));
 				return new GroupNode(autoid(), this.name, children);
 			} else if (command instanceof RemoveChildCommand) {
@@ -60,6 +64,12 @@ export class GroupNode extends Node {
 				return command.node;
 			}
 			return this;
+		}
+		if (command instanceof RenameCommand && this.children.find((child) => child.id === command.target)) {
+			const name = command.renameTo;
+			if (this.children.find((child) => child.name === name)) {
+				throw new ChildWithNameExistsError(name);
+			}
 		}
 		let mutated = false;
 		const children = this.children.map((node) => {
@@ -106,5 +116,33 @@ export class GroupNode extends Node {
 
 	removeChild(childId: AutoId): RemoveChildCommand {
 		return new RemoveChildCommand(this.id, childId);
+	}
+
+	getChildById(id: AutoId): Node | undefined {
+		assertAutoId(id);
+		return this.children.find((child) => child.id === id);
+	}
+
+	getChildByName(name: string): Node | undefined {
+		return this.children.find((child) => child.name === name);
+	}
+
+	getChildAtPath(path: string[]): Node | undefined {
+		const name = path.shift();
+		if (name) {
+			const next = this.getChildByName(name);
+			if (path.length === 0) {
+				return next;
+			} else if (next && next instanceof GroupNode) {
+				return next.getChildAtPath(path);
+			}
+		}
+	}
+}
+
+export class ChildWithNameExistsError extends Error {
+	public name = "ChildWithNameExistsError";
+	public constructor(name: string) {
+		super(`Child with name "${name}" already exists.`);
 	}
 }

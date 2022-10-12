@@ -97,4 +97,31 @@ Deno.test("GroupNode", async (t) => {
 		assertEquals(iter1.next(), { done: false, value: child2 });
 		assertEquals(iter1.next(), { done: true, value: undefined });
 	});
+
+	await t.step("get child by id", () => {
+		const child1 = GroupNode.new("Child1", []);
+		const child2 = GroupNode.new("Child2", []);
+		const parent1 = GroupNode.new("Parent", [child1, child2]);
+		const root1 = GroupNode.new("Root", [parent1]);
+		assertEquals(root1.getChildById(parent1.id), parent1);
+		assertEquals(parent1.getChildById(child2.id), child2);
+	});
+
+	await t.step("get child by name", () => {
+		const child1 = GroupNode.new("Child1", []);
+		const child2 = GroupNode.new("Child2", []);
+		const parent1 = GroupNode.new("Parent", [child1, child2]);
+		const root1 = GroupNode.new("Root", [parent1]);
+		assertEquals(root1.getChildByName("Parent"), parent1);
+		assertEquals(parent1.getChildByName("Child2"), child2);
+	});
+
+	await t.step("get child at path", () => {
+		const child1 = GroupNode.new("Child1", []);
+		const child2 = GroupNode.new("Child2", []);
+		const parent1 = GroupNode.new("Parent", [child1, child2]);
+		const root1 = GroupNode.new("Root", [parent1]);
+		assertEquals(root1.getChildAtPath(["Parent", "Child1"]), child1);
+		assertEquals(root1.getChildAtPath(["Parent", "Child2"]), child2);
+	});
 });
