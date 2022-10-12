@@ -1,7 +1,6 @@
 import { assertAutoId, AutoId, autoid } from "../autoid.ts";
-import { Node } from "./node.ts";
-import { assertReference, Reference, Repository, Tree } from "../repository/mod.ts";
-import { Command, NodeConstructor, Registry } from "./mod.ts";
+import { assertReference, Commit, Reference, Repository, Tree } from "../repository/mod.ts";
+import { Command, Node, NodeConstructor, NodeNotFoundError, Registry, ReplaceNodeCommand } from "./mod.ts";
 import { NodeCache } from "./cache.ts";
 import { GroupNode } from "./group.ts";
 
@@ -11,6 +10,8 @@ export class Document {
 	#cache: NodeCache;
 	#rootNode: Node | undefined;
 	#reference: Reference | undefined;
+	#commit: Commit | undefined;
+	#nodeMap: Map<string, Node>;
 
 	constructor(
 		{
@@ -20,12 +21,13 @@ export class Document {
 		}: {
 			repository: Repository;
 			registry: Registry;
-			cache: NodeCache;
+			cache?: NodeCache;
 		},
 	) {
 		this.#repository = repository;
 		this.#registry = registry;
-		this.#cache = cache;
+		this.#cache = cache ?? new NodeCache();
+		this.#nodeMap = new Map();
 	}
 
 	get rootNode() {
@@ -36,13 +38,27 @@ export class Document {
 		return this.#reference;
 	}
 
+	get commit() {
+		return this.#commit?.id;
+	}
+
+	#updateNodeMap() {
+		this.#nodeMap.clear();
+		if (this.#rootNode) {
+			for (const node of this.#rootNode) {
+				this.#nodeMap.set(node.id, node);
+			}
+		}
+	}
+
 	// deno-lint-ignore require-await
 	async create(): Promise<void> {
 		this.#rootNode = new GroupNode(autoid(), "", []);
-		this.#reference = "";
+		this.#reference = "refs/heads/main";
+		this.#updateNodeMap();
 	}
 
-	async open(): Promise<void> {
+	async openAtHead(): Promise<void> {
 		const reference = await this.#repository.getHead();
 		return this.openAtRef(reference);
 	}
@@ -50,12 +66,21 @@ export class Document {
 	async openAtRef(reference: Reference): Promise<void> {
 		assertReference(reference);
 		const refId = await this.#repository.getReference(reference);
-		const commit = await this.#repository.getCommit(refId);
-		this.#rootNode = await this.loadNodeById(commit.tree, true);
+		this.#commit = await this.#repository.getCommit(refId);
+		this.#rootNode = await this.#loadNodeById(this.#commit.tree, true);
 		this.#reference = reference;
+		this.#updateNodeMap();
 	}
 
-	async loadNodeById(id: AutoId, shallow = false): Promise<Node> {
+	async openAtCommit(id: AutoId): Promise<void> {
+		assertAutoId(id);
+		this.#commit = await this.#repository.getCommit(id);
+		this.#rootNode = await this.#loadNodeById(this.#commit.tree, true);
+		this.#reference = "";
+		this.#updateNodeMap();
+	}
+
+	async #loadNodeById(id: AutoId, shallow = false): Promise<Node> {
 		assertAutoId(id);
 		const cachedNode = this.#cache.get(id);
 		if (cachedNode) {
@@ -79,41 +104,45 @@ export class Document {
 		throw new NodeNotFoundError(id);
 	}
 
-	async executeCommand(command: Command): Promise<Document> {
-		const rootNode = this.#rootNode?.executeCommand(command);
-		if (rootNode && rootNode !== this.#rootNode) {
-			const oldNodes = new Map<string, Node>();
-			if (this.rootNode) {
-				for (const node of this.rootNode) {
-					oldNodes.set(node.id, node);
-				}
-			}
-			for (const node of rootNode) {
-				if (!oldNodes.has(node.id)) {
-					await this.#repository.setObject(node.toObject());
-				}
-			}
-			// TODO onChange callback
-			this.#rootNode = rootNode;
+	async load(): Promise<Node> {
+		if (this.rootNode) {
+			const root = await this.#loadNodeById(this.rootNode.id);
+			await this.executeCommand(new ReplaceNodeCommand(root));
+			return root;
 		}
-		return this;
+		throw new ReferenceError();
+	}
+
+	async loadNodeById(id: AutoId, shallow = false): Promise<Node> {
+		const node = await this.#loadNodeById(id, shallow);
+		await this.executeCommand(new ReplaceNodeCommand(node));
+		return node;
 	}
 
 	getNodeById(id: AutoId): Node | undefined {
 		assertAutoId(id);
-		if (this.rootNode) {
-			for (const node of this.rootNode) {
-				if (node.id === id) {
-					return node;
-				}
-			}
-		}
+		return this.#nodeMap.get(id);
 	}
-}
 
-export class NodeNotFoundError extends Error {
-	public name = "NodeNotFoundError";
-	public constructor(id: string) {
-		super(`Could not find node ${id} in document.`);
+	async executeCommand(command: Command): Promise<Document> {
+		const rootNode = this.#rootNode?.executeCommand(command);
+		if (rootNode && rootNode !== this.#rootNode) {
+			// Linked to a reference
+			if (this.#reference) {
+				for (const node of rootNode) {
+					if (!this.#nodeMap.has(node.id)) {
+						await this.#repository.setObject(node.toObject());
+					}
+				}
+				const commit = new Commit(autoid(), this.#commit!.id, rootNode.id, "Bob <bob@test.local>", new Date(), "...");
+				await this.#repository.setCommit(commit);
+				await this.#repository.setReference(this.#reference, commit.id);
+				this.#commit = commit;
+			}
+			this.#rootNode = rootNode;
+			this.#updateNodeMap();
+			// TODO onChange callback
+		}
+		return this;
 	}
 }

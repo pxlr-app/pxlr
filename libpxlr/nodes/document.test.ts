@@ -1,8 +1,7 @@
-import { assertEquals, assertExists, assertInstanceOf, assertNotEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
+import { assertEquals, assertExists, assertInstanceOf } from "https://deno.land/std@0.158.0/testing/asserts.ts";
 import { MemoryFilesystem } from "../repository/filesystem/memory.ts";
 import { Repository } from "../repository/mod.ts";
-import { NodeCache } from "./cache.ts";
-import { Document, GroupNode, NoteNode, Registry, ReplaceNodeCommand, UnloadedNode } from "./mod.ts";
+import { Document, GroupNode, NoteNode, Registry } from "./mod.ts";
 
 Deno.test("Document", async (t) => {
 	const registry = new Registry();
@@ -25,35 +24,39 @@ Deno.test("Document", async (t) => {
 	const repository = new Repository(fs);
 
 	await t.step("create", async () => {
-		const doc = new Document({ repository, registry, cache: new NodeCache() });
+		const doc = new Document({ repository, registry });
 		await doc.create();
 		assertExists(doc);
-		assertEquals(doc.reference, "");
+		assertEquals(doc.reference, "refs/heads/main");
 		assertInstanceOf(doc.rootNode, GroupNode);
 		assertEquals(doc.rootNode.name, "");
 	});
 
 	await t.step("loadAtHead", async () => {
-		const doc = new Document({ repository, registry, cache: new NodeCache() });
-		await doc.open();
+		const doc = new Document({ repository, registry });
+		await doc.openAtHead();
 		assertExists(doc);
 		assertEquals(doc.rootNode?.id, "utBjcuH46AeQaczTdC12");
 		assertEquals(doc.rootNode?.kind, "group");
 	});
 
 	await t.step("get node", async () => {
-		const doc = new Document({ repository, registry, cache: new NodeCache() });
-		await doc.open();
+		const doc = new Document({ repository, registry });
+		await doc.openAtHead();
 		const note1 = await doc.loadNodeById("ZzF21pOr54Xn0fGrhQG6") as NoteNode;
 		assertEquals(note1.id, "ZzF21pOr54Xn0fGrhQG6");
 		assertEquals(note1.name, "README");
 		assertEquals(note1.content, "Test2");
+		const note2 = doc.getNodeById(note1.id) as NoteNode;
+		assertEquals(note2.id, "ZzF21pOr54Xn0fGrhQG6");
+		assertEquals(note2.name, "README");
+		assertEquals(note2.content, "Test2");
 	});
 
 	await t.step("get tree", async () => {
-		const doc = new Document({ repository, registry, cache: new NodeCache() });
-		await doc.open();
-		const group = await doc.loadNodeById("utBjcuH46AeQaczTdC12") as GroupNode;
+		const doc = new Document({ repository, registry });
+		await doc.openAtHead();
+		const group = await doc.load() as GroupNode;
 		assertEquals(group.id, "utBjcuH46AeQaczTdC12");
 		assertEquals(group.name, "Root");
 		assertEquals(group.children.length, 2);
@@ -72,8 +75,8 @@ Deno.test("Document", async (t) => {
 	});
 
 	await t.step("get tree unloaded", async () => {
-		const doc = new Document({ repository, registry, cache: new NodeCache() });
-		await doc.open();
+		const doc = new Document({ repository, registry });
+		await doc.openAtHead();
 		const group = doc.rootNode as GroupNode;
 		assertEquals(group.id, "utBjcuH46AeQaczTdC12");
 		assertEquals(group.name, "Root");
@@ -88,42 +91,12 @@ Deno.test("Document", async (t) => {
 	});
 
 	await t.step("caches node", async () => {
-		const doc = new Document({ repository, registry, cache: new NodeCache() });
-		await doc.open();
+		const doc = new Document({ repository, registry });
+		await doc.openAtHead();
 		const note1 = await doc.loadNodeById("ZzF21pOr54Xn0fGrhQG6") as NoteNode;
 		const group = await doc.loadNodeById("utBjcuH46AeQaczTdC12") as GroupNode;
 		const group2 = group.children[1] as GroupNode;
 		assertEquals(group2.children[0], note1);
-	});
-
-	await t.step("load node", async () => {
-		const doc = new Document({ repository, registry, cache: new NodeCache() });
-		await doc.open();
-		const root1 = doc.rootNode!;
-		const note1 = await doc.loadNodeById("JzF21pOr54Xn0fGrhQG6");
-		await doc.executeCommand(new ReplaceNodeCommand(note1));
-		const root2 = doc.rootNode! as GroupNode;
-		assertNotEquals(root1, root2);
-		assertEquals(root2.children[0], note1);
-	});
-
-	await t.step("load tree", async () => {
-		const doc = new Document({ repository, registry, cache: new NodeCache() });
-		await doc.open();
-		const root1 = doc.rootNode!;
-		const group1 = await doc.loadNodeById(root1!.id) as GroupNode;
-		await doc.executeCommand(new ReplaceNodeCommand(group1));
-		const root2 = doc.rootNode! as GroupNode;
-		assertNotEquals(root1, root2);
-		assertEquals(root2, group1);
-		const note1 = root2.children[0] as NoteNode;
-		assertInstanceOf(note1, NoteNode);
-		assertEquals(note1.content, "Test1");
-		const group2 = root2.children[1] as GroupNode;
-		assertInstanceOf(group2, GroupNode);
-		const note2 = group2.children[0] as NoteNode;
-		assertInstanceOf(note2, NoteNode);
-		assertEquals(note2.content, "Test2");
 	});
 
 	await t.step("save document", async () => {
@@ -142,12 +115,25 @@ Deno.test("Document", async (t) => {
 		});
 		const repository = new Repository(fs);
 
-		const doc = new Document({ repository, registry, cache: new NodeCache() });
-		await doc.open();
-		const note1 = doc.getNodeById("ZzF21pOr54Xn0fGrhQG6") as UnloadedNode;
-		await doc.executeCommand(await note1.load(doc));
-		await doc.executeCommand(note1.rename("RENAME2"));
-		assertEquals(fs.entries.size, 11);
+		const doc1 = new Document({ repository, registry });
+		await doc1.openAtHead();
+
+		const commit1 = doc1.commit!;
+
+		await doc1.load();
+		const note1 = doc1.getNodeById("ZzF21pOr54Xn0fGrhQG6")!;
+		await doc1.executeCommand(note1.rename("RENAME2"));
+		assertEquals(fs.entries.size, 16);
+
+		const doc2 = new Document({ repository, registry });
+		await doc2.openAtCommit(commit1);
+		await doc2.load();
+
+		const doc3 = new Document({ repository, registry });
+		await doc3.openAtHead();
+		await doc3.load();
+		console.log(Deno.inspect(doc2.rootNode, { depth: 100 }));
+		console.log(Deno.inspect(doc3.rootNode, { depth: 100 }));
 	});
 });
 

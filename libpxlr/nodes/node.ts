@@ -70,3 +70,10 @@ export class UnloadedNode extends Node {
 export class UnloadedNodeMethodError extends Error {
 	public name = "UnloadedNodeMethodError";
 }
+
+export class NodeNotFoundError extends Error {
+	public name = "NodeNotFoundError";
+	public constructor(id: string) {
+		super(`Could not find node ${id}.`);
+	}
+}
