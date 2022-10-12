@@ -2,6 +2,7 @@ import { autoid } from "../autoid.ts";
 import { Command, RenameCommand, ReplaceNodeCommand, SetContentCommand } from "./commands/mod.ts";
 import { Object } from "../repository/mod.ts";
 import { Node } from "./node.ts";
+import { NodeConstructorOptions } from "./registry.ts";
 
 export class NoteNode extends Node {
 	public constructor(
@@ -33,7 +34,7 @@ export class NoteNode extends Node {
 		return new Object(this.id, "note", { name: this.name }, this.content);
 	}
 
-	static async fromObject(object: Object): Promise<NoteNode> {
+	static async fromObject({ object }: NodeConstructorOptions): Promise<NoteNode> {
 		return new NoteNode(object.id, object.headers.get("name") ?? "", await object.text());
 	}
 }

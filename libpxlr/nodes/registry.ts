@@ -2,8 +2,14 @@ import { Node } from "./node.ts";
 import { Document } from "./document.ts";
 import { Object } from "../repository/object.ts";
 
+export interface NodeConstructorOptions {
+	object: Object;
+	document: Document;
+	shallow: boolean
+}
+
 export interface NodeConstructor {
-	fromObject(object: Object, document: Document): Promise<Node>;
+	fromObject(options: NodeConstructorOptions): Promise<Node>;
 }
 
 export class Registry {

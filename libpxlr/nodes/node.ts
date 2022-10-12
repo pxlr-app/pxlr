@@ -3,6 +3,7 @@ import { Object } from "../repository/object.ts";
 import { Tree } from "../repository/tree.ts";
 import { Command, MoveChildCommand, RemoveChildCommand, RenameCommand, ReplaceNodeCommand } from "./commands/mod.ts";
 import { Document } from "./document.ts";
+import { NodeConstructorOptions } from "./registry.ts";
 
 export abstract class Node {
 	public constructor(
@@ -28,64 +29,22 @@ export class UnloadedNode extends Node {
 		id: string,
 		kind: string,
 		name: string,
-		public readonly children: ReadonlyArray<Node>,
 	) {
 		super(id, kind, name);
 	}
 
-	static new(kind: string, name: string, children: Node[]) {
-		return new UnloadedNode(autoid(), kind, name, children);
-	}
-
-	*iter(): IterableIterator<Node> {
-		yield this;
-		for (const child of this.children) {
-			yield* child.iter();
-		}
+	static new(kind: string, name: string) {
+		return new UnloadedNode(autoid(), kind, name);
 	}
 
 	executeCommand(command: Command): Node {
 		if (command.target === this.id) {
 			if (command instanceof RenameCommand) {
-				return new UnloadedNode(autoid(), this.kind, command.renameTo, this.children);
-			} else if (command instanceof RemoveChildCommand) {
-				const childIndex = this.children.findIndex((node) => node.id === command.childId);
-				if (childIndex > -1) {
-					const children = [
-						...this.children.slice(0, childIndex),
-						...this.children.slice(childIndex + 1),
-					];
-					return new UnloadedNode(autoid(), this.kind, this.name, children);
-				}
-				return this;
-			} else if (command instanceof MoveChildCommand) {
-				const childIndex = this.children.findIndex((node) => node.id === command.childId);
-				if (childIndex > -1) {
-					const children = Array.from(this.children);
-					const child = children.splice(childIndex, 1)[0];
-					if (command.position > children.length) {
-						children.push(child);
-					} else {
-						children.splice(command.position, 0, child);
-					}
-					return new UnloadedNode(autoid(), this.kind, this.name, children);
-				}
-				return this;
+				return new UnloadedNode(autoid(), this.kind, command.renameTo);
 			} else if (command instanceof ReplaceNodeCommand) {
 				return command.node;
 			}
 			throw new UnloadedNodeMethodError();
-		}
-		let mutated = false;
-		const children = this.children.map((node) => {
-			const newNode = node.executeCommand(command);
-			if (newNode !== node) {
-				mutated = true;
-			}
-			return newNode;
-		});
-		if (mutated) {
-			return new UnloadedNode(command instanceof ReplaceNodeCommand ? this.id : autoid(), this.kind, this.name, children);
 		}
 		return this;
 	}
@@ -94,17 +53,9 @@ export class UnloadedNode extends Node {
 		throw new UnloadedNodeMethodError();
 	}
 
-	static async fromObject(object: Object, document: Document): Promise<Node> {
-		if (object.kind !== "tree") {
-			return new UnloadedNode(object.id, object.kind, object.headers.get("name") ?? "", []);
-		}
-		const tree = await Tree.fromObject(object);
-		const children: UnloadedNode[] = [];
-		for (const item of tree.items) {
-			const node = await document.getUnloadedNode(item.id);
-			children.push(node);
-		}
-		return new UnloadedNode(tree.id, tree.subKind, tree.name, children);
+	// deno-lint-ignore require-await
+	static async fromObject({ object }: NodeConstructorOptions): Promise<Node> {
+		return new UnloadedNode(object.id, object.kind, object.headers.get("name") ?? "_");
 	}
 }
 

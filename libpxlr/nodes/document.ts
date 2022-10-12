@@ -51,11 +51,11 @@ export class Document {
 		assertReference(reference);
 		const refId = await this.#repository.getReference(reference);
 		const commit = await this.#repository.getCommit(refId);
-		this.#rootNode = await this.#getNode(commit.tree, true);
+		this.#rootNode = await this.getNode(commit.tree, true);
 		this.#reference = reference;
 	}
 
-	async #getNode(id: AutoId, unloaded = false): Promise<Node> {
+	async getNode(id: AutoId, shallow = false): Promise<Node> {
 		assertAutoId(id);
 		const cachedNode = this.#cache.get(id);
 		if (cachedNode) {
@@ -63,17 +63,15 @@ export class Document {
 		}
 		let nodeConstructor: NodeConstructor;
 		const object = await this.#repository.getObject(id);
-		if (unloaded === true) {
-			nodeConstructor = UnloadedNode;
-		} else if (object.kind === "tree") {
+		if (object.kind === "tree") {
 			const tree = await Tree.fromObject(object);
 			nodeConstructor = this.#registry.getTreeConstructor(tree.subKind);
 		} else {
 			nodeConstructor = this.#registry.getNodeConstructor(object.kind);
 		}
-		const node = await nodeConstructor.fromObject(object, this);
+		const node = await nodeConstructor.fromObject({ object, document: this, shallow });
 		if (node) {
-			if (!unloaded) {
+			if (!shallow) {
 				this.#cache.set(id, node);
 			}
 			return node;
@@ -93,14 +91,6 @@ export class Document {
 			this.#rootNode = rootNode;
 		}
 		return this;
-	}
-
-	getNode(id: AutoId): Promise<Node> {
-		return this.#getNode(id, false);
-	}
-
-	getUnloadedNode(id: AutoId): Promise<UnloadedNode> {
-		return this.#getNode(id, true) as Promise<UnloadedNode>;
 	}
 }
 

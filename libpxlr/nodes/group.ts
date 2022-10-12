@@ -4,6 +4,8 @@ import { Object } from "../repository/object.ts";
 import { Tree } from "../repository/tree.ts";
 import { Node } from "./node.ts";
 import { Document } from "./document.ts";
+import { NodeConstructorOptions } from "./registry.ts";
+import { UnloadedNode } from "./mod.ts";
 
 export class GroupNode extends Node {
 	public constructor(
@@ -78,11 +80,18 @@ export class GroupNode extends Node {
 		return new Tree(this.id, "group", this.name, this.children.map((node) => ({ id: node.id, kind: node.kind, name: node.name }))).toObject();
 	}
 
-	static async fromObject(object: Object, document: Document): Promise<Node> {
+	static async fromObject({ object, document, shallow }: NodeConstructorOptions): Promise<Node> {
 		const tree = await Tree.fromObject(object);
 		const children: Node[] = [];
 		for (const item of tree.items) {
-			const node = await document.getNode(item.id);
+			let node: Node;
+			if (item.kind === "tree") {
+				node = await document.getNode(item.id, shallow);
+			} else if (shallow) {
+				node = new UnloadedNode(item.id, item.kind, item.name);
+			} else {
+				node = await document.getNode(item.id);
+			}
 			children.push(node);
 		}
 		return new GroupNode(tree.id, tree.name, children);

@@ -74,7 +74,7 @@ Deno.test("Document", async (t) => {
 	await t.step("get tree unloaded", async () => {
 		const doc = new Document({ repository, registry, cache: new NodeCache() });
 		await doc.open();
-		const group = await doc.getUnloadedNode("utBjcuH46AeQaczTdC12");
+		const group = doc.rootNode as GroupNode;
 		assertEquals(group.id, "utBjcuH46AeQaczTdC12");
 		assertEquals(group.name, "Root");
 		assertEquals(group.kind, "group");
@@ -102,7 +102,7 @@ Deno.test("Document", async (t) => {
 		const root1 = doc.rootNode!;
 		const note1 = await doc.getNode("JzF21pOr54Xn0fGrhQG6");
 		await doc.executeCommand(new ReplaceNodeCommand(note1));
-		const root2 = doc.rootNode! as UnloadedNode;
+		const root2 = doc.rootNode! as GroupNode;
 		assertNotEquals(root1, root2);
 		assertEquals(root2.children[0], note1);
 	});
@@ -142,7 +142,7 @@ Deno.test("Document", async (t) => {
 		});
 		const repository1 = new Repository(fs1);
 
-		console.log(Deno.inspect(repository1));
+		// console.log(Deno.inspect(repository1));
 
 		const doc = new Document({ repository: repository1, registry, cache: new NodeCache() });
 		await doc.open();
