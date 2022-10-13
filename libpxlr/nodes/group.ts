@@ -89,17 +89,17 @@ export class GroupNode extends Node {
 		return new Tree(this.id, "group", this.name, this.children.map((node) => ({ id: node.id, kind: node.kind, name: node.name }))).toObject();
 	}
 
-	static async fromObject({ object, document, shallow }: NodeConstructorOptions): Promise<Node> {
+	static async fromObject({ object, workspace, shallow }: NodeConstructorOptions): Promise<Node> {
 		const tree = await Tree.fromObject(object);
 		const children: Node[] = [];
 		for (const item of tree.items) {
 			let node: Node;
 			if (item.kind === "tree") {
-				node = await document.loadNodeById(item.id, shallow);
+				node = await workspace.getNodeById(item.id, shallow);
 			} else if (shallow) {
 				node = new UnloadedNode(item.id, item.kind, item.name);
 			} else {
-				node = await document.loadNodeById(item.id);
+				node = await workspace.getNodeById(item.id);
 			}
 			children.push(node);
 		}

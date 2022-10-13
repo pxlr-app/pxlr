@@ -1,10 +1,10 @@
 import { Node } from "./node.ts";
-import { Document } from "./document.ts";
+import { Workspace } from "../workspace.ts";
 import { Object } from "../repository/object.ts";
 
 export interface NodeConstructorOptions {
 	object: Object;
-	document: Document;
+	workspace: Workspace;
 	shallow: boolean;
 }
 
@@ -12,7 +12,7 @@ export interface NodeConstructor {
 	fromObject(options: NodeConstructorOptions): Promise<Node>;
 }
 
-export class Registry {
+export class NodeRegistry {
 	#kindNodeMap = new Map<string, NodeConstructor>();
 	#subKindTreeMap = new Map<string, NodeConstructor>();
 

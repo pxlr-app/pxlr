@@ -1,6 +1,6 @@
 export type Reference = string;
 
-const ReferenceRegExp = new RegExp(`^([a-z0-9-]+/){1,}[a-z0-9-]+$`, "i");
+const ReferenceRegExp = new RegExp(`^([a-z0-9-]+/){1,}[a-z0-9%.+-]+$`, "i");
 
 /**
  * Test if value is a Reference

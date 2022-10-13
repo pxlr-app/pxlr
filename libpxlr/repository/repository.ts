@@ -52,7 +52,7 @@ export class Repository {
 		}
 	}
 
-	async setReference(ref: Reference, commitId: AutoId): Promise<void> {
+	async writeReference(ref: Reference, commitId: AutoId): Promise<void> {
 		assertReference(ref);
 		assertAutoId(commitId);
 		try {
@@ -62,6 +62,13 @@ export class Repository {
 			await refWriter.close();
 		} catch (error) {
 			throw new IOError(error);
+		}
+	}
+
+	async *listReference(ref: Reference): AsyncIterableIterator<Reference> {
+		assertReference(ref);
+		for await (const entry of this.fs.list(`/${ref}`)) {
+			yield `${ref}/${entry}`;
 		}
 	}
 
@@ -76,7 +83,7 @@ export class Repository {
 		return Object.deserialize(objectReadableStream);
 	}
 
-	async setObject(object: Object): Promise<void> {
+	async writeObject(object: Object): Promise<void> {
 		try {
 			const objectWritableStream = await this.fs.write(`/objects/${object.id[0]}/${object.id[1]}/${object.id}`);
 			await object.serialize(objectWritableStream);
@@ -99,8 +106,8 @@ export class Repository {
 		return Commit.fromObject(object);
 	}
 
-	async setCommit(commit: Commit): Promise<void> {
-		return await this.setObject(commit.toObject());
+	async writeCommit(commit: Commit): Promise<void> {
+		return await this.writeObject(commit.toObject());
 	}
 
 	async getTree(id: AutoId): Promise<Tree> {
@@ -108,8 +115,8 @@ export class Repository {
 		return Tree.fromObject(object);
 	}
 
-	async setTree(tree: Tree): Promise<void> {
-		return await this.setObject(tree.toObject());
+	async writeTree(tree: Tree): Promise<void> {
+		return await this.writeObject(tree.toObject());
 	}
 
 	async *walkTree(rootId: AutoId, abortSignal?: AbortSignal): AsyncIterableIterator<Tree> {
