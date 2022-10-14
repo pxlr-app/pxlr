@@ -5,8 +5,14 @@ export enum SeekFrom {
 }
 
 export interface File {
-	read(buffer: Uint8Array): Promise<number | null>;
 	seek(offset: number, from: SeekFrom): Promise<number>;
-	write(buffer: Uint8Array): Promise<number>;
+	readIntoBuffer(buffer: Uint8Array): Promise<number | null>;
+	readStream(size: number): Promise<ReadableStream<Uint8Array>>;
+	writeBuffer(buffer: Uint8Array): Promise<number>;
+	writeStream(): Promise<WritableStream<Uint8Array>>;
 	close(): Promise<void>;
+}
+
+export class FileClosedError extends Error {
+	public name = "FileClosedError";
 }

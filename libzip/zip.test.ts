@@ -26,6 +26,24 @@ Deno.test("Zip", async (t) => {
 		assertEquals((await fileHeaderIter.next()).value.fileName, "foobar/foo.txt");
 		assertEquals((await fileHeaderIter.next()).done, true);
 
+		// for (const f of zip.iterCentralDirectoryFileHeaders()) {
+		// 	console.log(f);
+		// }
+
+		await zip.close();
+		await denoFile.close();
+		fsFile.close();
+	});
+
+	await t.step("getCentralDirectoryFileHeader", async () => {
+		const fsFile = await Deno.open(fromFileUrl(import.meta.resolve("../.testdata/libzip-store.zip")), { read: true, write: false, truncate: false });
+		const denoFile = new DenoFile(fsFile);
+		const zip = new Zip(denoFile);
+		await zip.open();
+
+		const centralDirectoryFileHeader = await zip.getCentralDirectoryFileHeader("lipsum.txt");
+		assertEquals(centralDirectoryFileHeader.fileName, "lipsum.txt");
+
 		await zip.close();
 		await denoFile.close();
 		fsFile.close();
@@ -71,6 +89,38 @@ Deno.test("Zip", async (t) => {
 		await zip.close();
 		await denoFile.close();
 		fsFile.close();
+	});
+
+	
+	await t.step("putReadableStream", async () => {
+		const tmpFile = await Deno.makeTempFile();
+		await Deno.copyFile(fromFileUrl(import.meta.resolve("../.testdata/libzip-deflate.zip")), tmpFile);
+		{
+			const fsFile = await Deno.open(tmpFile, { read: true, write: true, truncate: false });
+			const denoFile = new DenoFile(fsFile);
+			const zip = new Zip(denoFile);
+			await zip.open();
+
+			const readableStream = new Response("foobar").body!;
+			await zip.putReadableStream({ fileName: "foobar.txt", compressionMethod: 0, readableStream });
+
+			await zip.close();
+			await denoFile.close();
+			fsFile.close();
+		}
+		{
+			const fsFile = await Deno.open(tmpFile, { read: true, write: false, truncate: false });
+			const denoFile = new DenoFile(fsFile);
+			const zip = new Zip(denoFile);
+			await zip.open();
+
+			const readableStream = await zip.getReadableStream("foobar.txt");
+			assertEquals(await new Response(readableStream).text().then((c) => hashContent(c)), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+
+			await zip.close();
+			await denoFile.close();
+			fsFile.close();
+		}
 	});
 });
 

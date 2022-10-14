@@ -1,26 +1,20 @@
-import { File, SeekFrom } from "./file.ts";
+import { File, FileClosedError, SeekFrom } from "./file.ts";
 
 // deno-lint-ignore no-explicit-any
 type FileSystemFileHandle = any;
 
 export class WebFile implements File {
-	#fileHandle: FileSystemFileHandle;
+	#fileHandle: FileSystemFileHandle | undefined;
 	#offset: number;
 	constructor(file: FileSystemFileHandle) {
 		this.#fileHandle = file;
 		this.#offset = 0;
 	}
 
-	async read(buffer: Uint8Array): Promise<number> {
-		const len = buffer.byteLength;
-		const file = await this.#fileHandle.getFile();
-		const blob = file.slice(this.#offset, this.#offset + len);
-		const arrayBuffer = new Uint8Array(await blob.arrayBuffer());
-		buffer.set(arrayBuffer, 0);
-		return arrayBuffer.byteLength;
-	}
-
 	async seek(offset: number, from: SeekFrom): Promise<number> {
+		if (!this.#fileHandle) {
+			throw new FileClosedError();
+		}
 		if (from === SeekFrom.Current) {
 			this.#offset += offset;
 		} else if (from === SeekFrom.End) {
@@ -32,13 +26,55 @@ export class WebFile implements File {
 		return this.#offset;
 	}
 
-	async write(buffer: Uint8Array): Promise<number> {
+	async readIntoBuffer(buffer: Uint8Array): Promise<number | null> {
+		const len = buffer.byteLength;
+		const file = await this.#fileHandle.getFile();
+		const blob = file.slice(this.#offset, this.#offset + len);
+		const arrayBuffer = new Uint8Array(await blob.arrayBuffer());
+		buffer.set(arrayBuffer, 0);
+		return arrayBuffer.byteLength;
+	}
+
+	async readStream(size: number): Promise<ReadableStream<Uint8Array>> {
+		if (!this.#fileHandle) {
+			throw new FileClosedError();
+		}
+		const file = await this.#fileHandle.getFile();
+		let offset = 0;
+		return new ReadableStream({
+			pull: async (controller) => {
+				if (offset >= size) {
+					controller.close();
+					return;
+				}
+				const chunkSize = Math.min(controller.desiredSize ?? 4 * 1024, size - offset);
+				const blob = file.slice(this.#offset, this.#offset + chunkSize);
+				const arrayBuffer = new Uint8Array(await blob.arrayBuffer());
+				controller.enqueue(arrayBuffer);
+				this.#offset += arrayBuffer.byteLength;
+				offset += arrayBuffer.byteLength;
+			},
+		});
+	}
+
+	async writeBuffer(buffer: Uint8Array): Promise<number> {
 		const writableStream = await this.#fileHandle.createWritable({ keepExistingData: true });
 		await writableStream.write({ type: "write", data: buffer, position: this.#offset, size: buffer.byteLength });
 		await writableStream.close();
 		return buffer.byteLength;
 	}
 
+	async writeStream(): Promise<WritableStream<Uint8Array>> {
+		if (!this.#fileHandle) {
+			throw new FileClosedError();
+		}
+		const writableStream = await this.#fileHandle.createWritable({ keepExistingData: true });
+		return writableStream;
+	}
+
+	// deno-lint-ignore require-await
 	async close(): Promise<void> {
+		this.#fileHandle = undefined;
+		this.#offset = 0;
 	}
 }
