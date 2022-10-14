@@ -4,7 +4,9 @@
 		"jsxFragmentFactory": "Fragment",
 		"lib": [
 			"deno.ns",
-			"dom"
+			"deno.window",
+			"deno.url",
+			"deno.web"
 		]
 	},
 	"tasks": {},
