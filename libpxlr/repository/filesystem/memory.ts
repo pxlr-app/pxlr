@@ -3,7 +3,7 @@ import { Filesystem } from "./filesystem.ts";
 export class MemoryFilesystem extends Filesystem {
 	public entries: Map<string, ArrayBuffer>;
 	constructor(
-		entries: Record<string, ArrayBuffer>,
+		entries: Record<string, ArrayBuffer> = {},
 	) {
 		super();
 		this.entries = new Map(Object.entries(entries));

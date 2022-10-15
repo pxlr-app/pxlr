@@ -7,7 +7,6 @@ const textEncoder = new TextEncoder();
 Deno.test("ZipFilesystem", async (t) => {
 	await t.step("write", async () => {
 		const tmpFile = await Deno.makeTempFile({ suffix: ".zip" });
-		console.log(tmpFile);
 		{
 			const fsFile = await Deno.open(tmpFile, { read: true, write: true, truncate: false });
 			const denoFile = new DenoFile(fsFile);

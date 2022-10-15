@@ -9,41 +9,18 @@ async function readAsText(rs: ReadableStream) {
 	return await new Response(rs).text();
 }
 
-export class Repository {
-	#textEncoder = new TextEncoder();
-	#textDecoder = new TextDecoder("utf-8");
+const textEncoder = new TextEncoder();
+//const textDecoder = new TextDecoder("utf-8");
 
+export class Repository {
 	constructor(
 		protected readonly fs: Filesystem,
 	) {}
 
-	async getHead(abortSignal?: AbortSignal): Promise<Reference> {
+	async getReference(reference: Reference, abortSignal?: AbortSignal): Promise<AutoId> {
+		assertReference(reference);
 		try {
-			const headReadableStream = await this.fs.read("/HEAD", abortSignal);
-			const ref = await readAsText(headReadableStream);
-			assertReference(ref);
-			return ref;
-		} catch (error) {
-			throw new IOError(error);
-		}
-	}
-
-	async setHead(ref: Reference, abortSignal?: AbortSignal): Promise<void> {
-		assertReference(ref);
-		try {
-			const headWritableStream = await this.fs.write("/HEAD", abortSignal);
-			const headWriter = headWritableStream.getWriter();
-			await headWriter.write(this.#textEncoder.encode(ref));
-			await headWriter.close();
-		} catch (error) {
-			throw new IOError(error);
-		}
-	}
-
-	async getReference(ref: Reference, abortSignal?: AbortSignal): Promise<AutoId> {
-		assertReference(ref);
-		try {
-			const refReadableStream = await this.fs.read(`/${ref}`, abortSignal);
+			const refReadableStream = await this.fs.read(`/${reference}`, abortSignal);
 			const commitId = await readAsText(refReadableStream);
 			assertAutoId(commitId);
 			return commitId;
@@ -52,23 +29,23 @@ export class Repository {
 		}
 	}
 
-	async writeReference(ref: Reference, commitId: AutoId, abortSignal?: AbortSignal): Promise<void> {
-		assertReference(ref);
+	async writeReference(reference: Reference, commitId: AutoId, abortSignal?: AbortSignal): Promise<void> {
+		assertReference(reference);
 		assertAutoId(commitId);
 		try {
-			const refWritableStream = await this.fs.write(`/${ref}`, abortSignal);
+			const refWritableStream = await this.fs.write(`/${reference}`, abortSignal);
 			const refWriter = refWritableStream.getWriter();
-			await refWriter.write(this.#textEncoder.encode(commitId));
+			await refWriter.write(textEncoder.encode(commitId));
 			await refWriter.close();
 		} catch (error) {
 			throw new IOError(error);
 		}
 	}
 
-	async *listReference(ref: Reference, abortSignal?: AbortSignal): AsyncIterableIterator<Reference> {
-		assertReference(ref);
-		for await (const entry of this.fs.list(`/${ref}`, abortSignal)) {
-			yield `${ref}/${entry}`;
+	async *listReference(prefix: Reference, abortSignal?: AbortSignal): AsyncIterableIterator<Reference> {
+		assertReference(prefix);
+		for await (const entry of this.fs.list(`/${prefix}`, abortSignal)) {
+			yield `${prefix}/${entry}`;
 		}
 	}
 

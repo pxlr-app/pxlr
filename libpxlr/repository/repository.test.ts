@@ -17,12 +17,6 @@ Deno.test("Repository", async (t) => {
 			`id Wop7bFXo65cxSUFvDcJK\r\nparent NYyv8vVWdRah1NLmXcpD\r\ntree \r\ncommiter John Doe <jd@test.local>\r\ndate 2022-10-07T02:14:56.247Z\r\n\r\ndup`,
 	});
 
-	await t.step("get head reference", async () => {
-		const repo = new Repository(fs1);
-		const headRef = await repo.getHead();
-		assertEquals(headRef, "refs/heads/main");
-	});
-
 	await t.step("get reference", async () => {
 		const repo = new Repository(fs1);
 		const commitId = await repo.getReference("refs/heads/main");

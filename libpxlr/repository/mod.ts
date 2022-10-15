@@ -1,3 +1,4 @@
+export * from "./buffered_repository.ts";
 export * from "./commit.ts";
 export * from "./filesystem/mod.ts";
 export * from "./object.ts";
