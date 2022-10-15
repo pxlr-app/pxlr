@@ -11,33 +11,40 @@ export class Zip {
 	#centralDirectoryFileHeaders: CentralDirectoryFileHeader[];
 	constructor(file: File) {
 		this.#file = file;
-		this.#endOfCentralDirectoryRecordOffset = -1;
+		this.#endOfCentralDirectoryRecordOffset = 0;
 		this.#centralDirectoryFileHeaders = [];
 	}
 
 	async open() {
 		if (this.#file) {
-			// Find EndOfCentralDirectoryRecordOffset location
-			this.#endOfCentralDirectoryRecordOffset = await this.#findEndOfCentralDirectoryRecord();
-			// Goto EndOfCentralDirectoryRecordOffset location
-			await this.#file.seek(this.#endOfCentralDirectoryRecordOffset, SeekFrom.End);
-			// Read and parse EndOfCentralDirectoryRecordOffset
-			const endOfCentralDirectoryRecordBytes = new Uint8Array(-this.#endOfCentralDirectoryRecordOffset);
-			await this.#file.readIntoBuffer(endOfCentralDirectoryRecordBytes);
-			this.#endOfCentralDirectoryRecord = EndOfCentralDirectoryRecord.parse(endOfCentralDirectoryRecordBytes);
-			// Move to the start of CentralDirectory
-			await this.#file.seek(this.#endOfCentralDirectoryRecord.offsetOfStartOfCentralDirectory, SeekFrom.Start);
-			// Read CentralDirectory bytes
-			const centralDirectoryBytes = new Uint8Array(this.#endOfCentralDirectoryRecord.sizeOfCentralDirectory);
-			await this.#file.readIntoBuffer(centralDirectoryBytes);
-			// Parse each CentralDirectoryFileHeader from bytes
-			for (let offset = 0; offset < this.#endOfCentralDirectoryRecord.sizeOfCentralDirectory;) {
-				const centralDirectoryFileHeader = CentralDirectoryFileHeader.parse(centralDirectoryBytes.slice(offset));
-				const variableBufferLength = centralDirectoryFileHeader.fileNameLength + centralDirectoryFileHeader.extraFieldLength + centralDirectoryFileHeader.fileCommentLength;
-				const variableBufferBytes = centralDirectoryBytes.slice(offset + 46, offset + 46 + variableBufferLength);
-				centralDirectoryFileHeader.parseVariableBuffer(variableBufferBytes);
-				offset += 46 + variableBufferLength;
-				this.#centralDirectoryFileHeaders.push(centralDirectoryFileHeader);
+			try {
+				// Find EndOfCentralDirectoryRecordOffset location
+				this.#endOfCentralDirectoryRecordOffset = await this.#findEndOfCentralDirectoryRecord();
+				// Goto EndOfCentralDirectoryRecordOffset location
+				await this.#file.seek(this.#endOfCentralDirectoryRecordOffset, SeekFrom.End);
+				// Read and parse EndOfCentralDirectoryRecordOffset
+				const endOfCentralDirectoryRecordBytes = new Uint8Array(-this.#endOfCentralDirectoryRecordOffset);
+				await this.#file.readIntoBuffer(endOfCentralDirectoryRecordBytes);
+				this.#endOfCentralDirectoryRecord = EndOfCentralDirectoryRecord.parse(endOfCentralDirectoryRecordBytes);
+				// Move to the start of CentralDirectory
+				await this.#file.seek(this.#endOfCentralDirectoryRecord.offsetOfStartOfCentralDirectory, SeekFrom.Start);
+				// Read CentralDirectory bytes
+				const centralDirectoryBytes = new Uint8Array(this.#endOfCentralDirectoryRecord.sizeOfCentralDirectory);
+				await this.#file.readIntoBuffer(centralDirectoryBytes);
+				// Parse each CentralDirectoryFileHeader from bytes
+				for (let offset = 0; offset < this.#endOfCentralDirectoryRecord.sizeOfCentralDirectory;) {
+					const centralDirectoryFileHeader = CentralDirectoryFileHeader.parse(centralDirectoryBytes.slice(offset));
+					const variableBufferLength = centralDirectoryFileHeader.fileNameLength + centralDirectoryFileHeader.extraFieldLength + centralDirectoryFileHeader.fileCommentLength;
+					const variableBufferBytes = centralDirectoryBytes.slice(offset + 46, offset + 46 + variableBufferLength);
+					centralDirectoryFileHeader.parseVariableBuffer(variableBufferBytes);
+					offset += 46 + variableBufferLength;
+					this.#centralDirectoryFileHeaders.push(centralDirectoryFileHeader);
+				}
+			} catch (error) {
+				if (!(error instanceof EndOfCentralDirectoryRecordNotFoundError)) {
+					throw error;
+				}
+				this.#endOfCentralDirectoryRecord = new EndOfCentralDirectoryRecord();
 			}
 		}
 	}
@@ -87,7 +94,7 @@ export class Zip {
 		throw new FileNameNotExistsError(fileName);
 	}
 
-	async getReadableStream(fileName: string, abortSignal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
+	async getFile(fileName: string, abortSignal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
 		if (this.#file) {
 			const [centralDirectoryFileHeader, localFileHeader] = await this.#getLocalFileHeader(fileName, abortSignal);
 			const compressedSize = localFileHeader.generalPurposeBitFlag & 0b100 ? localFileHeader.compressedSize : centralDirectoryFileHeader.compressedSize;
@@ -104,147 +111,171 @@ export class Zip {
 		throw new FileNameNotExistsError(fileName);
 	}
 
-	putDirectory(options: { fileName: string; fileComment?: string; fileLastModificationDate?: Date }): Promise<void> {
-		return this.#putReadableStream({
+	async putDirectory(options: { fileName: string; fileComment?: string; fileLastModificationDate?: Date }): Promise<void> {
+		const writableStream = await this.#put({
 			...options,
-			fileName: options.fileName.replace(/\/+$/, '') + '/',
+			fileName: options.fileName.replace(/\/+$/, "") + "/",
 			compressionMethod: 0,
 			generalPurposeBitFlag: 0,
 		});
+		await writableStream.close();
 	}
 
-	putReadableStream(
-		options: { fileName: string; fileComment?: string; fileLastModificationDate?: Date; compressionMethod: number; readableStream: ReadableStream<Uint8Array> },
-	): Promise<void> {
-		return this.#putReadableStream({
+	putFile(
+		options: { fileName: string; fileComment?: string; fileLastModificationDate?: Date; compressionMethod: number },
+	): Promise<WritableStream<Uint8Array>> {
+		return this.#put({
 			...options,
 			generalPurposeBitFlag: 0,
 		});
 	}
 
-	async #putReadableStream(
-		{ fileName, extraField, fileComment, fileLastModificationDate, generalPurposeBitFlag, compressionMethod, readableStream }: {
+	async #put(
+		{ fileName, extraField, fileComment, fileLastModificationDate, generalPurposeBitFlag, compressionMethod }: {
 			fileName: string;
 			extraField?: Uint8Array;
 			fileComment?: string;
 			generalPurposeBitFlag: number;
 			compressionMethod: number;
 			fileLastModificationDate?: Date;
-			readableStream?: ReadableStream<Uint8Array>;
 		},
-	): Promise<void> {
+	): Promise<WritableStream<Uint8Array>> {
 		if (!this.#file || !this.#endOfCentralDirectoryRecord) {
 			throw new Error("No more file?!");
 		}
 		const newLocalFileHeader = new LocalFileHeader();
+		const newDataDescriptor = new DataDescriptor();
+		const newCentralDirectoryFileHeader = new CentralDirectoryFileHeader();
+
+		// Move to start of EndOfCentralDirectoryRecordOffset
+		const offsetOfLocalFileHeader = await this.#file.seek(this.#endOfCentralDirectoryRecordOffset, SeekFrom.End);
+		// Write LocalFileHeader
 		newLocalFileHeader.versionNeededToExtract = 10;
 		newLocalFileHeader.generalPurposeBitFlag = generalPurposeBitFlag | 0b1000;
 		newLocalFileHeader.compressionMethod = compressionMethod;
 		newLocalFileHeader.fileLastModificationDate = fileLastModificationDate ?? new Date();
 		newLocalFileHeader.fileName = fileName;
 		newLocalFileHeader.extraField = extraField ?? new Uint8Array();
-		const newDataDescriptor = new DataDescriptor();
-		// Move to start of EndOfCentralDirectoryRecordOffset
-		const offsetOfLocalFileHeader = await this.#file.seek(this.#endOfCentralDirectoryRecordOffset, SeekFrom.End);
-		// Write LocalFileHeader
 		const localFileHeaderBytes = newLocalFileHeader.toBuffer();
 		await this.#file.writeBuffer(localFileHeaderBytes);
-		// Write file's content
-		if (readableStream) {
-			const streamToFile = await this.#file.writeStream();
-			// Process uncompress data
-			const uncompressedTransform = new TransformStream<Uint8Array>({
-				transform: (chunk, controller) => {
-					newDataDescriptor.uncompressedSize += chunk.byteLength;
-					newDataDescriptor.crcOfUncompressedData = crc32(chunk, newDataDescriptor.crcOfUncompressedData);
-					controller.enqueue(chunk);
-				},
-			});
-			// Process compressed data
-			const compressedTransform = new TransformStream<Uint8Array>({
-				transform: (chunk, controller) => {
-					newDataDescriptor.compressedSize += chunk.byteLength;
-					controller.enqueue(chunk);
-				},
-			});
-			// Create pipeline
-			let pipeline = readableStream.pipeThrough(uncompressedTransform);
-			if (newLocalFileHeader.compressionMethod === 8) {
-				pipeline = pipeline.pipeThrough(new CompressionStream("deflate-raw"));
-			}
-			await pipeline.pipeThrough(compressedTransform).pipeTo(streamToFile);
 
-			// Update LocalFileHeader
-			const newDataDescriptorBytes = newDataDescriptor.toBuffer();
-			await this.#file.writeBuffer(newDataDescriptorBytes);
-		}
+		// Calculate uncompressedSize and crcOfUncompressedData
+		const uncompressedTransform = new TransformStream<Uint8Array>({
+			transform: (chunk, controller) => {
+				newDataDescriptor.uncompressedSize += chunk.byteLength;
+				newDataDescriptor.crcOfUncompressedData = crc32(chunk, newDataDescriptor.crcOfUncompressedData);
+				controller.enqueue(chunk);
+			},
+		});
+		// Calculate compressedSize
+		const compressedTransform = new TransformStream<Uint8Array>({
+			transform: (chunk, controller) => {
+				newDataDescriptor.compressedSize += chunk.byteLength;
+				controller.enqueue(chunk);
+			},
+		});
 
-		const newCentralDirectoryFileHeader = new CentralDirectoryFileHeader();
-		newCentralDirectoryFileHeader.versionMadeBy = 798;
-		newCentralDirectoryFileHeader.versionNeededToExtract = newLocalFileHeader.versionNeededToExtract;
-		newCentralDirectoryFileHeader.generalPurposeBitFlag = newLocalFileHeader.generalPurposeBitFlag;
-		newCentralDirectoryFileHeader.compressionMethod = newLocalFileHeader.compressionMethod;
-		newCentralDirectoryFileHeader.uncompressedSize = newDataDescriptor.uncompressedSize;
-		newCentralDirectoryFileHeader.crcOfUncompressedData = newDataDescriptor.crcOfUncompressedData;
-		newCentralDirectoryFileHeader.compressedSize = newDataDescriptor.compressedSize;
-		newCentralDirectoryFileHeader.fileLastModificationDate = newLocalFileHeader.fileLastModificationDate;
-		newCentralDirectoryFileHeader.fileName = newLocalFileHeader.fileName;
-		newCentralDirectoryFileHeader.fileComment = fileComment ?? "";
-		newCentralDirectoryFileHeader.extraField = newLocalFileHeader.extraField;
-		newCentralDirectoryFileHeader.externalFileAttributes = 2175008768;
-		newCentralDirectoryFileHeader.relativeOffsetOfLocalFileHeader = offsetOfLocalFileHeader;
+		// Get contentWritableStream
+		const contentWritableStream = await this.#file.writeStream();
 
-		// Upsert new CentralDirectoryFileHeader
-		const existingCentralDirectoryFileHeader = this.#centralDirectoryFileHeaders.findIndex((cdfh) => cdfh.fileName === newCentralDirectoryFileHeader.fileName);
-		if (existingCentralDirectoryFileHeader > -1) {
-			this.#centralDirectoryFileHeaders.splice(existingCentralDirectoryFileHeader, 1, newCentralDirectoryFileHeader);
+		// Setup pipeline
+		if (newLocalFileHeader.compressionMethod === 8) {
+			const compressionTransform = new CompressionStream("deflate-raw");
+			uncompressedTransform.readable.pipeThrough(compressionTransform);
+			compressionTransform.readable.pipeThrough(compressedTransform);
 		} else {
-			this.#centralDirectoryFileHeaders.push(newCentralDirectoryFileHeader);
+			uncompressedTransform.readable.pipeThrough(compressedTransform);
 		}
+		const pipeline = compressedTransform.readable.pipeTo(contentWritableStream);
 
-		// Keep track of newOffsetOfStartOfCentralDirectory
-		const newOffsetOfStartOfCentralDirectory = await this.#file.seek(0, SeekFrom.Current);
+		// Get contentWriter
+		const contentWriter = uncompressedTransform.writable.getWriter();
+		return new WritableStream({
+			write: async (chunk) => {
+				// Pipe chunk to contentWriter and it's pipeline
+				await contentWriter.write(chunk);
+			},
+			close: async () => {
+				// Close and wait for pipeline to finish up
+				await contentWriter.close();
+				await pipeline;
 
-		// Write CentralDirectoryFileHeaders
-		let newSizeOfCentralDirectory = 0;
-		for (const centralDirectoryFileHeader of this.#centralDirectoryFileHeaders) {
-			const centralDirectoryFileHeaderBytes = centralDirectoryFileHeader.toBuffer();
-			await this.#file.writeBuffer(centralDirectoryFileHeaderBytes);
-			newSizeOfCentralDirectory += centralDirectoryFileHeaderBytes.byteLength;
-		}
+				// Write DataDescriptor
+				const newDataDescriptorBytes = newDataDescriptor.toBuffer();
+				await this.#file!.writeBuffer(newDataDescriptorBytes);
 
-		// Update and write EndOfCentralDirectoryRecord
-		this.#endOfCentralDirectoryRecord.offsetOfStartOfCentralDirectory = newOffsetOfStartOfCentralDirectory;
-		this.#endOfCentralDirectoryRecord.sizeOfCentralDirectory = newSizeOfCentralDirectory;
-		this.#endOfCentralDirectoryRecord.numberOfCentralDirectoryRecords = this.#centralDirectoryFileHeaders.length;
-		this.#endOfCentralDirectoryRecord.totalNumberOfCentralDirectoryRecords = this.#endOfCentralDirectoryRecord.numberOfCentralDirectoryRecords;
-		const endOfCentralDirectoryRecordBytes = this.#endOfCentralDirectoryRecord.toBuffer();
-		await this.#file.writeBuffer(endOfCentralDirectoryRecordBytes);
+				// Setup new CentralDirectoryFileHeader
+				newCentralDirectoryFileHeader.versionMadeBy = 798;
+				newCentralDirectoryFileHeader.versionNeededToExtract = newLocalFileHeader.versionNeededToExtract;
+				newCentralDirectoryFileHeader.generalPurposeBitFlag = newLocalFileHeader.generalPurposeBitFlag;
+				newCentralDirectoryFileHeader.compressionMethod = newLocalFileHeader.compressionMethod;
+				newCentralDirectoryFileHeader.uncompressedSize = newDataDescriptor.uncompressedSize;
+				newCentralDirectoryFileHeader.crcOfUncompressedData = newDataDescriptor.crcOfUncompressedData;
+				newCentralDirectoryFileHeader.compressedSize = newDataDescriptor.compressedSize;
+				newCentralDirectoryFileHeader.fileLastModificationDate = newLocalFileHeader.fileLastModificationDate;
+				newCentralDirectoryFileHeader.fileName = newLocalFileHeader.fileName;
+				newCentralDirectoryFileHeader.fileComment = fileComment ?? "";
+				newCentralDirectoryFileHeader.extraField = newLocalFileHeader.extraField;
+				newCentralDirectoryFileHeader.relativeOffsetOfLocalFileHeader = offsetOfLocalFileHeader;
+
+				// Upsert new CentralDirectoryFileHeader
+				const existingCentralDirectoryFileHeader = this.#centralDirectoryFileHeaders.findIndex((cdfh) => cdfh.fileName === newCentralDirectoryFileHeader.fileName);
+				if (existingCentralDirectoryFileHeader > -1) {
+					this.#centralDirectoryFileHeaders.splice(existingCentralDirectoryFileHeader, 1, newCentralDirectoryFileHeader);
+				} else {
+					this.#centralDirectoryFileHeaders.push(newCentralDirectoryFileHeader);
+				}
+
+				// Keep track of newOffsetOfStartOfCentralDirectory
+				const newOffsetOfStartOfCentralDirectory = await this.#file!.seek(0, SeekFrom.Current);
+
+				// Write CentralDirectoryFileHeaders
+				let newSizeOfCentralDirectory = 0;
+				for (const centralDirectoryFileHeader of this.#centralDirectoryFileHeaders) {
+					const centralDirectoryFileHeaderBytes = centralDirectoryFileHeader.toBuffer();
+					await this.#file!.writeBuffer(centralDirectoryFileHeaderBytes);
+					newSizeOfCentralDirectory += centralDirectoryFileHeaderBytes.byteLength;
+				}
+
+				// Update and write EndOfCentralDirectoryRecord
+				this.#endOfCentralDirectoryRecord!.offsetOfStartOfCentralDirectory = newOffsetOfStartOfCentralDirectory;
+				this.#endOfCentralDirectoryRecord!.sizeOfCentralDirectory = newSizeOfCentralDirectory;
+				this.#endOfCentralDirectoryRecord!.numberOfCentralDirectoryRecords = this.#centralDirectoryFileHeaders.length;
+				this.#endOfCentralDirectoryRecord!.totalNumberOfCentralDirectoryRecords = this.#endOfCentralDirectoryRecord!.numberOfCentralDirectoryRecords;
+				const endOfCentralDirectoryRecordBytes = this.#endOfCentralDirectoryRecord!.toBuffer();
+				await this.#file!.writeBuffer(endOfCentralDirectoryRecordBytes);
+			},
+		});
 	}
 
 	async #findEndOfCentralDirectoryRecord(): Promise<number> {
 		if (this.#file) {
-			const buffer = new Uint8Array(4);
+			const buffer = new Uint8Array(100);
 			const view = new DataView(buffer.buffer);
-			for (let offset = 22; offset < 0xFFFF; ++offset) {
+			for (let offset = 22; offset < 0xFFFF;) {
 				try {
 					await this.#file.seek(-offset, SeekFrom.End);
 					const byteRead = await this.#file.readIntoBuffer(buffer);
 					if (byteRead === null) {
 						break;
 					}
-					if (byteRead < 4) {
-						break;
+					for (let i = 0; i < byteRead; ++i) {
+						if (view.getUint32(i, true) === EndOfCentralDirectoryRecordSignature) {
+							return -offset;
+						}
 					}
-					if (view.getUint32(0, true) === EndOfCentralDirectoryRecordSignature) {
-						return -offset;
-					}
-				} // deno-lint-ignore no-empty
-				catch (_err) {}
+					offset += byteRead;
+				} catch (_err) {
+					break;
+				}
 			}
 		}
-		throw new SyntaxError(`Could not find EndOfCentralDirectoryRecord.`);
+		throw new EndOfCentralDirectoryRecordNotFoundError();
 	}
+}
+
+export class EndOfCentralDirectoryRecordNotFoundError extends Error {
+	public name = "EndOfCentralDirectoryRecordNotFoundError";
 }
 
 export class FileNameNotExistsError extends Error {
