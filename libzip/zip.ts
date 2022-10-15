@@ -138,7 +138,7 @@ export class Zip {
 			generalPurposeBitFlag: number;
 			compressionMethod: number;
 			fileLastModificationDate?: Date;
-			abortSignal?: AbortSignal
+			abortSignal?: AbortSignal;
 		},
 	): Promise<WritableStream<Uint8Array>> {
 		if (!this.#file || !this.#endOfCentralDirectoryRecord) {
