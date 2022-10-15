@@ -107,8 +107,9 @@ export class Zip {
 	putDirectory(options: { fileName: string; fileComment?: string; fileLastModificationDate?: Date }): Promise<void> {
 		return this.#putReadableStream({
 			...options,
+			fileName: options.fileName.replace(/\/+$/, '') + '/',
 			compressionMethod: 0,
-			generalPurposeBitFlag: 1,
+			generalPurposeBitFlag: 0,
 		});
 	}
 

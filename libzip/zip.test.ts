@@ -142,6 +142,36 @@ Deno.test("Zip", async (t) => {
 			fsFile.close();
 		}
 	});
+
+	await t.step("putDirectory", async () => {
+		const tmpFile = await Deno.makeTempFile({ suffix: ".zip" });
+		await Deno.copyFile(fromFileUrl(import.meta.resolve("../.testdata/libzip-deflate.zip")), tmpFile);
+		{
+			const fsFile = await Deno.open(tmpFile, { read: true, write: true, truncate: false });
+			const denoFile = new DenoFile(fsFile);
+			const zip = new Zip(denoFile);
+			await zip.open();
+
+			await zip.putDirectory({ fileName: "nonexistent" });
+
+			await zip.close();
+			await denoFile.close();
+			fsFile.close();
+		}
+		{
+			const fsFile = await Deno.open(tmpFile, { read: true, write: false, truncate: false });
+			const denoFile = new DenoFile(fsFile);
+			const zip = new Zip(denoFile);
+			await zip.open();
+
+			const centralDirectoryFileHeader = await zip.getCentralDirectoryFileHeader("nonexistent/");
+			assertEquals(centralDirectoryFileHeader.fileName, "nonexistent/");
+
+			await zip.close();
+			await denoFile.close();
+			fsFile.close();
+		}
+	});
 });
 
 async function hashContent(content: string) {
