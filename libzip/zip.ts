@@ -64,12 +64,12 @@ export class Zip {
 		throw new FileNameNotExistsError(fileName);
 	}
 
-	async getLocalFileHeader(fileName: string, abortSignal?: AbortSignal): Promise<LocalFileHeader> {
+	async #getLocalFileHeader(fileName: string, abortSignal?: AbortSignal): Promise<[Readonly<CentralDirectoryFileHeader>, Readonly<LocalFileHeader>]> {
 		if (this.#file) {
-			for (const fileHeader of this.iterCentralDirectoryFileHeaders()) {
+			for (const centralDirectoryFileHeader of this.iterCentralDirectoryFileHeaders()) {
 				abortSignal?.throwIfAborted();
-				if (fileHeader.fileName === fileName) {
-					await this.#file.seek(fileHeader.relativeOffsetOfLocalFileHeader, SeekFrom.Start);
+				if (centralDirectoryFileHeader.fileName === fileName) {
+					await this.#file.seek(centralDirectoryFileHeader.relativeOffsetOfLocalFileHeader, SeekFrom.Start);
 					abortSignal?.throwIfAborted();
 					const localFileHeaderBytes = new Uint8Array(30);
 					await this.#file.readIntoBuffer(localFileHeaderBytes);
@@ -80,7 +80,7 @@ export class Zip {
 					await this.#file.readIntoBuffer(variableBufferBytes);
 					abortSignal?.throwIfAborted();
 					localFileHeader.parseVariableBuffer(variableBufferBytes);
-					return localFileHeader;
+					return [centralDirectoryFileHeader, localFileHeader];
 				}
 			}
 		}
@@ -89,13 +89,14 @@ export class Zip {
 
 	async getReadableStream(fileName: string, abortSignal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
 		if (this.#file) {
-			const localFileHeader = await this.getLocalFileHeader(fileName, abortSignal);
+			const [centralDirectoryFileHeader, localFileHeader] = await this.#getLocalFileHeader(fileName, abortSignal);
+			const compressedSize = localFileHeader.generalPurposeBitFlag & 0b100 ? localFileHeader.compressedSize : centralDirectoryFileHeader.compressedSize;
 			abortSignal?.throwIfAborted();
 			if (localFileHeader.compressionMethod === 0) {
-				const readableStream = await this.#file.readStream(localFileHeader.compressedSize);
+				const readableStream = await this.#file.readStream(compressedSize);
 				return readableStream;
 			} else if (localFileHeader.compressionMethod === 8) {
-				const readableStream = await this.#file.readStream(localFileHeader.compressedSize);
+				const readableStream = await this.#file.readStream(compressedSize);
 				return readableStream.pipeThrough(new DecompressionStream("deflate-raw"));
 			}
 			throw new CompressionMethodNotSupportedError(localFileHeader.compressionMethod);
@@ -237,7 +238,8 @@ export class Zip {
 					if (view.getUint32(0, true) === EndOfCentralDirectoryRecordSignature) {
 						return -offset;
 					}
-				} catch (_err) {}
+				} // deno-lint-ignore no-empty
+				catch (_err) {}
 			}
 		}
 		throw new SyntaxError(`Could not find EndOfCentralDirectoryRecord.`);
