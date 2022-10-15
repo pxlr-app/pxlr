@@ -6,36 +6,52 @@ export interface NodeConstructorOptions {
 	object: Object;
 	workspace: Workspace;
 	shallow: boolean;
+	abortSignal?: AbortSignal;
 }
 
-export interface NodeConstructor {
-	fromObject(options: NodeConstructorOptions): Promise<Node>;
+export type NodeDeserializer = (options: NodeConstructorOptions) => Promise<Node>;
+
+export class NodeRegistryEntry {
+	#kind: string;
+	#deserializer: NodeDeserializer;
+	constructor(kind: string, nodeConstructor: NodeDeserializer) {
+		this.#kind = kind;
+		this.#deserializer = nodeConstructor;
+	}
+
+	get kind() {
+		return this.#kind;
+	}
+
+	get deserializer() {
+		return this.#deserializer;
+	}
 }
 
 export class NodeRegistry {
-	#kindNodeMap = new Map<string, NodeConstructor>();
-	#subKindTreeMap = new Map<string, NodeConstructor>();
+	#entryMap = new Map<string, NodeRegistryEntry>();
+	#entryTreeMap = new Map<string, NodeRegistryEntry>();
 
-	registerNodeConstructor(kind: string, nodeConstructor: NodeConstructor): void {
-		this.#kindNodeMap.set(kind, nodeConstructor);
+	registerNodeConstructor(entry: NodeRegistryEntry): void {
+		this.#entryMap.set(entry.kind, entry);
 	}
 
-	registerTreeConstructor(subKind: string, treeConstructor: NodeConstructor): void {
-		this.#subKindTreeMap.set(subKind, treeConstructor);
+	registerTreeConstructor(entry: NodeRegistryEntry): void {
+		this.#entryTreeMap.set(entry.kind, entry);
 	}
 
-	getNodeConstructor(kind: string): NodeConstructor {
-		if (!this.#kindNodeMap.has(kind)) {
+	getNodeConstructor(kind: string): NodeDeserializer {
+		if (!this.#entryMap.has(kind)) {
 			throw new UnregistedNodeConstructorError(kind);
 		}
-		return this.#kindNodeMap.get(kind)!;
+		return this.#entryMap.get(kind)!.deserializer;
 	}
 
-	getTreeConstructor(subKind: string): NodeConstructor {
-		if (!this.#subKindTreeMap.has(subKind)) {
+	getTreeConstructor(subKind: string): NodeDeserializer {
+		if (!this.#entryTreeMap.has(subKind)) {
 			throw new UnregistedTreeConstructorError(subKind);
 		}
-		return this.#subKindTreeMap.get(subKind)!;
+		return this.#entryTreeMap.get(subKind)!.deserializer;
 	}
 }
 

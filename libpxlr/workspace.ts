@@ -1,8 +1,8 @@
 import { assertAutoId, AutoId } from "./autoid.ts";
 import { Command, GroupNode } from "./nodes/mod.ts";
-import { Node, NodeNotFoundError } from "./nodes/node.ts";
-import { NodeConstructor, NodeRegistry } from "./nodes/registry.ts";
-import { Commit, IOError, Tree } from "./repository/mod.ts";
+import { Node, NodeNotFoundError, UnloadedNode } from "./nodes/node.ts";
+import { NodeDeserializer, NodeRegistry } from "./nodes/registry.ts";
+import { Commit, Tree } from "./repository/mod.ts";
 import { Repository } from "./repository/repository.ts";
 
 export class Workspace {
@@ -36,53 +36,43 @@ export class Workspace {
 		this.#nodeCache = new Map(notReclaimed);
 	}
 
-	async *listBranches(): AsyncIterableIterator<string> {
-		for await (const ref of this.#repository.listReference(`refs/heads`)) {
+	async *listBranches(abortSignal?: AbortSignal): AsyncIterableIterator<string> {
+		for await (const ref of this.#repository.listReference(`refs/heads`, abortSignal)) {
 			yield decodeURIComponent(ref.split("/").slice(2).join("/"));
 		}
 	}
 
-	async checkoutBranch(branchIdentifier: string): Promise<Branch> {
-		try {
-			const headId = await this.#repository.getReference(`refs/heads/${encodeURIComponent(branchIdentifier)}`);
-			const headCommit = await this.#repository.getCommit(headId);
-			const rootNode = await this.getNodeById(headCommit.tree, true);
-			return new Branch(this, branchIdentifier, headCommit, rootNode);
-		} catch (error) {
-			if (error instanceof IOError) {
-				throw new BranchNotFoundError(branchIdentifier);
-			}
-			throw error;
-		}
+	async getBranch(name: string, abortSignal?: AbortSignal): Promise<Branch> {
+		const headId = await this.#repository.getReference(`refs/heads/${encodeURIComponent(name)}`, abortSignal);
+		const headCommit = await this.#repository.getCommit(headId, abortSignal);
+		return new Branch(this, name, headCommit);
 	}
 
-	getLog(id: AutoId, abortSignal?: AbortSignal): AsyncIterableIterator<Commit> {
-		assertAutoId(id);
-		return this.#repository.walkHistory(id, abortSignal);
+	async getDetachedBranch(id: AutoId, abortSignal?: AbortSignal): Promise<Branch> {
+		const commit = await this.#repository.getCommit(id, abortSignal);
+		return new Branch(this, undefined, commit);
 	}
 
-	async getNodeById(id: AutoId, shallow = true): Promise<Node> {
+	async getNodeById(id: AutoId, shallow = true, abortSignal?: AbortSignal): Promise<Node> {
 		assertAutoId(id);
 		const cachedNode = this.#nodeCache.get(id);
 		if (cachedNode) {
 			const node = cachedNode.deref();
-			if (node) {
+			if (node && !(node instanceof UnloadedNode)) {
 				return node;
 			}
 		}
-		let nodeConstructor: NodeConstructor;
-		const object = await this.#repository.getObject(id);
+		let nodeConstructor: NodeDeserializer;
+		const object = await this.#repository.getObject(id, abortSignal);
 		if (object.kind === "tree") {
 			const tree = await Tree.fromObject(object);
 			nodeConstructor = this.#nodeRegistry.getTreeConstructor(tree.subKind);
 		} else {
 			nodeConstructor = this.#nodeRegistry.getNodeConstructor(object.kind);
 		}
-		const node = await nodeConstructor.fromObject({ object, workspace: this, shallow });
+		const node = await nodeConstructor({ object, workspace: this, shallow, abortSignal });
 		if (node) {
-			if (!shallow) {
-				this.#nodeCache.set(id, new WeakRef(node));
-			}
+			this.#nodeCache.set(id, new WeakRef(node));
 			return node;
 		}
 		throw new NodeNotFoundError(id);
@@ -98,20 +88,60 @@ export class BranchNotFoundError extends Error {
 
 export class Branch {
 	#workspace: Workspace;
-	#branch: string;
-	#commit: Commit;
-	#rootNode: Node | undefined;
-
-	constructor(
-		workspace: Workspace,
-		branch: string,
-		headCommit: Commit,
-		rootNode: Node,
-	) {
+	#name: string | undefined;
+	#headCommit: Commit;
+	#history: Commit[];
+	constructor(workspace: Workspace, name: string | undefined, headCommit: Commit) {
 		this.#workspace = workspace;
+		this.#name = name;
+		this.#headCommit = headCommit;
+		this.#history = [headCommit];
+	}
+
+	get workspace() {
+		return this.#workspace;
+	}
+
+	get name() {
+		return this.#name;
+	}
+
+	get isDetached() {
+		return this.#name === undefined;
+	}
+
+	async *walkHistory(abortSignal?: AbortSignal): AsyncIterableIterator<Commit> {
+		let lastCommitId: AutoId = "";
+		for (const commit of this.#history) {
+			yield commit;
+			lastCommitId = commit.parent;
+		}
+		if (lastCommitId) {
+			for await (const commit of this.#workspace.repository.walkHistory(lastCommitId, abortSignal)) {
+				yield commit;
+				this.#history.push(commit);
+			}
+		}
+	}
+
+	async checkoutDocument(abortSignal?: AbortSignal): Promise<Document> {
+		const rootNode = await this.#workspace.getNodeById(this.#headCommit.tree, true, abortSignal);
+		return new Document(this, this.#headCommit, rootNode);
+	}
+}
+
+export class Document {
+	#branch: Branch;
+	#commit: Commit;
+	#rootNode: Node;
+	constructor(branch: Branch, commit: Commit, rootNode: Node) {
 		this.#branch = branch;
-		this.#commit = headCommit;
+		this.#commit = commit;
 		this.#rootNode = rootNode;
+	}
+
+	get branch() {
+		return this.#branch;
 	}
 
 	get commit() {
@@ -140,24 +170,28 @@ export class Branch {
 	}
 
 	// deno-lint-ignore require-await
-	async executeCommand(command: Command): Promise<Branch> {
-		const rootNode = this.#rootNode?.executeCommand(command);
+	async executeCommand(command: Command): Promise<Document> {
+		const rootNode = this.#rootNode.executeCommand(command);
 		if (rootNode && rootNode !== this.#rootNode) {
-			// // Linked to a reference
-			// if (this.#reference) {
-			// 	for (const node of rootNode) {
-			// 		if (!this.#nodeMap.has(node.id)) {
-			// 			await this.#repository.setObject(node.toObject());
-			// 		}
-			// 	}
-			// 	const commit = new Commit(autoid(), this.#commit!.id, rootNode.id, "Bob <bob@test.local>", new Date(), "...");
-			// 	await this.#repository.setCommit(commit);
-			// 	await this.#repository.setReference(this.#reference, commit.id);
-			// 	this.#commit = commit;
-			// }
+			let changed = false;
+			const oldNodeSet = new Set();
+			for (const node of this.#rootNode) {
+				oldNodeSet.add(node.id);
+			}
+			for (const node of rootNode) {
+				if (!oldNodeSet.has(node.id)) {
+					changed = true;
+					// await this.#repository.setObject(node.toObject());
+				}
+			}
+			if (changed) {
+				// const commit = new Commit(autoid(), this.#commit!.id, rootNode.id, "Bob <bob@test.local>", new Date(), "...");
+				// await this.#repository.setCommit(commit);
+				// await this.#repository.setReference(this.#reference, commit.id);
+				// this.#commit = commit;
+				// TODO onChange callback
+			}
 			this.#rootNode = rootNode;
-			// this.#updateNodeMap();
-			// TODO onChange callback
 		}
 		return this;
 	}

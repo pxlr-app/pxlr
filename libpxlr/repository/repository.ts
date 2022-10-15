@@ -17,9 +17,9 @@ export class Repository {
 		protected readonly fs: Filesystem,
 	) {}
 
-	async getHead(): Promise<Reference> {
+	async getHead(abortSignal?: AbortSignal): Promise<Reference> {
 		try {
-			const headReadableStream = await this.fs.read("/HEAD");
+			const headReadableStream = await this.fs.read("/HEAD", abortSignal);
 			const ref = await readAsText(headReadableStream);
 			assertReference(ref);
 			return ref;
@@ -28,10 +28,10 @@ export class Repository {
 		}
 	}
 
-	async setHead(ref: Reference): Promise<void> {
+	async setHead(ref: Reference, abortSignal?: AbortSignal): Promise<void> {
 		assertReference(ref);
 		try {
-			const headWritableStream = await this.fs.write("/HEAD");
+			const headWritableStream = await this.fs.write("/HEAD", abortSignal);
 			const headWriter = headWritableStream.getWriter();
 			await headWriter.write(this.#textEncoder.encode(ref));
 			await headWriter.close();
@@ -40,10 +40,10 @@ export class Repository {
 		}
 	}
 
-	async getReference(ref: Reference): Promise<AutoId> {
+	async getReference(ref: Reference, abortSignal?: AbortSignal): Promise<AutoId> {
 		assertReference(ref);
 		try {
-			const refReadableStream = await this.fs.read(`/${ref}`);
+			const refReadableStream = await this.fs.read(`/${ref}`, abortSignal);
 			const commitId = await readAsText(refReadableStream);
 			assertAutoId(commitId);
 			return commitId;
@@ -52,11 +52,11 @@ export class Repository {
 		}
 	}
 
-	async writeReference(ref: Reference, commitId: AutoId): Promise<void> {
+	async writeReference(ref: Reference, commitId: AutoId, abortSignal?: AbortSignal): Promise<void> {
 		assertReference(ref);
 		assertAutoId(commitId);
 		try {
-			const refWritableStream = await this.fs.write(`/${ref}`);
+			const refWritableStream = await this.fs.write(`/${ref}`, abortSignal);
 			const refWriter = refWritableStream.getWriter();
 			await refWriter.write(this.#textEncoder.encode(commitId));
 			await refWriter.close();
@@ -65,58 +65,58 @@ export class Repository {
 		}
 	}
 
-	async *listReference(ref: Reference): AsyncIterableIterator<Reference> {
+	async *listReference(ref: Reference, abortSignal?: AbortSignal): AsyncIterableIterator<Reference> {
 		assertReference(ref);
-		for await (const entry of this.fs.list(`/${ref}`)) {
+		for await (const entry of this.fs.list(`/${ref}`, abortSignal)) {
 			yield `${ref}/${entry}`;
 		}
 	}
 
-	async getObject(id: AutoId): Promise<Object> {
+	async getObject(id: AutoId, abortSignal?: AbortSignal): Promise<Object> {
 		assertAutoId(id);
 		let objectReadableStream;
 		try {
-			objectReadableStream = await this.fs.read(`/objects/${id[0]}/${id[1]}/${id}`);
+			objectReadableStream = await this.fs.read(`/objects/${id[0]}/${id[1]}/${id}`, abortSignal);
 		} catch (error) {
 			throw new IOError(error);
 		}
 		return Object.deserialize(objectReadableStream);
 	}
 
-	async writeObject(object: Object): Promise<void> {
+	async writeObject(object: Object, abortSignal?: AbortSignal): Promise<void> {
 		try {
-			const objectWritableStream = await this.fs.write(`/objects/${object.id[0]}/${object.id[1]}/${object.id}`);
+			const objectWritableStream = await this.fs.write(`/objects/${object.id[0]}/${object.id[1]}/${object.id}`, abortSignal);
 			await object.serialize(objectWritableStream);
 		} catch (error) {
 			throw new IOError(error);
 		}
 	}
 
-	async objectExists(id: AutoId): Promise<boolean> {
+	async objectExists(id: AutoId, abortSignal?: AbortSignal): Promise<boolean> {
 		assertAutoId(id);
 		try {
-			return await this.fs.exists(`/objects/${id[0]}/${id[1]}/${id}`);
+			return await this.fs.exists(`/objects/${id[0]}/${id[1]}/${id}`, abortSignal);
 		} catch (_error) {
 			return false;
 		}
 	}
 
-	async getCommit(id: AutoId): Promise<Commit> {
-		const object = await this.getObject(id);
+	async getCommit(id: AutoId, abortSignal?: AbortSignal): Promise<Commit> {
+		const object = await this.getObject(id, abortSignal);
 		return Commit.fromObject(object);
 	}
 
-	async writeCommit(commit: Commit): Promise<void> {
-		return await this.writeObject(commit.toObject());
+	async writeCommit(commit: Commit, abortSignal?: AbortSignal): Promise<void> {
+		return await this.writeObject(commit.toObject(), abortSignal);
 	}
 
-	async getTree(id: AutoId): Promise<Tree> {
-		const object = await this.getObject(id);
+	async getTree(id: AutoId, abortSignal?: AbortSignal): Promise<Tree> {
+		const object = await this.getObject(id, abortSignal);
 		return Tree.fromObject(object);
 	}
 
-	async writeTree(tree: Tree): Promise<void> {
-		return await this.writeObject(tree.toObject());
+	async writeTree(tree: Tree, abortSignal?: AbortSignal): Promise<void> {
+		return await this.writeObject(tree.toObject(), abortSignal);
 	}
 
 	async *walkTree(rootId: AutoId, abortSignal?: AbortSignal): AsyncIterableIterator<Tree> {
@@ -125,7 +125,7 @@ export class Repository {
 			if (abortSignal?.aborted === true) {
 				break;
 			}
-			const tree = await this.getTree(id);
+			const tree = await this.getTree(id, abortSignal);
 			for (const item of tree.items) {
 				if (item.kind === "tree") {
 					queue.push(item.id);
@@ -140,7 +140,7 @@ export class Repository {
 			if (abortSignal?.aborted === true) {
 				break;
 			}
-			const commit = await this.getCommit(commitId);
+			const commit = await this.getCommit(commitId, abortSignal);
 			commitId = commit.parent;
 			yield commit;
 		}

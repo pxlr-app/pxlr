@@ -1,12 +1,12 @@
-import { assertEquals, assertInstanceOf } from "https://deno.land/std@0.158.0/testing/asserts.ts";
+import { assertEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
 import { MemoryFilesystem } from "./repository/filesystem/memory.ts";
 import { Repository } from "./repository/mod.ts";
-import { GroupNode, NodeRegistry, NoteNode, UnloadedNode } from "./nodes/mod.ts";
+import { GroupNodeRegistryEntry, NodeRegistry, NoteNodeRegistryEntry } from "./nodes/mod.ts";
 import { Workspace } from "./workspace.ts";
 
 const nodeRegistry = new NodeRegistry();
-nodeRegistry.registerNodeConstructor("note", NoteNode);
-nodeRegistry.registerTreeConstructor("group", GroupNode);
+nodeRegistry.registerNodeConstructor(NoteNodeRegistryEntry);
+nodeRegistry.registerTreeConstructor(GroupNodeRegistryEntry);
 const fs = makeVirtualFs({
 	[`/refs/heads/main`]: `NYyv8vVWdRah1NLmXcpD`,
 	[`/refs/heads/fix%2Fhero`]: `Wop7bFXo65cxSUFvDcJK`,
@@ -27,7 +27,7 @@ Deno.test("Workspace", async (t) => {
 	await t.step("init", async () => {
 	});
 
-	await t.step("list branches", async () => {
+	await t.step("listBranches", async () => {
 		const workspace = new Workspace({ repository, nodeRegistry });
 		const branches = workspace.listBranches();
 		assertEquals((await branches.next()).value, "main");
@@ -35,48 +35,42 @@ Deno.test("Workspace", async (t) => {
 		assertEquals((await branches.next()).done, true);
 	});
 
-	await t.step("checkout branch", async () => {
+	await t.step("getBranch", async () => {
 		const workspace = new Workspace({ repository, nodeRegistry });
-		const branchMain = await workspace.checkoutBranch("main");
-		const rootMain = branchMain.rootNode as GroupNode;
-		assertEquals(rootMain.id, "utBjcuH46AeQaczTdC12");
-		assertEquals(rootMain.children.length, 1);
-		assertEquals(rootMain.children[0].id, "JzF21pOr54Xn0fGrhQG6");
-
-		const branchFixHero = await workspace.checkoutBranch("fix/hero");
-		const rootFixHero = branchFixHero.rootNode as GroupNode;
-		assertEquals(rootFixHero.id, "utBjcuH46AeQaczTdC12");
-		assertEquals(rootFixHero.children.length, 2);
-		assertEquals(rootFixHero.children[0].id, "JzF21pOr54Xn0fGrhQG6");
-		const group1FixHero = rootFixHero.children[1] as GroupNode;
-		assertEquals(group1FixHero.id, "ZtBjcuH46AeQaczTdC12");
-		assertEquals(group1FixHero.children.length, 1);
-		assertEquals(group1FixHero.children[0].id, "ZzF21pOr54Xn0fGrhQG6");
+		const branchMain = await workspace.getBranch("main");
+		assertEquals(branchMain.name, "main");
+		assertEquals(branchMain.isDetached, false);
 	});
 
-	await t.step("getLog", async () => {
+	await t.step("getDetachedBranch", async () => {
 		const workspace = new Workspace({ repository, nodeRegistry });
-		const logIter = workspace.getLog("Wop7bFXo65cxSUFvDcJK");
-		assertEquals((await logIter.next()).value.message, "dup");
-		assertEquals((await logIter.next()).value.message, "init");
-		assertEquals((await logIter.next()).done, true);
+		const branch = await workspace.getDetachedBranch("Wop7bFXo65cxSUFvDcJK");
+		assertEquals(branch.name, undefined);
+		assertEquals(branch.isDetached, true);
 	});
 });
 
 Deno.test("Branch", async (t) => {
-	await t.step("execute command", async () => {
+	await t.step("walkHistory", async () => {
 		const workspace = new Workspace({ repository, nodeRegistry });
-		const branchMain = await workspace.checkoutBranch("main");
-		const note1 = branchMain.getNodeAtPath(["README"]) as UnloadedNode;
-		assertInstanceOf(note1, UnloadedNode);
-		assertEquals(note1.id, "JzF21pOr54Xn0fGrhQG6");
-		branchMain.executeCommand(await note1.load(workspace));
-		const note2 = branchMain.getNodeAtPath(["README"]) as NoteNode;
-		assertInstanceOf(note2, NoteNode);
-		assertEquals(note2.id, "JzF21pOr54Xn0fGrhQG6");
-		assertEquals(note2.content, "Test1");
+		const branchMain = await workspace.getBranch("main");
+		const historyIter1 = branchMain.walkHistory();
+		assertEquals((await historyIter1.next()).value.id, "NYyv8vVWdRah1NLmXcpD");
+		assertEquals((await historyIter1.next()).done, true);
+		const branchFixHero = await workspace.getBranch("fix/hero");
+		const historyIter2 = branchFixHero.walkHistory();
+		assertEquals((await historyIter2.next()).value.id, "Wop7bFXo65cxSUFvDcJK");
+		assertEquals((await historyIter2.next()).value.id, "NYyv8vVWdRah1NLmXcpD");
+		assertEquals((await historyIter2.next()).done, true);
 	});
-})
+
+	await t.step("checkoutDocument", async () => {
+		const workspace = new Workspace({ repository, nodeRegistry });
+		const branchFixHero = await workspace.getBranch("fix/hero");
+		const docFixHero = await branchFixHero.checkoutDocument();
+		console.log(Deno.inspect(docFixHero.rootNode, { depth: 10 }));
+	});
+});
 
 function makeVirtualFs(files: Record<string, string>) {
 	const encoder = new TextEncoder();

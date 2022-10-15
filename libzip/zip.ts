@@ -111,7 +111,7 @@ export class Zip {
 		throw new FileNameNotExistsError(fileName);
 	}
 
-	async putDirectory(options: { fileName: string; fileComment?: string; fileLastModificationDate?: Date }): Promise<void> {
+	async putDirectory(options: { fileName: string; fileComment?: string; fileLastModificationDate?: Date; abortSignal?: AbortSignal }): Promise<void> {
 		const writableStream = await this.#put({
 			...options,
 			fileName: options.fileName.replace(/\/+$/, "") + "/",
@@ -122,7 +122,7 @@ export class Zip {
 	}
 
 	putFile(
-		options: { fileName: string; fileComment?: string; fileLastModificationDate?: Date; compressionMethod: number },
+		options: { fileName: string; fileComment?: string; fileLastModificationDate?: Date; compressionMethod: number; abortSignal?: AbortSignal },
 	): Promise<WritableStream<Uint8Array>> {
 		return this.#put({
 			...options,
@@ -131,13 +131,14 @@ export class Zip {
 	}
 
 	async #put(
-		{ fileName, extraField, fileComment, fileLastModificationDate, generalPurposeBitFlag, compressionMethod }: {
+		{ fileName, extraField, fileComment, fileLastModificationDate, generalPurposeBitFlag, compressionMethod, abortSignal }: {
 			fileName: string;
 			extraField?: Uint8Array;
 			fileComment?: string;
 			generalPurposeBitFlag: number;
 			compressionMethod: number;
 			fileLastModificationDate?: Date;
+			abortSignal?: AbortSignal
 		},
 	): Promise<WritableStream<Uint8Array>> {
 		if (!this.#file || !this.#endOfCentralDirectoryRecord) {
@@ -181,12 +182,12 @@ export class Zip {
 		// Setup pipeline
 		if (newLocalFileHeader.compressionMethod === 8) {
 			const compressionTransform = new CompressionStream("deflate-raw");
-			uncompressedTransform.readable.pipeThrough(compressionTransform);
-			compressionTransform.readable.pipeThrough(compressedTransform);
+			uncompressedTransform.readable.pipeThrough(compressionTransform, { signal: abortSignal });
+			compressionTransform.readable.pipeThrough(compressedTransform, { signal: abortSignal });
 		} else {
-			uncompressedTransform.readable.pipeThrough(compressedTransform);
+			uncompressedTransform.readable.pipeThrough(compressedTransform, { signal: abortSignal });
 		}
-		const pipeline = compressedTransform.readable.pipeTo(contentWritableStream);
+		const pipeline = compressedTransform.readable.pipeTo(contentWritableStream, { signal: abortSignal });
 
 		// Get contentWriter
 		const contentWriter = uncompressedTransform.writable.getWriter();

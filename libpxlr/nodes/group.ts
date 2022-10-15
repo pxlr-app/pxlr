@@ -3,8 +3,25 @@ import { AddChildCommand, Command, MoveChildCommand, RemoveChildCommand, RenameC
 import { Object } from "../repository/object.ts";
 import { Tree } from "../repository/tree.ts";
 import { Node } from "./node.ts";
-import { NodeConstructorOptions } from "./registry.ts";
+import { NodeRegistryEntry } from "./registry.ts";
 import { UnloadedNode } from "./mod.ts";
+
+export const GroupNodeRegistryEntry = new NodeRegistryEntry("group", async ({ object, workspace, shallow }) => {
+	const tree = await Tree.fromObject(object);
+	const children: Node[] = [];
+	for (const item of tree.items) {
+		let node: Node;
+		if (item.kind === "tree") {
+			node = await workspace.getNodeById(item.id, shallow);
+		} else if (shallow) {
+			node = new UnloadedNode(item.id, item.kind, item.name);
+		} else {
+			node = await workspace.getNodeById(item.id);
+		}
+		children.push(node);
+	}
+	return new GroupNode(tree.id, tree.name, children);
+});
 
 export class GroupNode extends Node {
 	public constructor(
@@ -87,23 +104,6 @@ export class GroupNode extends Node {
 
 	toObject(): Object {
 		return new Tree(this.id, "group", this.name, this.children.map((node) => ({ id: node.id, kind: node.kind, name: node.name }))).toObject();
-	}
-
-	static async fromObject({ object, workspace, shallow }: NodeConstructorOptions): Promise<Node> {
-		const tree = await Tree.fromObject(object);
-		const children: Node[] = [];
-		for (const item of tree.items) {
-			let node: Node;
-			if (item.kind === "tree") {
-				node = await workspace.getNodeById(item.id, shallow);
-			} else if (shallow) {
-				node = new UnloadedNode(item.id, item.kind, item.name);
-			} else {
-				node = await workspace.getNodeById(item.id);
-			}
-			children.push(node);
-		}
-		return new GroupNode(tree.id, tree.name, children);
 	}
 
 	addChild(childNode: Node): AddChildCommand {
