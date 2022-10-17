@@ -125,6 +125,11 @@ export class GroupNode extends Node {
 		return new RemoveChildCommand(this.id, childId);
 	}
 
+	getChildByHash(hash: AutoId): Node | undefined {
+		assertAutoId(hash);
+		return this.children.find((child) => child.hash === hash);
+	}
+
 	getChildById(id: AutoId): Node | undefined {
 		assertAutoId(id);
 		return this.children.find((child) => child.id === id);
@@ -134,14 +139,38 @@ export class GroupNode extends Node {
 		return this.children.find((child) => child.name === name);
 	}
 
-	getChildAtPath(path: string[]): Node | undefined {
+	getChildAtHashPath(path: string[]): Node | undefined {
+		const hash = path.shift();
+		if (hash) {
+			const next = this.getChildByHash(hash);
+			if (path.length === 0) {
+				return next;
+			} else if (next && next instanceof GroupNode) {
+				return next.getChildAtHashPath(path);
+			}
+		}
+	}
+
+	getChildAtIdPath(path: string[]): Node | undefined {
+		const id = path.shift();
+		if (id) {
+			const next = this.getChildById(id);
+			if (path.length === 0) {
+				return next;
+			} else if (next && next instanceof GroupNode) {
+				return next.getChildAtIdPath(path);
+			}
+		}
+	}
+
+	getChildAtNamePath(path: string[]): Node | undefined {
 		const name = path.shift();
 		if (name) {
 			const next = this.getChildByName(name);
 			if (path.length === 0) {
 				return next;
 			} else if (next && next instanceof GroupNode) {
-				return next.getChildAtPath(path);
+				return next.getChildAtNamePath(path);
 			}
 		}
 	}

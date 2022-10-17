@@ -152,6 +152,17 @@ export class Document {
 		return this.#rootNode;
 	}
 
+	getNodeByHash(hash: AutoId): Node | undefined {
+		assertAutoId(hash);
+		if (this.#rootNode) {
+			for (const node of this.#rootNode) {
+				if (node.hash === hash) {
+					return node;
+				}
+			}
+		}
+	}
+
 	getNodeById(id: AutoId): Node | undefined {
 		assertAutoId(id);
 		if (this.#rootNode) {
@@ -163,9 +174,15 @@ export class Document {
 		}
 	}
 
-	getNodeAtPath(path: string[]): Node | undefined {
+	getNodeAtIdPath(path: string[]): Node | undefined {
 		if (this.#rootNode && this.#rootNode instanceof GroupNode) {
-			return this.#rootNode.getChildAtPath(path);
+			return this.#rootNode.getChildAtIdPath(path);
+		}
+	}
+
+	getNodeAtNamePath(path: string[]): Node | undefined {
+		if (this.#rootNode && this.#rootNode instanceof GroupNode) {
+			return this.#rootNode.getChildAtNamePath(path);
 		}
 	}
 

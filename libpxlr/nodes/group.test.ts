@@ -100,6 +100,15 @@ Deno.test("GroupNode", async (t) => {
 		assertEquals(iter1.next(), { done: true, value: undefined });
 	});
 
+	await t.step("get child by hash", () => {
+		const child1 = GroupNode.new("Child1", []);
+		const child2 = GroupNode.new("Child2", []);
+		const parent1 = GroupNode.new("Parent", [child1, child2]);
+		const root1 = GroupNode.new("Root", [parent1]);
+		assertEquals(root1.getChildByHash(parent1.hash), parent1);
+		assertEquals(parent1.getChildByHash(child2.hash), child2);
+	});
+
 	await t.step("get child by id", () => {
 		const child1 = GroupNode.new("Child1", []);
 		const child2 = GroupNode.new("Child2", []);
@@ -118,12 +127,30 @@ Deno.test("GroupNode", async (t) => {
 		assertEquals(parent1.getChildByName("Child2"), child2);
 	});
 
-	await t.step("get child at path", () => {
+	await t.step("get child at hash path", () => {
 		const child1 = GroupNode.new("Child1", []);
 		const child2 = GroupNode.new("Child2", []);
 		const parent1 = GroupNode.new("Parent", [child1, child2]);
 		const root1 = GroupNode.new("Root", [parent1]);
-		assertEquals(root1.getChildAtPath(["Parent", "Child1"]), child1);
-		assertEquals(root1.getChildAtPath(["Parent", "Child2"]), child2);
+		assertEquals(root1.getChildAtHashPath([parent1.hash, child1.hash]), child1);
+		assertEquals(root1.getChildAtHashPath([parent1.hash, child2.hash]), child2);
+	});
+
+	await t.step("get child at id path", () => {
+		const child1 = GroupNode.new("Child1", []);
+		const child2 = GroupNode.new("Child2", []);
+		const parent1 = GroupNode.new("Parent", [child1, child2]);
+		const root1 = GroupNode.new("Root", [parent1]);
+		assertEquals(root1.getChildAtIdPath([parent1.id, child1.id]), child1);
+		assertEquals(root1.getChildAtIdPath([parent1.id, child2.id]), child2);
+	});
+
+	await t.step("get child at name path", () => {
+		const child1 = GroupNode.new("Child1", []);
+		const child2 = GroupNode.new("Child2", []);
+		const parent1 = GroupNode.new("Parent", [child1, child2]);
+		const root1 = GroupNode.new("Root", [parent1]);
+		assertEquals(root1.getChildAtNamePath([parent1.name, child1.name]), child1);
+		assertEquals(root1.getChildAtNamePath([parent1.name, child2.name]), child2);
 	});
 });
