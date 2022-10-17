@@ -44,7 +44,10 @@ export class Zip {
 				if (!(error instanceof EndOfCentralDirectoryRecordNotFoundError)) {
 					throw error;
 				}
+				// Move back to end of file
+				this.#endOfCentralDirectoryRecordOffset = await this.#file.seek(0, SeekFrom.End);
 				this.#endOfCentralDirectoryRecord = new EndOfCentralDirectoryRecord();
+				this.#endOfCentralDirectoryRecord.offsetOfStartOfCentralDirectory = this.#endOfCentralDirectoryRecordOffset;
 			}
 		}
 	}
@@ -53,6 +56,7 @@ export class Zip {
 	async close() {
 		this.#file = undefined;
 		this.#endOfCentralDirectoryRecord = undefined;
+		this.#endOfCentralDirectoryRecordOffset = 0;
 		this.#centralDirectoryFileHeaders = [];
 	}
 
@@ -251,7 +255,7 @@ export class Zip {
 
 	async #findEndOfCentralDirectoryRecord(): Promise<number> {
 		if (this.#file) {
-			const buffer = new Uint8Array(100);
+			const buffer = new Uint8Array(1024);
 			const view = new DataView(buffer.buffer);
 			for (let offset = 22; offset < 0xFFFF;) {
 				try {
