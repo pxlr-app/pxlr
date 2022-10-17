@@ -117,7 +117,7 @@ export class Branch {
 			lastCommitId = commit.parent;
 		}
 		if (lastCommitId) {
-			for await (const commit of this.#workspace.repository.walkHistory(lastCommitId, abortSignal)) {
+			for await (const commit of this.#workspace.repository.iterHistory(lastCommitId, abortSignal)) {
 				yield commit;
 				this.#history.push(commit);
 			}

@@ -5,12 +5,36 @@ import { Workspace } from "../workspace.ts";
 import { NodeConstructorOptions } from "./registry.ts";
 
 export abstract class Node {
+	#hash: AutoId;
+	#id: AutoId;
+	#kind: string;
+	#name: string;
+
 	public constructor(
-		public readonly id: AutoId,
-		public readonly kind: string,
-		public readonly name: string,
+		hash: AutoId,
+		id: AutoId,
+		kind: string,
+		name: string,
 	) {
+		assertAutoId(hash);
 		assertAutoId(id);
+		this.#hash = hash;
+		this.#id = id;
+		this.#kind = kind;
+		this.#name = name;
+	}
+
+	get hash() {
+		return this.#hash;
+	}
+	get id() {
+		return this.#id;
+	}
+	get kind() {
+		return this.#kind;
+	}
+	get name() {
+		return this.#name;
 	}
 
 	*iter(): IterableIterator<Node> {
@@ -29,21 +53,22 @@ export abstract class Node {
 
 export class UnloadedNode extends Node {
 	public constructor(
+		hash: string,
 		id: string,
 		kind: string,
 		name: string,
 	) {
-		super(id, kind, name);
+		super(hash, id, kind, name);
 	}
 
 	static new(kind: string, name: string) {
-		return new UnloadedNode(autoid(), kind, name);
+		return new UnloadedNode(autoid(), autoid(), kind, name);
 	}
 
 	executeCommand(command: Command): Node {
 		if (command.target === this.id) {
 			if (command instanceof RenameCommand) {
-				return new UnloadedNode(autoid(), this.kind, command.renameTo);
+				return new UnloadedNode(autoid(), this.id, this.kind, command.renameTo);
 			} else if (command instanceof ReplaceNodeCommand) {
 				return command.node;
 			}
@@ -58,7 +83,7 @@ export class UnloadedNode extends Node {
 
 	// deno-lint-ignore require-await
 	static async fromObject({ object }: NodeConstructorOptions): Promise<Node> {
-		return new UnloadedNode(object.id, object.kind, object.headers.get("name") ?? "_");
+		return new UnloadedNode(object.id, object.headers.get("id") ?? "", object.kind, object.headers.get("name") ?? "_");
 	}
 
 	async load(workspace: Workspace): Promise<ReplaceNodeCommand> {

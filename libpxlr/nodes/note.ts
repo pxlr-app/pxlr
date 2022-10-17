@@ -1,32 +1,39 @@
-import { autoid } from "../autoid.ts";
+import { AutoId, autoid } from "../autoid.ts";
 import { Command, RenameCommand, ReplaceNodeCommand, SetContentCommand } from "./commands/mod.ts";
 import { Object } from "../repository/mod.ts";
 import { Node } from "./node.ts";
 import { NodeRegistryEntry } from "./registry.ts";
 
 export const NoteNodeRegistryEntry = new NodeRegistryEntry("note", async ({ object }) => {
-	return new NoteNode(object.id, object.headers.get("name") ?? "", await object.text());
+	return new NoteNode(object.id, object.id, object.headers.get("name") ?? "", await object.text());
 });
 
 export class NoteNode extends Node {
+	#content: string;
 	public constructor(
-		id: string,
+		hash: AutoId,
+		id: AutoId,
 		name: string,
-		public readonly content: string,
+		content: string,
 	) {
-		super(id, "note", name);
+		super(hash, id, "note", name);
+		this.#content = content;
+	}
+
+	get content() {
+		return this.#content;
 	}
 
 	static new(name: string, content: string) {
-		return new NoteNode(autoid(), name, content);
+		return new NoteNode(autoid(), autoid(), name, content);
 	}
 
 	executeCommand(command: Command): Node {
 		if (command.target === this.id) {
 			if (command instanceof RenameCommand) {
-				return new NoteNode(autoid(), command.renameTo, this.content);
+				return new NoteNode(autoid(), this.id, command.renameTo, this.content);
 			} else if (command instanceof SetContentCommand) {
-				return new NoteNode(autoid(), this.name, command.newContent);
+				return new NoteNode(autoid(), this.id, this.name, command.newContent);
 			} else if (command instanceof ReplaceNodeCommand) {
 				return command.node;
 			}
@@ -35,7 +42,7 @@ export class NoteNode extends Node {
 	}
 
 	toObject(): Object {
-		return new Object(this.id, "note", { name: this.name }, this.content);
+		return new Object(this.hash, this.id, "note", { name: this.name }, this.content);
 	}
 
 	setContent(newContent: string): SetContentCommand {

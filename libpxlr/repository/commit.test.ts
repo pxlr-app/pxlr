@@ -7,7 +7,7 @@ Deno.test("CommitObject", async (t) => {
 		const commit1 = new Commit(autoid(), autoid(), autoid(), "John Doe <jdoe@example.org>", new Date(), "init");
 		const obj1 = commit1.toObject();
 		const commit2 = await Commit.fromObject(obj1);
-		assertEquals(commit2.id, commit1.id);
+		assertEquals(commit2.hash, commit1.hash);
 		assertEquals(commit2.parent, commit1.parent);
 		assertEquals(commit2.tree, commit1.tree);
 		assertEquals(commit2.commiter, commit1.commiter);

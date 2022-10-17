@@ -4,21 +4,52 @@ const textDecoder = new TextDecoder("utf-8");
 const textEncoder = new TextEncoder();
 
 export class Object {
-	public readonly headers: ReadonlyMap<string, string>;
+	#hash: AutoId;
+	#id: AutoId;
+	#kind: string;
+	#headers: ReadonlyMap<string, string>;
+	#body?: ReadableStream | ArrayBuffer | string | undefined;
 
 	constructor(
-		public readonly id: AutoId,
-		public readonly kind: string,
+		hash: AutoId,
+		id: AutoId,
+		kind: string,
 		headers: Record<string, string> | Map<string, string> = {},
-		public readonly body?: ReadableStream | ArrayBuffer | string | undefined,
+		body?: ReadableStream | ArrayBuffer | string | undefined,
 	) {
+		assertAutoId(hash);
 		assertAutoId(id);
-		this.headers = headers instanceof Map ? headers : new Map(globalThis.Object.entries(headers));
+		this.#hash = hash;
+		this.#id = id;
+		this.#kind = kind;
+		this.#headers = headers instanceof Map ? headers : new Map(globalThis.Object.entries(headers));
+		this.#body = body;
+	}
+
+	get hash() {
+		return this.#hash;
+	}
+	get id() {
+		return this.#id;
+	}
+	get kind() {
+		return this.#kind;
+	}
+	get headers() {
+		return this.#headers;
+	}
+	get body() {
+		return this.#body;
+	}
+
+	private set body(value) {
+		this.#body = value;
 	}
 
 	async serialize(stream: WritableStream) {
 		const encoder = new TextEncoder();
 		const writer = stream.getWriter();
+		await writer.write(encoder.encode(`hash ${this.hash}\r\n`));
 		await writer.write(encoder.encode(`id ${this.id}\r\n`));
 		await writer.write(encoder.encode(`kind ${this.kind}\r\n`));
 		for (const [key, value] of this.headers) {
@@ -109,11 +140,14 @@ export class Object {
 				}
 			}
 		}
+		const hash = headers.get("hash") ?? "";
+		headers.delete("hash");
+		assertAutoId(hash);
 		const id = headers.get("id") ?? "";
 		headers.delete("id");
 		assertAutoId(id);
 		const kind = headers.get("kind") ?? "";
 		headers.delete("kind");
-		return new Object(id, kind, headers, body);
+		return new Object(hash, id, kind, headers, body);
 	}
 }

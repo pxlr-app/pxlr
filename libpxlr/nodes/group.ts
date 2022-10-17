@@ -14,26 +14,33 @@ export const GroupNodeRegistryEntry = new NodeRegistryEntry("group", async ({ ob
 		if (item.kind === "tree") {
 			node = await workspace.getNodeById(item.id, shallow);
 		} else if (shallow) {
-			node = new UnloadedNode(item.id, item.kind, item.name);
+			node = new UnloadedNode(item.hash, item.id, item.kind, item.name);
 		} else {
 			node = await workspace.getNodeById(item.id);
 		}
 		children.push(node);
 	}
-	return new GroupNode(tree.id, tree.name, children);
+	return new GroupNode(tree.hash, tree.id, tree.name, children);
 });
 
 export class GroupNode extends Node {
+	#children: ReadonlyArray<Node>;
 	public constructor(
-		id: string,
+		hash: AutoId,
+		id: AutoId,
 		name: string,
-		public readonly children: ReadonlyArray<Node>,
+		children: ReadonlyArray<Node>,
 	) {
-		super(id, "group", name);
+		super(hash, id, "group", name);
+		this.#children = children;
+	}
+
+	get children() {
+		return this.#children;
 	}
 
 	static new(name: string, children: Node[]) {
-		return new GroupNode(autoid(), name, children);
+		return new GroupNode(autoid(), autoid(), name, children);
 	}
 
 	*iter(): IterableIterator<Node> {
@@ -46,14 +53,14 @@ export class GroupNode extends Node {
 	executeCommand(command: Command): Node {
 		if (command.target === this.id) {
 			if (command instanceof RenameCommand) {
-				return new GroupNode(autoid(), command.renameTo, this.children);
+				return new GroupNode(autoid(), this.id, command.renameTo, this.children);
 			} else if (command instanceof AddChildCommand) {
 				const name = command.childNode.name;
 				if (this.children.find((child) => child.name === name)) {
 					throw new ChildWithNameExistsError(name);
 				}
 				const children = Array.from(new Set(this.children.concat(command.childNode)));
-				return new GroupNode(autoid(), this.name, children);
+				return new GroupNode(autoid(), this.id, this.name, children);
 			} else if (command instanceof RemoveChildCommand) {
 				const childIndex = this.children.findIndex((node) => node.id === command.childId);
 				if (childIndex > -1) {
@@ -61,7 +68,7 @@ export class GroupNode extends Node {
 						...this.children.slice(0, childIndex),
 						...this.children.slice(childIndex + 1),
 					];
-					return new GroupNode(autoid(), this.name, children);
+					return new GroupNode(autoid(), this.id, this.name, children);
 				}
 				return this;
 			} else if (command instanceof MoveChildCommand) {
@@ -74,7 +81,7 @@ export class GroupNode extends Node {
 					} else {
 						children.splice(command.position, 0, child);
 					}
-					return new GroupNode(autoid(), this.name, children);
+					return new GroupNode(autoid(), this.id, this.name, children);
 				}
 				return this;
 			} else if (command instanceof ReplaceNodeCommand) {
@@ -97,13 +104,13 @@ export class GroupNode extends Node {
 			return newNode;
 		});
 		if (mutated) {
-			return new GroupNode(command instanceof ReplaceNodeCommand ? this.id : autoid(), this.name, children);
+			return new GroupNode(command instanceof ReplaceNodeCommand ? this.hash : autoid(), this.id, this.name, children);
 		}
 		return this;
 	}
 
 	toObject(): Object {
-		return new Tree(this.id, "group", this.name, this.children.map((node) => ({ id: node.id, kind: node.kind, name: node.name }))).toObject();
+		return new Tree(this.hash, this.id, "group", this.name, this.children.map((node) => ({ hash: node.hash, id: node.id, kind: node.kind, name: node.name }))).toObject();
 	}
 
 	addChild(childNode: Node): AddChildCommand {

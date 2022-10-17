@@ -30,6 +30,7 @@ export class MemoryFilesystem extends Filesystem {
 					.map((key) => key.substring(path.length + 1).split("/").shift()!),
 			),
 		);
+		entries.sort();
 		yield* entries;
 	}
 

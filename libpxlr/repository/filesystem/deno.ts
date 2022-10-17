@@ -2,8 +2,14 @@ import { join } from "https://deno.land/std@0.156.0/path/mod.ts";
 import { Filesystem } from "./filesystem.ts";
 
 export class DenoFilesystem extends Filesystem {
-	constructor(public readonly root: string) {
+	#root: string;
+	constructor(root: string) {
 		super();
+		this.#root = root;
+	}
+
+	get root() {
+		return this.#root;
 	}
 
 	async exists(path: string) {

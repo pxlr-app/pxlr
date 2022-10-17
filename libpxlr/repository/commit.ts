@@ -2,24 +2,55 @@ import { assertAutoId, AutoId } from "../autoid.ts";
 import { Object } from "./object.ts";
 
 export class Commit {
+	#hash: AutoId;
+	#parent: AutoId;
+	#tree: AutoId;
+	#commiter: string;
+	#date: Date;
+	#message: string;
 	constructor(
-		public readonly id: AutoId,
-		public readonly parent: AutoId,
-		public readonly tree: AutoId,
-		public readonly commiter: string,
-		public readonly date: Date,
-		public readonly message: string,
+		hash: AutoId,
+		parent: AutoId,
+		tree: AutoId,
+		commiter: string,
+		date: Date,
+		message: string,
 	) {
-		assertAutoId(id);
+		assertAutoId(hash);
 		parent && assertAutoId(parent);
 		tree && assertAutoId(tree);
+		this.#hash = hash;
+		this.#parent = parent;
+		this.#tree = tree;
 		// TODO validate commiter
+		this.#commiter = commiter;
 		// TODO validate date
+		this.#date = date;
 		// TODO validate message
+		this.#message = message;
+	}
+
+	get hash() {
+		return this.#hash;
+	}
+	get parent() {
+		return this.#parent;
+	}
+	get tree() {
+		return this.#tree;
+	}
+	get commiter() {
+		return this.#commiter;
+	}
+	get date() {
+		return this.#date;
+	}
+	get message() {
+		return this.#message;
 	}
 
 	toObject(): Object {
-		return new Object(this.id, "commit", {
+		return new Object(this.hash, this.hash, "commit", {
 			parent: this.parent,
 			tree: this.tree,
 			commiter: this.commiter,
@@ -29,7 +60,7 @@ export class Commit {
 
 	static async fromObject(object: Object): Promise<Commit> {
 		return new Commit(
-			object.id,
+			object.hash,
 			object.headers.get("parent") ?? "",
 			object.headers.get("tree") ?? "",
 			object.headers.get("commiter") ?? "",
