@@ -77,23 +77,19 @@ export class Zip {
 
 	async #getLocalFileHeader(fileName: string, abortSignal?: AbortSignal): Promise<[Readonly<CentralDirectoryFileHeader>, Readonly<LocalFileHeader>]> {
 		if (this.#file) {
-			for (const centralDirectoryFileHeader of this.iterCentralDirectoryFileHeaders()) {
-				abortSignal?.throwIfAborted();
-				if (centralDirectoryFileHeader.fileName === fileName) {
-					await this.#file.seek(centralDirectoryFileHeader.relativeOffsetOfLocalFileHeader, SeekFrom.Start);
-					abortSignal?.throwIfAborted();
-					const localFileHeaderBytes = new Uint8Array(30);
-					await this.#file.readIntoBuffer(localFileHeaderBytes);
-					abortSignal?.throwIfAborted();
-					const localFileHeader = LocalFileHeader.parse(localFileHeaderBytes);
-					const variableBufferLength = localFileHeader.fileNameLength + localFileHeader.extraFieldLength;
-					const variableBufferBytes = new Uint8Array(variableBufferLength);
-					await this.#file.readIntoBuffer(variableBufferBytes);
-					abortSignal?.throwIfAborted();
-					localFileHeader.parseVariableBuffer(variableBufferBytes);
-					return [centralDirectoryFileHeader, localFileHeader];
-				}
-			}
+			const centralDirectoryFileHeader = this.getCentralDirectoryFileHeader(fileName);
+			await this.#file.seek(centralDirectoryFileHeader.relativeOffsetOfLocalFileHeader, SeekFrom.Start);
+			abortSignal?.throwIfAborted();
+			const localFileHeaderBytes = new Uint8Array(30);
+			await this.#file.readIntoBuffer(localFileHeaderBytes);
+			abortSignal?.throwIfAborted();
+			const localFileHeader = LocalFileHeader.parse(localFileHeaderBytes);
+			const variableBufferLength = localFileHeader.fileNameLength + localFileHeader.extraFieldLength;
+			const variableBufferBytes = new Uint8Array(variableBufferLength);
+			await this.#file.readIntoBuffer(variableBufferBytes);
+			abortSignal?.throwIfAborted();
+			localFileHeader.parseVariableBuffer(variableBufferBytes);
+			return [centralDirectoryFileHeader, localFileHeader];
 		}
 		throw new FileNameNotExistsError(fileName);
 	}
