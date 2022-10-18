@@ -6,7 +6,7 @@ const textEncoder = new TextEncoder();
 
 export class Zip {
 	#file: File | undefined;
-	#endOfCentralDirectoryRecord: EndOfCentralDirectoryRecord | undefined;
+	#endOfCentralDirectoryRecord: EndOfCentralDirectoryRecord | EndOfCentralDirectoryRecord64 | undefined;
 	#offsetEndOfCentralDirectoryRecord: number;
 	#offsetOfStartOfCentralDirectory: number;
 	#centralDirectoryFileHeaders: CentralDirectoryFileHeader[];
@@ -23,14 +23,19 @@ export class Zip {
 		if (this.#file) {
 			try {
 				// Find EndOfCentralDirectoryRecordOffset location
-				const offsetEndOfCentralDirectoryRecord = await this.#findEndOfCentralDirectoryRecord();
+				const [offsetEndOfCentralDirectoryRecord, isZip64] = await this.#findEndOfCentralDirectoryRecord();
+				if (isZip64) {
+					throw new Error('ZIP64!');
+				}
 				abortSignal?.throwIfAborted();
 				// Goto EndOfCentralDirectoryRecordOffset location
 				this.#offsetEndOfCentralDirectoryRecord = await this.#file.seek(offsetEndOfCentralDirectoryRecord, SeekFrom.End);
 				// Read and parse EndOfCentralDirectoryRecordOffset
 				const endOfCentralDirectoryRecordBytes = new Uint8Array(-offsetEndOfCentralDirectoryRecord);
 				await this.#file.readIntoBuffer(endOfCentralDirectoryRecordBytes);
-				this.#endOfCentralDirectoryRecord = EndOfCentralDirectoryRecord.parse(endOfCentralDirectoryRecordBytes);
+				this.#endOfCentralDirectoryRecord = isZip64
+					? EndOfCentralDirectoryRecord64.parse(endOfCentralDirectoryRecordBytes)
+					: EndOfCentralDirectoryRecord.parse(endOfCentralDirectoryRecordBytes);
 				abortSignal?.throwIfAborted();
 				// Move to the start of CentralDirectory
 				this.#offsetOfStartOfCentralDirectory = await this.#file.seek(this.#endOfCentralDirectoryRecord.offsetOfStartOfCentralDirectory, SeekFrom.Start);
@@ -45,6 +50,9 @@ export class Zip {
 					const variableBufferLength = centralDirectoryFileHeader.fileNameLength + centralDirectoryFileHeader.extraFieldLength + centralDirectoryFileHeader.fileCommentLength;
 					const variableBufferBytes = centralDirectoryBytes.slice(offset + 46, offset + 46 + variableBufferLength);
 					centralDirectoryFileHeader.parseVariableBuffer(variableBufferBytes);
+					if (isZip64) {
+						throw new Error("Zip64ExtendedInformationExtraField!!!");
+					}
 					centralDirectoryFileHeader.offsetCentralDirectoryFileHeader = this.#offsetOfStartOfCentralDirectory + offset;
 					offset += 46 + variableBufferLength;
 					this.#centralDirectoryFileHeaders.push(centralDirectoryFileHeader);
@@ -167,7 +175,7 @@ export class Zip {
 			throw new Error("No more file?!");
 		}
 		const newLocalFileHeader = new LocalFileHeader();
-		const newDataDescriptor = new DataDescriptor();
+		const newDataDescriptor = new DataDescriptor64();
 
 		// Move to start of EndOfCentralDirectoryRecordOffset
 		const offsetOfLocalFileHeader = await this.#file.seek(this.#offsetOfStartOfCentralDirectory, SeekFrom.Start);
@@ -177,6 +185,8 @@ export class Zip {
 		newLocalFileHeader.compressionMethod = compressionMethod;
 		newLocalFileHeader.fileLastModificationDate = fileLastModificationDate ?? new Date();
 		newLocalFileHeader.fileName = fileName;
+		newLocalFileHeader.compressedSize = 0xFFFFFFFF;
+		newLocalFileHeader.uncompressedSize = 0xFFFFFFFF;
 		newLocalFileHeader.extraField = extraField ?? new Uint8Array();
 		const localFileHeaderBytes = newLocalFileHeader.toBuffer();
 		await this.#file.writeBuffer(localFileHeaderBytes);
@@ -239,12 +249,13 @@ export class Zip {
 				centralDirectoryFileHeader.versionMadeBy = 798;
 				centralDirectoryFileHeader.versionNeededToExtract = newLocalFileHeader.versionNeededToExtract;
 				centralDirectoryFileHeader.generalPurposeBitFlag = newLocalFileHeader.generalPurposeBitFlag;
-				centralDirectoryFileHeader.compressionMethod = newLocalFileHeader.compressionMethod;
-				centralDirectoryFileHeader.uncompressedSize = newDataDescriptor.uncompressedSize;
-				centralDirectoryFileHeader.crcOfUncompressedData = newDataDescriptor.crcOfUncompressedData;
-				centralDirectoryFileHeader.compressedSize = newDataDescriptor.compressedSize;
 				centralDirectoryFileHeader.fileLastModificationDate = newLocalFileHeader.fileLastModificationDate;
-				centralDirectoryFileHeader.relativeOffsetOfLocalFileHeader = offsetOfLocalFileHeader;
+				centralDirectoryFileHeader.compressionMethod = newLocalFileHeader.compressionMethod;
+				centralDirectoryFileHeader.crcOfUncompressedData = newDataDescriptor.crcOfUncompressedData;
+				centralDirectoryFileHeader.uncompressedSize = 0xFFFFFFFF;
+				centralDirectoryFileHeader.compressedSize = 0xFFFFFFFF;
+				centralDirectoryFileHeader.relativeOffsetOfLocalFileHeader = 0xFFFFFFFF;
+				centralDirectoryFileHeader.extraField = newDataDescriptor.toBuffer(true, true);
 				if (
 					centralDirectoryFileHeader.fileName !== newLocalFileHeader.fileName ||
 					centralDirectoryFileHeader.fileComment !== fileComment ||
@@ -253,7 +264,6 @@ export class Zip {
 					centralDirectoryFileHeader.offsetCentralDirectoryFileHeader = 0;
 					centralDirectoryFileHeader.fileName = newLocalFileHeader.fileName;
 					centralDirectoryFileHeader.fileComment = fileComment ?? "";
-					centralDirectoryFileHeader.extraField = newLocalFileHeader.extraField;
 				}
 			},
 		});
@@ -271,7 +281,9 @@ export class Zip {
 				// Was overritten
 				cdfh.offsetCentralDirectoryFileHeader < this.#offsetOfStartOfCentralDirectory ||
 				// or a hole was introduced by modifying existing central directory file header
-				(prevUncorrupted && prevUncorrupted.offsetCentralDirectoryFileHeader + 46 + prevUncorrupted.fileNameLength + prevUncorrupted.extraFieldLength + prevUncorrupted.fileCommentLength === cdfh.offsetCentralDirectoryFileHeader)
+				(prevUncorrupted &&
+					prevUncorrupted.offsetCentralDirectoryFileHeader + 46 + prevUncorrupted.fileNameLength + prevUncorrupted.extraFieldLength + prevUncorrupted.fileCommentLength ===
+						cdfh.offsetCentralDirectoryFileHeader)
 			) {
 				corruptedCentralDirectoryFileHeaders.push(cdfh);
 			} else {
@@ -305,10 +317,14 @@ export class Zip {
 		// Update and write EndOfCentralDirectoryRecord
 		this.#offsetOfStartOfCentralDirectory = offsetOfStartOfCentralDirectoryFileHeaders;
 		this.#offsetEndOfCentralDirectoryRecord = offsetOfEndOfCentralDirectoryFileHeaders;
-		this.#endOfCentralDirectoryRecord!.offsetOfStartOfCentralDirectory = this.#offsetOfStartOfCentralDirectory;
-		this.#endOfCentralDirectoryRecord!.sizeOfCentralDirectory = offsetOfEndOfCentralDirectoryFileHeaders - offsetOfStartOfCentralDirectoryFileHeaders;
-		this.#endOfCentralDirectoryRecord!.numberOfCentralDirectoryRecords = this.#centralDirectoryFileHeaders.length;
-		this.#endOfCentralDirectoryRecord!.totalNumberOfCentralDirectoryRecords = this.#endOfCentralDirectoryRecord!.numberOfCentralDirectoryRecords;
+		const endOfCentralDirectoryRecord = new EndOfCentralDirectoryRecord64();
+		endOfCentralDirectoryRecord.versionMadeBy = 768;
+		endOfCentralDirectoryRecord.versionNeededToExtract = 10;
+		endOfCentralDirectoryRecord.offsetOfStartOfCentralDirectory = this.#offsetOfStartOfCentralDirectory;
+		endOfCentralDirectoryRecord.sizeOfCentralDirectory = offsetOfEndOfCentralDirectoryFileHeaders - offsetOfStartOfCentralDirectoryFileHeaders;
+		endOfCentralDirectoryRecord.numberOfCentralDirectoryRecords = this.#centralDirectoryFileHeaders.length;
+		endOfCentralDirectoryRecord.totalNumberOfCentralDirectoryRecords = this.#endOfCentralDirectoryRecord!.numberOfCentralDirectoryRecords;
+		endOfCentralDirectoryRecord.comment = this.#endOfCentralDirectoryRecord?.comment ?? "";
 		const endOfCentralDirectoryRecordBytes = this.#endOfCentralDirectoryRecord!.toBuffer();
 		await this.#file!.writeBuffer(endOfCentralDirectoryRecordBytes);
 		byteWritten += endOfCentralDirectoryRecordBytes.byteLength;
@@ -318,7 +334,7 @@ export class Zip {
 		return byteWritten;
 	}
 
-	async #findEndOfCentralDirectoryRecord(): Promise<number> {
+	async #findEndOfCentralDirectoryRecord(): Promise<[number, boolean]> {
 		if (this.#file) {
 			const buffer = new Uint8Array(1024);
 			const view = new DataView(buffer.buffer);
@@ -330,8 +346,11 @@ export class Zip {
 						break;
 					}
 					for (let i = 0; i < byteRead; ++i) {
-						if (view.getUint32(i, true) === EndOfCentralDirectoryRecordSignature) {
-							return -offset;
+						const signature = view.getUint32(i, true);
+						if (signature === EndOfCentralDirectoryRecordSignature) {
+							return [-offset, false];
+						} else if (signature === EndOfCentralDirectoryRecord64Signature) {
+							return [-offset, true];
 						}
 					}
 					offset += byteRead;
@@ -363,9 +382,11 @@ export class CompressionMethodNotSupportedError extends Error {
 }
 
 const EndOfCentralDirectoryRecordSignature = 0x06054b50;
+const EndOfCentralDirectoryRecord64Signature = 0x06064b50;
 const CentralDirectoryFileHeaderSignature = 0x02014b50;
 const LocalFileHeaderSignature = 0x04034b50;
 const DataDescriptorSignature = 0x08074b50;
+const Zip64ExtendedInformationExtraFieldSignature = 0x0001;
 
 /**
  * End of central directory record
@@ -440,6 +461,95 @@ export class EndOfCentralDirectoryRecord {
 		view.setUint32(16, this.offsetOfStartOfCentralDirectory, true);
 		view.setUint16(20, this.commentLength, true);
 		buffer.set(commentBytes, 22);
+		return buffer;
+	}
+}
+
+/**
+ * End of central directory record 64
+ * {@link https://en.wikipedia.org/wiki/ZIP_(file_format)#ZIP64}
+ */
+export class EndOfCentralDirectoryRecord64 {
+	/**
+	 * Size of the EOCD64 minus 12
+	 */
+	sizeOfEOCDR64 = 0;
+	/**
+	 * Version made by
+	 */
+	versionMadeBy = 0;
+	/**
+	 * Version needed to extract
+	 */
+	versionNeededToExtract = 0;
+	/**
+	 * Number of this disk
+	 */
+	numberOfThisDisk = 0;
+	/**
+	 * Disk where central directory starts
+	 */
+	diskNumberWhereCentralDirectoryStarts = 0;
+	/**
+	 * Number of central directory records on this disk
+	 */
+	numberOfCentralDirectoryRecords = 0;
+	/**
+	 * Total number of central directory records
+	 */
+	totalNumberOfCentralDirectoryRecords = 0;
+	/**
+	 * Size of central directory (bytes)
+	 */
+	sizeOfCentralDirectory = 0;
+	/**
+	 * Offset of start of central directory, relative to start of archive
+	 */
+	offsetOfStartOfCentralDirectory = 0;
+	/**
+	 * Comment
+	 */
+	comment = "";
+
+	/**
+	 * Parse buffer into EndOfCentralDirectoryRecord64
+	 */
+	static parse(buffer: Uint8Array): EndOfCentralDirectoryRecord64 {
+		const view = new DataView(buffer.buffer);
+		if (view.getUint32(0, true) !== EndOfCentralDirectoryRecord64Signature) {
+			throw new SyntaxError(`Could not parse EndOfCentralDirectoryRecord64, wrong signature.`);
+		}
+		const eocdr = new EndOfCentralDirectoryRecord64();
+		eocdr.sizeOfEOCDR64 = Number(view.getBigUint64(4, true));
+		eocdr.versionMadeBy = view.getUint16(12, true);
+		eocdr.versionNeededToExtract = view.getUint16(14, true);
+		eocdr.numberOfThisDisk = view.getUint32(16, true);
+		eocdr.diskNumberWhereCentralDirectoryStarts = view.getUint32(20, true);
+		eocdr.numberOfCentralDirectoryRecords = Number(view.getBigUint64(24, true));
+		eocdr.totalNumberOfCentralDirectoryRecords = Number(view.getBigUint64(32, true));
+		eocdr.sizeOfCentralDirectory = Number(view.getBigUint64(40, true));
+		eocdr.offsetOfStartOfCentralDirectory = Number(view.getBigUint64(48, true));
+		const commentBytes = buffer.slice(56, 56 + eocdr.sizeOfEOCDR64);
+		eocdr.comment = textDecoder.decode(commentBytes);
+		return eocdr;
+	}
+
+	toBuffer(): Uint8Array {
+		const commentBytes = textEncoder.encode(this.comment);
+		this.sizeOfEOCDR64 = 56 + commentBytes.byteLength;
+		const buffer = new Uint8Array(this.sizeOfEOCDR64);
+		const view = new DataView(buffer.buffer);
+		view.setUint32(0, EndOfCentralDirectoryRecord64Signature, true);
+		view.setBigUint64(4, BigInt(this.sizeOfEOCDR64), true);
+		view.setUint16(12, this.versionMadeBy, true);
+		view.setUint16(14, this.versionNeededToExtract, true);
+		view.setUint32(16, this.numberOfThisDisk, true);
+		view.setUint32(20, this.diskNumberWhereCentralDirectoryStarts, true);
+		view.setBigUint64(24, BigInt(this.numberOfCentralDirectoryRecords), true);
+		view.setBigUint64(32, BigInt(this.totalNumberOfCentralDirectoryRecords), true);
+		view.setBigUint64(40, BigInt(this.sizeOfCentralDirectory), true);
+		view.setBigUint64(48, BigInt(this.offsetOfStartOfCentralDirectory), true);
+		buffer.set(commentBytes, 56);
 		return buffer;
 	}
 }
@@ -735,6 +845,113 @@ export class DataDescriptor {
 	}
 }
 
+export class DataDescriptor64 extends DataDescriptor {
+	/**
+	 * Parse buffer into DataDescriptor64
+	 */
+	static parse(buffer: Uint8Array, hasCrc = true, hasSizes = true): DataDescriptor64 {
+		const view = new DataView(buffer.buffer);
+		let i = 0;
+		if (view.getUint32(0, true) === DataDescriptorSignature) {
+			i += 4;
+		}
+		const dd = new DataDescriptor64();
+		if (hasCrc) {
+			dd.crcOfUncompressedData = view.getUint32(i, true);
+			i += 4;
+		}
+		if (hasSizes) {
+			dd.compressedSize = Number(view.getBigUint64(i, true));
+			dd.uncompressedSize = Number(view.getBigUint64(i + 8, true));
+		}
+		return dd;
+	}
+
+	toBuffer(hasCrc = true, hasSizes = true): Uint8Array {
+		const buffer = new Uint8Array(4 + (hasCrc ? 4 : 0) + (hasSizes ? 16 : 0));
+		const view = new DataView(buffer.buffer);
+		view.setUint32(0, DataDescriptorSignature, true);
+		let i = 4;
+		if (hasCrc) {
+			view.setUint32(i, this.crcOfUncompressedData, true);
+			i += 4;
+		}
+		if (hasSizes) {
+			view.setBigUint64(i, BigInt(this.compressedSize), true);
+			view.setBigUint64(i + 8, BigInt(this.uncompressedSize), true);
+		}
+		return buffer;
+	}
+}
+
+export class Zip64ExtendedInformationExtraField {
+	/**
+	 * Size of the extra field chunk (8, 16, 24 or 28)
+	 */
+	sizeOfExtraFieldChunk = 0;
+	/**
+	 * Original uncompressed file size
+	 */
+	originalUncompressedFileSize = 0;
+	/**
+	 * Size of compressed data
+	 */
+	sizeOfCompressedData = 0;
+	/**
+	 * Offset of local header record
+	 */
+	offsetOfLocalHeaderRecord = 0;
+	/**
+	 * Number of the disk on which this file starts
+	 */
+	diskNumberWhereLocalFileHeaderStarts = 0;
+
+	/**
+	 * Parse buffer into Zip64ExtendedInformationExtraField
+	 */
+	static parse(buffer: Uint8Array): Zip64ExtendedInformationExtraField {
+		const view = new DataView(buffer.buffer);
+		if (view.getUint16(0, true) !== Zip64ExtendedInformationExtraFieldSignature) {
+			throw new SyntaxError(`Could not parse Zip64ExtendedInformationExtraField, wrong signature.`);
+		}
+		const eief = new Zip64ExtendedInformationExtraField();
+		eief.sizeOfExtraFieldChunk = view.getUint16(2, true);
+		if (eief.sizeOfExtraFieldChunk >= 8) {
+			eief.originalUncompressedFileSize = Number(view.getBigUint64(4, true));
+		}
+		if (eief.sizeOfExtraFieldChunk >= 16) {
+			eief.sizeOfCompressedData = Number(view.getBigUint64(12, true));
+		}
+		if (eief.sizeOfExtraFieldChunk >= 24) {
+			eief.offsetOfLocalHeaderRecord = Number(view.getBigUint64(20, true));
+		}
+		if (eief.sizeOfExtraFieldChunk === 28) {
+			eief.diskNumberWhereLocalFileHeaderStarts = view.getUint32(28, true);
+		}
+		return eief;
+	}
+
+	toBuffer(): Uint8Array {
+		const buffer = new Uint8Array(4 + this.sizeOfExtraFieldChunk);
+		const view = new DataView(buffer.buffer);
+		view.setUint16(0, Zip64ExtendedInformationExtraFieldSignature, true);
+		view.setUint16(2, this.sizeOfExtraFieldChunk, true);
+		if (this.sizeOfExtraFieldChunk >= 8) {
+			view.setBigUint64(4, BigInt(this.originalUncompressedFileSize), true);
+		}
+		if (this.sizeOfExtraFieldChunk >= 16) {
+			view.setBigUint64(12, BigInt(this.sizeOfCompressedData), true);
+		}
+		if (this.sizeOfExtraFieldChunk >= 24) {
+			view.setBigUint64(20, BigInt(this.offsetOfLocalHeaderRecord), true);
+		}
+		if (this.sizeOfExtraFieldChunk >= 28) {
+			view.setUint32(28, this.diskNumberWhereLocalFileHeaderStarts, true);
+		}
+		return buffer;
+	}
+}
+
 /**
  * Convert DOS datetime to Date
  * @param date The date part
@@ -761,7 +978,6 @@ export function convertDateToDosDateTime(dateTime: Date): [number, number] {
 	const date = (((dateTime.getFullYear() - 1980) & 0b1111111) << 9) | (((dateTime.getMonth() + 1) & 0b1111) << 5) | (dateTime.getDate() & 0b11111);
 	return [date, time];
 }
-
 
 function equalsArrayBuffer(a: ArrayBuffer, b: ArrayBuffer) {
 	if (a.byteLength !== b.byteLength) {
