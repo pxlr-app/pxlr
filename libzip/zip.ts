@@ -244,21 +244,40 @@ export class Zip {
 				centralDirectoryFileHeader.crcOfUncompressedData = newDataDescriptor.crcOfUncompressedData;
 				centralDirectoryFileHeader.compressedSize = newDataDescriptor.compressedSize;
 				centralDirectoryFileHeader.fileLastModificationDate = newLocalFileHeader.fileLastModificationDate;
-				centralDirectoryFileHeader.fileName = newLocalFileHeader.fileName;
-				centralDirectoryFileHeader.fileComment = fileComment ?? "";
-				centralDirectoryFileHeader.extraField = newLocalFileHeader.extraField;
 				centralDirectoryFileHeader.relativeOffsetOfLocalFileHeader = offsetOfLocalFileHeader;
-				centralDirectoryFileHeader.offsetCentralDirectoryFileHeader = 0;
+				if (
+					centralDirectoryFileHeader.fileName !== newLocalFileHeader.fileName ||
+					centralDirectoryFileHeader.fileComment !== fileComment ||
+					!equalsArrayBuffer(centralDirectoryFileHeader.extraField, newLocalFileHeader.extraField)
+				) {
+					centralDirectoryFileHeader.offsetCentralDirectoryFileHeader = 0;
+					centralDirectoryFileHeader.fileName = newLocalFileHeader.fileName;
+					centralDirectoryFileHeader.fileComment = fileComment ?? "";
+					centralDirectoryFileHeader.extraField = newLocalFileHeader.extraField;
+				}
 			},
 		});
 	}
 
 	async #writeEndOfFile(): Promise<number> {
+		// Sort central directory file header based on their offset
+		this.#centralDirectoryFileHeaders.sort((a, b) => b.offsetCentralDirectoryFileHeader - a.offsetCentralDirectoryFileHeader);
 		// Find corrupted central directory file header
-		const corruptedCentralDirectoryFileHeaders = this.#centralDirectoryFileHeaders.filter((cdfh) => cdfh.offsetCentralDirectoryFileHeader < this.#offsetOfStartOfCentralDirectory);
-		const uncorruptedCentralDirectoryFileHeaders = this.#centralDirectoryFileHeaders.filter((cdfh) =>
-			cdfh.offsetCentralDirectoryFileHeader >= this.#offsetOfStartOfCentralDirectory
-		);
+		const corruptedCentralDirectoryFileHeaders: CentralDirectoryFileHeader[] = [];
+		const uncorruptedCentralDirectoryFileHeaders: CentralDirectoryFileHeader[] = [];
+		for (const cdfh of this.#centralDirectoryFileHeaders) {
+			const prevUncorrupted = uncorruptedCentralDirectoryFileHeaders.at(-1);
+			if (
+				// Was overritten
+				cdfh.offsetCentralDirectoryFileHeader < this.#offsetOfStartOfCentralDirectory ||
+				// or a hole was introduced by modifying existing central directory file header
+				(prevUncorrupted && prevUncorrupted.offsetCentralDirectoryFileHeader + 46 + prevUncorrupted.fileNameLength + prevUncorrupted.extraFieldLength + prevUncorrupted.fileCommentLength === cdfh.offsetCentralDirectoryFileHeader)
+			) {
+				corruptedCentralDirectoryFileHeaders.push(cdfh);
+			} else {
+				uncorruptedCentralDirectoryFileHeaders.push(cdfh);
+			}
+		}
 
 		// Figure out start of central directory file headers
 		const offsetOfStartOfCentralDirectoryFileHeaders = Math.max(
@@ -741,4 +760,19 @@ export function convertDateToDosDateTime(dateTime: Date): [number, number] {
 	const time = ((dateTime.getHours() & 0b11111) << 11) | ((dateTime.getMinutes() & 0b111111) << 5) | ((dateTime.getSeconds() >> 1) & 0b11111);
 	const date = (((dateTime.getFullYear() - 1980) & 0b1111111) << 9) | (((dateTime.getMonth() + 1) & 0b1111) << 5) | (dateTime.getDate() & 0b11111);
 	return [date, time];
+}
+
+
+function equalsArrayBuffer(a: ArrayBuffer, b: ArrayBuffer) {
+	if (a.byteLength !== b.byteLength) {
+		return false;
+	}
+	const aArr = new Uint32Array(a);
+	const bArr = new Uint32Array(b);
+	for (let i = 0, l = aArr.byteLength; i < l; ++i) {
+		if (aArr[i] !== bArr[i]) {
+			return false;
+		}
+	}
+	return true;
 }
