@@ -48,7 +48,7 @@ export class Zip {
 					abortSignal?.throwIfAborted();
 					this.#zeocdr = new Zip64EndOfCentralDirectoryRecord(offsetEOCDL - this.#zeocdl.offsetToCentralDirectory);
 					await this.#file.seek(this.#zeocdl.offsetToCentralDirectory, SeekFrom.Start);
-					await this.#file.readIntoBuffer(this.#zeocdr);
+					await this.#file.readIntoBuffer(this.#zeocdr.arrayBuffer);
 					this.#zeocdr.throwIfSignatureMismatch();
 					abortSignal?.throwIfAborted();
 					this.#writeCursor = this.#zeocdl.offsetToCentralDirectory;
@@ -243,8 +243,8 @@ export class Zip {
 			if (endOfCentralDirectory + byteWritten >= 0xFFFFFFFF - 1) {
 				eocdr.offsetToCentralDirectory = 0xFFFFFFFF;
 				// Write Zip64EndOfCentralDirectoryRecord
-				const zeocdr = new Zip64EndOfCentralDirectoryRecord().setComment(this.#zeocdr?.comment ?? this.#eocdr.comment);
-				zeocdr.setSignature();
+				const zeocdr = new Zip64EndOfCentralDirectoryRecord()
+				zeocdr.comment = this.#zeocdr?.comment ?? this.#eocdr.comment;
 				zeocdr.entriesInThisDisk = this.#centralDirectory.size;
 				zeocdr.totalEntries = zeocdr.entriesInThisDisk;
 				zeocdr.offsetToCentralDirectory = startOfCentralDirectory;
@@ -253,7 +253,7 @@ export class Zip {
 				zeocdr.createdZipSpec = 0x2D; // 4.5
 				zeocdr.extractedOS = 0 // MS-DOS
 				zeocdr.extractedZipSpec = 0x2D // 4.5
-				byteWritten += await this.#file.writeBuffer(zeocdr);
+				byteWritten += await this.#file.writeBuffer(zeocdr.arrayBuffer);
 				abortSignal?.throwIfAborted();
 				this.#zeocdr = zeocdr;
 				// Write Zip64EndOfCentralDirectoryLocator
@@ -356,8 +356,8 @@ export class EndOfCentralDirectoryRecord {
 			const arrayBuffer = new Uint8Array(22 + data.byteLength);
 			const dataView = new DataView(arrayBuffer.buffer);
 			arrayBuffer.set(this.#arrayBuffer, 0);
-			dataView.setUint32(0, EndOfCentralDirectoryRecord.SIGNATURE, true);
 			dataView.setUint16(20, data.byteLength, true);
+			arrayBuffer.set(data, 22);
 			this.#arrayBuffer = arrayBuffer;
 			this.#dataView = dataView;
 		}
@@ -402,14 +402,13 @@ export class Zip64EndOfCentralDirectoryLocator {
 	}
 }
 
-export class Zip64EndOfCentralDirectoryRecord extends Uint8Array {
+export class Zip64EndOfCentralDirectoryRecord {
 	static SIGNATURE = 0x06064B50;
+	#arrayBuffer: Uint8Array;
 	#dataView: DataView;
 	constructor(length = 56) {
-		super(length);
-		this.#dataView = new DataView(this.buffer);
-	}
-	setSignature() {
+		this.#arrayBuffer = new Uint8Array(length);
+		this.#dataView = new DataView(this.#arrayBuffer.buffer);
 		this.#dataView.setUint32(0, Zip64EndOfCentralDirectoryRecord.SIGNATURE, true);
 	}
 	throwIfSignatureMismatch() {
@@ -417,6 +416,9 @@ export class Zip64EndOfCentralDirectoryRecord extends Uint8Array {
 		if (sig !== Zip64EndOfCentralDirectoryRecord.SIGNATURE) {
 			throw new SyntaxError(`Wrong signature for Zip64EndOfCentralDirectoryRecord, got ${sig.toString(16)}.`);
 		}
+	}
+	get arrayBuffer() {
+		return this.#arrayBuffer;
 	}
 	get sizeOfRecord() {
 		return Number(this.#dataView.getBigUint64(4, true));
@@ -488,19 +490,20 @@ export class Zip64EndOfCentralDirectoryRecord extends Uint8Array {
 		return this.sizeOfRecord - 56;
 	}
 	get comment() {
-		return textDecoder.decode(this.slice(56, 56 + this.commentLength));
+		return textDecoder.decode(this.#arrayBuffer.slice(56, 56 + this.commentLength));
 	}
-	setComment(value: string) {
+	set comment(value: string) {
 		const data = textEncoder.encode(value);
 		if (data.byteLength === this.commentLength) {
-			this.set(data, 56);
-			return this;
+			this.#arrayBuffer.set(data, 56);
 		} else {
-			const eocdr = new Zip64EndOfCentralDirectoryRecord(56 + data.byteLength);
-			eocdr.set(this, 0);
-			eocdr.sizeOfRecord = 56 + data.byteLength;
-			eocdr.set(data, 56);
-			return eocdr;
+			const arrayBuffer = new Uint8Array(56 + data.byteLength);
+			const dataView = new DataView(arrayBuffer.buffer);
+			arrayBuffer.set(this.#arrayBuffer, 0);
+			dataView.setBigUint64(4, BigInt(56 + data.byteLength), true);
+			arrayBuffer.set(data, 56);
+			this.#arrayBuffer = arrayBuffer;
+			this.#dataView = dataView;
 		}
 	}
 }
