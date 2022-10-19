@@ -36,7 +36,7 @@ export class Zip {
 				const offsetEOCDR = await this.#findEndOfCentralDirectoryRecord();
 				this.#eocdr = new EndOfCentralDirectoryRecord(-offsetEOCDR);
 				await this.#file.seek(offsetEOCDR, SeekFrom.End);
-				await this.#file.readIntoBuffer(this.#eocdr);
+				await this.#file.readIntoBuffer(this.#eocdr.arrayBuffer);
 				this.#eocdr.throwIfSignatureMismatch();
 				abortSignal?.throwIfAborted();
 				this.#writeCursor = this.#eocdr.offsetToCentralDirectory;
@@ -79,7 +79,6 @@ export class Zip {
 					throw error;
 				}
 				this.#eocdr = new EndOfCentralDirectoryRecord();
-				this.#eocdr.setSignature();
 				this.#isCentralDirectoryDirty = true;
 			}
 			return;
@@ -234,8 +233,8 @@ export class Zip {
 				byteWritten += cdfh.byteLength;
 			}
 			// Setup EndOfCentralDirectoryRecord
-			const eocdr = new EndOfCentralDirectoryRecord().setComment(this.#eocdr.comment ?? "");
-			eocdr.setSignature();
+			const eocdr = new EndOfCentralDirectoryRecord()
+			eocdr.comment = this.#eocdr.comment ?? "";
 			eocdr.entriesInThisDisk = this.#centralDirectory.size;
 			eocdr.totalEntries = eocdr.entriesInThisDisk;
 			eocdr.offsetToCentralDirectory = Math.min(0xFFFFFFFF, startOfCentralDirectory);
@@ -268,7 +267,7 @@ export class Zip {
 			}
 			// Write EndOfCentralDirectoryRecord
 			console.log(eocdr.offsetToCentralDirectory, eocdr.sizeOfCentralDirectory);
-			byteWritten += await this.#file.writeBuffer(eocdr);
+			byteWritten += await this.#file.writeBuffer(eocdr.arrayBuffer);
 			abortSignal?.throwIfAborted();
 			this.#eocdr = eocdr;
 			this.#writeCursor = this.#eocdr.offsetToCentralDirectory;
@@ -290,14 +289,13 @@ export class CompressionMethodNotSupportedError extends Error {
 	}
 }
 
-export class EndOfCentralDirectoryRecord extends Uint8Array {
+export class EndOfCentralDirectoryRecord {
 	static SIGNATURE = 0x06054B50;
+	#arrayBuffer: Uint8Array;
 	#dataView: DataView;
-	constructor(length = 22) {
-		super(length);
-		this.#dataView = new DataView(this.buffer);
-	}
-	setSignature() {
+	constructor(bufferLength = 22) {
+		this.#arrayBuffer = new Uint8Array(bufferLength);
+		this.#dataView = new DataView(this.#arrayBuffer.buffer);
 		this.#dataView.setUint32(0, EndOfCentralDirectoryRecord.SIGNATURE, true);
 	}
 	throwIfSignatureMismatch() {
@@ -305,6 +303,9 @@ export class EndOfCentralDirectoryRecord extends Uint8Array {
 		if (sig !== EndOfCentralDirectoryRecord.SIGNATURE) {
 			throw new SyntaxError(`Wrong signature for EndOfCentralDirectoryRecord, got ${sig.toString(16)}.`);
 		}
+	}
+	get arrayBuffer() {
+		return this.#arrayBuffer;
 	}
 	get numberOfThisDisk() {
 		return this.#dataView.getUint16(4, true);
@@ -346,19 +347,20 @@ export class EndOfCentralDirectoryRecord extends Uint8Array {
 		return this.#dataView.getUint16(20, true);
 	}
 	get comment() {
-		return textDecoder.decode(this.slice(22, 22 + this.commentLength));
+		return textDecoder.decode(this.#arrayBuffer.slice(22, 22 + this.commentLength));
 	}
-	setComment(value: string) {
+	set comment(value: string) {
 		const data = textEncoder.encode(value);
 		if (data.byteLength === this.commentLength) {
-			this.set(data, 22);
-			return this;
+			this.#arrayBuffer.set(data, 22);
 		} else {
-			const eocdr = new EndOfCentralDirectoryRecord(22 + data.byteLength);
-			eocdr.set(this, 0);
-			eocdr.#dataView.setUint16(20, data.byteLength);
-			eocdr.set(data, 22);
-			return eocdr;
+			const arrayBuffer = new Uint8Array(22 + data.byteLength);
+			const dataView = new DataView(arrayBuffer.buffer);
+			arrayBuffer.set(this.#arrayBuffer, 0);
+			dataView.setUint32(0, EndOfCentralDirectoryRecord.SIGNATURE, true);
+			dataView.setUint16(20, data.byteLength, true);
+			this.#arrayBuffer = arrayBuffer;
+			this.#dataView = dataView;
 		}
 	}
 }
