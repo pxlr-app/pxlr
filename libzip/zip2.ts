@@ -43,7 +43,7 @@ export class Zip {
 				if (this.#eocdr.offsetToCentralDirectory === 0xFFFFFFFF) {
 					this.#zeocdl = new Zip64EndOfCentralDirectoryLocator(20);
 					const offsetEOCDL = await this.#file.seek(offsetEOCDR - 20, SeekFrom.End);
-					await this.#file.readIntoBuffer(this.#zeocdl);
+					await this.#file.readIntoBuffer(this.#zeocdl.arrayBuffer);
 					this.#zeocdl.throwIfSignatureMismatch();
 					abortSignal?.throwIfAborted();
 					this.#zeocdr = new Zip64EndOfCentralDirectoryRecord(offsetEOCDL - this.#zeocdl.offsetToCentralDirectory);
@@ -258,10 +258,9 @@ export class Zip {
 				this.#zeocdr = zeocdr;
 				// Write Zip64EndOfCentralDirectoryLocator
 				const zeocdl = new Zip64EndOfCentralDirectoryLocator();
-				zeocdl.setSignature();
 				zeocdl.offsetToCentralDirectory = startOfCentralDirectory;
 				zeocdl.totalNumberOfDisk = 1;
-				byteWritten += await this.#file.writeBuffer(zeocdl);
+				byteWritten += await this.#file.writeBuffer(zeocdl.arrayBuffer);
 				abortSignal?.throwIfAborted();
 				this.#zeocdl = zeocdl;
 			}
@@ -293,8 +292,8 @@ export class EndOfCentralDirectoryRecord {
 	static SIGNATURE = 0x06054B50;
 	#arrayBuffer: Uint8Array;
 	#dataView: DataView;
-	constructor(bufferLength = 22) {
-		this.#arrayBuffer = new Uint8Array(bufferLength);
+	constructor(length = 22) {
+		this.#arrayBuffer = new Uint8Array(length);
 		this.#dataView = new DataView(this.#arrayBuffer.buffer);
 		this.#dataView.setUint32(0, EndOfCentralDirectoryRecord.SIGNATURE, true);
 	}
@@ -365,14 +364,13 @@ export class EndOfCentralDirectoryRecord {
 	}
 }
 
-export class Zip64EndOfCentralDirectoryLocator extends Uint8Array {
+export class Zip64EndOfCentralDirectoryLocator {
 	static SIGNATURE = 0x07064B50;
+	#arrayBuffer: Uint8Array;
 	#dataView: DataView;
 	constructor(length = 20) {
-		super(length);
-		this.#dataView = new DataView(this.buffer);
-	}
-	setSignature() {
+		this.#arrayBuffer = new Uint8Array(length);
+		this.#dataView = new DataView(this.#arrayBuffer.buffer);
 		this.#dataView.setUint32(0, Zip64EndOfCentralDirectoryLocator.SIGNATURE, true);
 	}
 	throwIfSignatureMismatch() {
@@ -380,6 +378,9 @@ export class Zip64EndOfCentralDirectoryLocator extends Uint8Array {
 		if (sig !== Zip64EndOfCentralDirectoryLocator.SIGNATURE) {
 			throw new SyntaxError(`Wrong signature for Zip64EndOfCentralDirectoryLocator, got ${sig.toString(16)}.`);
 		}
+	}
+	get arrayBuffer() {
+		return this.#arrayBuffer;
 	}
 	get centralDirectoryDiskNumber() {
 		return this.#dataView.getUint32(4, true);
