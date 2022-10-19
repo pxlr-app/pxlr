@@ -25,7 +25,7 @@ export class Zip {
 				// Find EndOfCentralDirectoryRecordOffset location
 				const [offsetEndOfCentralDirectoryRecord, isZip64] = await this.#findEndOfCentralDirectoryRecord();
 				if (isZip64) {
-					throw new Error('ZIP64!');
+					throw new Error("ZIP64!");
 				}
 				abortSignal?.throwIfAborted();
 				// Goto EndOfCentralDirectoryRecordOffset location
