@@ -16,7 +16,7 @@ Deno.test("Zip2", async (t) => {
 		// console.log(fooHeader.fileName, fooHeader.uncompressedLength, fooHeader.compressedLength, fooHeader.localFileOffset);
 		// const fooLocal = await zip.getLocalFileHeader("foobar/foo.txt");
 		// console.log(fooLocal.fileName, fooLocal.uncompressedLength, fooLocal.compressedLength);
-		const fooContent = await new Response(await zip.get("foobar/foo.txt")).text();
+		const fooContent = await new Response(await zip.getStream("foobar/foo.txt")).text();
 		console.log(fooContent);
 
 		await zip.close();
@@ -34,7 +34,7 @@ Deno.test("Zip2", async (t) => {
 		// console.log(fooHeader.fileName, fooHeader.uncompressedLength, fooHeader.compressedLength, fooHeader.localFileOffset);
 		// const fooLocal = await zip.getLocalFileHeader("foobar/foo.txt");
 		// console.log(fooLocal.fileName, fooLocal.uncompressedLength, fooLocal.compressedLength);
-		const fooContent = await new Response(await zip.get("foobar/foo.txt")).text();
+		const fooContent = await new Response(await zip.getStream("foobar/foo.txt")).text();
 		console.log(fooContent);
 
 		await zip.close();
@@ -42,10 +42,11 @@ Deno.test("Zip2", async (t) => {
 		fsFile.close();
 	});
 
-	await t.step("open64", async () => {
-		const tmpFile = await Deno.makeTempFile({ suffix: '.zip' });
-		console.log(tmpFile);
-		const fsFile = await Deno.open(tmpFile, { read: true, write: true, truncate: false });
+	await t.step("put", async () => {
+		// const tmpFile = await Deno.makeTempFile({ suffix: '.zip' });
+		// console.log(tmpFile);
+		// const fsFile = await Deno.open(tmpFile, { read: true, write: true, truncate: true });
+		const fsFile = await Deno.open(fromFileUrl(import.meta.resolve("../.testdata/libzip-put.zip")), { create: true, read: true, write: true, truncate: true });
 		const denoFile = new DenoFile(fsFile);
 		const zip = new Zip(denoFile);
 		await zip.open();
@@ -54,8 +55,8 @@ Deno.test("Zip2", async (t) => {
 		// console.log(fooHeader.fileName, fooHeader.uncompressedLength, fooHeader.compressedLength, fooHeader.localFileOffset);
 		// const fooLocal = await zip.getLocalFileHeader("foobar/foo.txt");
 		// console.log(fooLocal.fileName, fooLocal.uncompressedLength, fooLocal.compressedLength);
-		console.log(await zip.put("foobar/foo.txt", new TextEncoder().encode("foo")));
-		console.log(await zip.put("foobar/bar.txt", new TextEncoder().encode("bar")));
+		await zip.put("foobar/foo.txt", new TextEncoder().encode("foo"));
+		// await zip.put("foobar/bar.txt", new TextEncoder().encode("bar"));
 		// const fooContent = await new Response(await zip.get("foobar/foo.txt")).text();
 		// console.log(fooContent);
 

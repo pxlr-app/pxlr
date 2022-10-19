@@ -11,14 +11,16 @@ export type ZipIterOpen =
 export class Zip {
 	#file: File | undefined;
 	#eocdr: EndOfCentralDirectoryRecord | undefined;
-	#eocdl: Zip64EndOfCentralDirectoryLocator | undefined;
+	#zeocdl: Zip64EndOfCentralDirectoryLocator | undefined;
 	#zeocdr: Zip64EndOfCentralDirectoryRecord | undefined;
 	#centralDirectory: Map<string, CentralDirectoryFileHeader>;
+	#isCentralDirectoryDirty: boolean;
 	#writeCursor: number;
 	constructor(file: File) {
 		this.#file = file;
 		this.#centralDirectory = new Map();
 		this.#writeCursor = 0;
+		this.#isCentralDirectoryDirty = false;
 	}
 
 	async open(abortSignal?: AbortSignal) {
@@ -39,17 +41,17 @@ export class Zip {
 				abortSignal?.throwIfAborted();
 				this.#writeCursor = this.#eocdr.offsetToCentralDirectory;
 				if (this.#eocdr.offsetToCentralDirectory === 0xFFFFFFFF) {
-					this.#eocdl = new Zip64EndOfCentralDirectoryLocator(20);
+					this.#zeocdl = new Zip64EndOfCentralDirectoryLocator(20);
 					const offsetEOCDL = await this.#file.seek(offsetEOCDR - 20, SeekFrom.End);
-					await this.#file.readIntoBuffer(this.#eocdl);
-					this.#eocdl.throwIfSignatureMismatch();
+					await this.#file.readIntoBuffer(this.#zeocdl);
+					this.#zeocdl.throwIfSignatureMismatch();
 					abortSignal?.throwIfAborted();
-					this.#zeocdr = new Zip64EndOfCentralDirectoryRecord(offsetEOCDL - this.#eocdl.offsetToCentralDirectory);
-					await this.#file.seek(this.#eocdl.offsetToCentralDirectory, SeekFrom.Start);
+					this.#zeocdr = new Zip64EndOfCentralDirectoryRecord(offsetEOCDL - this.#zeocdl.offsetToCentralDirectory);
+					await this.#file.seek(this.#zeocdl.offsetToCentralDirectory, SeekFrom.Start);
 					await this.#file.readIntoBuffer(this.#zeocdr);
 					this.#zeocdr.throwIfSignatureMismatch();
 					abortSignal?.throwIfAborted();
-					this.#writeCursor = this.#eocdl.offsetToCentralDirectory;
+					this.#writeCursor = this.#zeocdl.offsetToCentralDirectory;
 				}
 				
 				const entriesInThisDisk = this.#zeocdr?.entriesInThisDisk ?? this.#eocdr.entriesInThisDisk;
@@ -77,20 +79,26 @@ export class Zip {
 					throw error;
 				}
 				this.#eocdr = new EndOfCentralDirectoryRecord();
+				this.#eocdr.setSignature();
+				this.#isCentralDirectoryDirty = true;
 			}
 			return;
 		}
 		throw new FileClosedError();
 	}
 
-	// deno-lint-ignore require-await
 	async close(): Promise<number> {
+		let byteWritten = 0;
+		if (this.#isCentralDirectoryDirty) {
+			byteWritten += await this.#writeCentralDirectory();
+		}
 		this.#file = undefined;
 		this.#centralDirectory.clear();
 		this.#eocdr = undefined;
-		this.#eocdl = undefined;
+		this.#zeocdl = undefined;
 		this.#zeocdr = undefined;
-		return 0;
+		this.#isCentralDirectoryDirty = false;
+		return byteWritten;
 	}
 
 	async #findEndOfCentralDirectoryRecord(offset = -22): Promise<number> {
@@ -146,7 +154,7 @@ export class Zip {
 		throw new FileClosedError();
 	}
 
-	async get(fileName: string, abortSignal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
+	async getStream(fileName: string, abortSignal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
 		if (this.#file) {
 			const lfh = await this.#getLocalFileHeader(fileName, abortSignal);
 			abortSignal?.throwIfAborted();
@@ -168,25 +176,32 @@ export class Zip {
 			await this.#file.seek(localFileOffset, SeekFrom.Start);
 			abortSignal?.throwIfAborted();
 			let lfh = new LocalFileHeader().setFileName(fileName);
+			lfh.setSignature();
+			lfh.extractedOS = 0 // MS-DOS
+			lfh.extractedZipSpec = 0x2D // 4.5
 			lfh.compressionMethod = 0;
 			lfh.lastModificationDate = new Date();
 			lfh.crc = crc32(data);
-			if (data.byteLength < 0xFFFFFFFF) {
-				lfh.uncompressedLength = data.byteLength;
-				lfh.compressedLength = data.byteLength;
-			} else {
-				lfh.uncompressedLength = 0xFFFFFFFF;
-				lfh.compressedLength = 0xFFFFFFFF;
-				const z64ei = new Zip64ExtendedInformation(24);
-				z64ei.originalUncompressedData = data.byteLength;
-				z64ei.sizeOfCompressedData = data.byteLength;
-				lfh = lfh.setExtra(z64ei);
-			}
-			await this.#file.writeBuffer(lfh);
+			// if (data.byteLength < 0xFFFFFFFF) {
+			// 	lfh.uncompressedLength = data.byteLength;
+			// 	lfh.compressedLength = data.byteLength;
+			// } else {
+			// 	lfh.uncompressedLength = 0xFFFFFFFF;
+			// 	lfh.compressedLength = 0xFFFFFFFF;
+			// 	const z64ei = new Zip64ExtendedInformation(20);
+			// 	z64ei.setSignature();
+			// 	z64ei.originalUncompressedData = data.byteLength;
+			// 	z64ei.sizeOfCompressedData = data.byteLength;
+			// 	lfh = lfh.setExtra(z64ei);
+			// }
+			console.log(lfh);
+			let byteWritten = 0;
+			byteWritten += await this.#file.writeBuffer(lfh);
 			abortSignal?.throwIfAborted();
-			await this.#file.writeBuffer(data);
+			byteWritten += await this.#file.writeBuffer(data);
 			abortSignal?.throwIfAborted();
 			const cdfh = new CentralDirectoryFileHeader().setFileName(lfh.fileName).setExtra(lfh.extra);
+			cdfh.setSignature();
 			cdfh.compressionMethod = lfh.compressionMethod;
 			cdfh.lastModificationDate = lfh.lastModificationDate;
 			cdfh.crc = lfh.crc;
@@ -194,8 +209,8 @@ export class Zip {
 			cdfh.compressedLength = lfh.compressedLength;
 			cdfh.localFileOffset = localFileOffset;
 			this.#centralDirectory.set(fileName, cdfh);
-			const byteWritten = lfh.byteLength + data.byteLength;
 			this.#writeCursor += byteWritten;
+			this.#isCentralDirectoryDirty = true;
 			return byteWritten;
 		}
 		throw new FileClosedError();
@@ -206,21 +221,62 @@ export class Zip {
 	// }
 
 	async #writeCentralDirectory(abortSignal?: AbortSignal) {
-		if (this.#file) {
+		if (this.#file && this.#eocdr && this.#isCentralDirectoryDirty) {
+			const startOfCentralDirectory = this.#zeocdr?.offsetToCentralDirectory ?? this.#eocdr.offsetToCentralDirectory;
 			const endOfCentralDirectory = this.#writeCursor;
+			console.log('Write CentralDirectoryFileHeaders at ', startOfCentralDirectory, endOfCentralDirectory);
 			await this.#file.seek(endOfCentralDirectory, SeekFrom.Start);
 			abortSignal?.throwIfAborted();
 			let byteWritten = 0;
 			for (const cdfh of this.#centralDirectory.values()) {
-				await this.#file!.writeBuffer(cdfh);
+				await this.#file.writeBuffer(cdfh);
+				abortSignal?.throwIfAborted();
 				byteWritten += cdfh.byteLength;
 			}
-			// TODO Zip64EndOfCentralDirectoryRecord
-			// TODO Zip64EndOfCentralDirectoryLocator
-			// TODO EndOfCentralDirectoryRecord
+			// Setup EndOfCentralDirectoryRecord
+			const eocdr = new EndOfCentralDirectoryRecord().setComment(this.#eocdr.comment ?? "");
+			eocdr.setSignature();
+			eocdr.entriesInThisDisk = this.#centralDirectory.size;
+			eocdr.totalEntries = eocdr.entriesInThisDisk;
+			eocdr.offsetToCentralDirectory = Math.min(0xFFFFFFFF, startOfCentralDirectory);
+			eocdr.sizeOfCentralDirectory = Math.min(0xFFFFFFFF, endOfCentralDirectory - startOfCentralDirectory);
+			// ZIP64 transition
+			if (endOfCentralDirectory + byteWritten >= 0xFFFFFFFF - 1) {
+				eocdr.offsetToCentralDirectory = 0xFFFFFFFF;
+				// Write Zip64EndOfCentralDirectoryRecord
+				const zeocdr = new Zip64EndOfCentralDirectoryRecord().setComment(this.#zeocdr?.comment ?? this.#eocdr.comment);
+				zeocdr.setSignature();
+				zeocdr.entriesInThisDisk = this.#centralDirectory.size;
+				zeocdr.totalEntries = zeocdr.entriesInThisDisk;
+				zeocdr.offsetToCentralDirectory = startOfCentralDirectory;
+				zeocdr.sizeOfCentralDirectory = endOfCentralDirectory - startOfCentralDirectory;
+				zeocdr.createdOS = 0; // MS-DOS
+				zeocdr.createdZipSpec = 0x2D; // 4.5
+				zeocdr.extractedOS = 0 // MS-DOS
+				zeocdr.extractedZipSpec = 0x2D // 4.5
+				byteWritten += await this.#file.writeBuffer(zeocdr);
+				abortSignal?.throwIfAborted();
+				this.#zeocdr = zeocdr;
+				// Write Zip64EndOfCentralDirectoryLocator
+				const zeocdl = new Zip64EndOfCentralDirectoryLocator();
+				zeocdl.setSignature();
+				zeocdl.offsetToCentralDirectory = startOfCentralDirectory;
+				zeocdl.totalNumberOfDisk = 1;
+				byteWritten += await this.#file.writeBuffer(zeocdl);
+				abortSignal?.throwIfAborted();
+				this.#zeocdl = zeocdl;
+			}
+			// Write EndOfCentralDirectoryRecord
+			console.log(eocdr.offsetToCentralDirectory, eocdr.sizeOfCentralDirectory);
+			byteWritten += await this.#file.writeBuffer(eocdr);
+			abortSignal?.throwIfAborted();
+			this.#eocdr = eocdr;
+			this.#writeCursor = this.#eocdr.offsetToCentralDirectory;
+
+			this.#isCentralDirectoryDirty = false;
 			return byteWritten;
 		}
-		throw new FileClosedError();
+		return 0;
 	}
 }
 
@@ -240,6 +296,9 @@ export class EndOfCentralDirectoryRecord extends Uint8Array {
 	constructor(length = 22) {
 		super(length);
 		this.#dataView = new DataView(this.buffer);
+	}
+	setSignature() {
+		this.#dataView.setUint32(0, EndOfCentralDirectoryRecord.SIGNATURE, true);
 	}
 	throwIfSignatureMismatch() {
 		const sig = this.#dataView.getUint32(0, true);
@@ -311,6 +370,9 @@ export class Zip64EndOfCentralDirectoryLocator extends Uint8Array {
 		super(length);
 		this.#dataView = new DataView(this.buffer);
 	}
+	setSignature() {
+		this.#dataView.setUint32(0, Zip64EndOfCentralDirectoryLocator.SIGNATURE, true);
+	}
 	throwIfSignatureMismatch() {
 		const sig = this.#dataView.getUint32(0, true);
 		if (sig !== Zip64EndOfCentralDirectoryLocator.SIGNATURE) {
@@ -343,6 +405,9 @@ export class Zip64EndOfCentralDirectoryRecord extends Uint8Array {
 	constructor(length = 56) {
 		super(length);
 		this.#dataView = new DataView(this.buffer);
+	}
+	setSignature() {
+		this.#dataView.setUint32(0, Zip64EndOfCentralDirectoryRecord.SIGNATURE, true);
 	}
 	throwIfSignatureMismatch() {
 		const sig = this.#dataView.getUint32(0, true);
@@ -443,6 +508,9 @@ export class CentralDirectoryFileHeader extends Uint8Array {
 	constructor(length = 46) {
 		super(length);
 		this.#dataView = new DataView(this.buffer);
+	}
+	setSignature() {
+		this.#dataView.setUint32(0, CentralDirectoryFileHeader.SIGNATURE, true);
 	}
 	throwIfSignatureMismatch() {
 		const sig = this.#dataView.getUint32(0, true);
@@ -656,62 +724,85 @@ export class CentralDirectoryFileHeader extends Uint8Array {
 
 export class Zip64ExtendedInformation extends Uint8Array {
 	#dataView: DataView;
-	constructor(length = 32) {
+	constructor(length = 4) {
 		super(length);
 		this.#dataView = new DataView(this.buffer);
+		this.#dataView.setUint16(2, length - 4, true);
+	}
+	setSignature() {
+		this.#dataView.setUint16(0, 0b0001, true);
+	}
+	get length() {
+		return this.#dataView.getUint16(2, true);
+	}
+	setLength(value: number) {
+		if (this.byteLength === value) {
+			return this;
+		} else {
+			const z64ei = new Zip64ExtendedInformation(value);
+			z64ei.set(this, 0);
+			z64ei.originalUncompressedData = this.originalUncompressedData;
+			z64ei.sizeOfCompressedData = this.sizeOfCompressedData;
+			z64ei.offsetOfLocalHeaderRecord = this.offsetOfLocalHeaderRecord;
+			z64ei.localHeaderDiskNumber = this.localHeaderDiskNumber;
+			return z64ei;
+		}
 	}
 	get originalUncompressedData() {
-		if (this.byteLength >= 4 + 8) {
+		if (this.length >= 8) {
 			return Number(this.#dataView.getBigUint64(4, true));
 		}
 		return 0;
 	}
 	set originalUncompressedData(value: number) {
-		if (this.byteLength >= 4 + 8) {
+		if (this.length >= 8) {
 			this.#dataView.setBigUint64(4, BigInt(value), true);
 		}
 	}
 	get sizeOfCompressedData() {
-		if (this.byteLength >= 4 + 16) {
+		if (this.length >= 16) {
 			return Number(this.#dataView.getBigUint64(12, true));
 		}
 		return 0;
 	}
 	set sizeOfCompressedData(value: number) {
-		if (this.byteLength >= 4 + 16) {
+		if (this.length >= 16) {
 			this.#dataView.setBigUint64(12, BigInt(value), true);
 		}
 	}
 	get offsetOfLocalHeaderRecord() {
-		if (this.byteLength >= 4 + 24) {
+		if (this.length >= 24) {
 			return Number(this.#dataView.getBigUint64(20, true));
 		}
 		return 0;
 	}
 	set offsetOfLocalHeaderRecord(value: number) {
-		if (this.byteLength >= 4 + 24) {
+		if (this.length >= 24) {
 			this.#dataView.setBigUint64(20, BigInt(value), true);
 		}
 	}
 	get localHeaderDiskNumber() {
-		if (this.byteLength >= 4 + 28) {
+		if (this.length >= 28) {
 			return this.#dataView.getUint32(28, true);
 		}
 		return 0;
 	}
 	set localHeaderDiskNumber(value: number) {
-		if (this.byteLength >= 4 + 28) {
+		if (this.length >= 28) {
 			this.#dataView.setUint32(28, value, true);
 		}
 	}
 }
 
 export class LocalFileHeader extends Uint8Array {
-	static SIGNATURE = 0x04034B50;
+	static SIGNATURE = 0x04034b50;
 	#dataView: DataView;
 	constructor(length = 30) {
 		super(length);
 		this.#dataView = new DataView(this.buffer);
+	}
+	setSignature() {
+		this.#dataView.setUint32(0, LocalFileHeader.SIGNATURE, true);
 	}
 	throwIfSignatureMismatch() {
 		const sig = this.#dataView.getUint32(0, true);
@@ -818,7 +909,7 @@ export class LocalFileHeader extends Uint8Array {
 		return this.#dataView.getUint16(28, true);
 	}
 	get extra() {
-		return this.slice(30 + this.fileNameLength, 30 + this.fileNameLength + this.extraLength);
+		return new Uint8Array(this.slice(30 + this.fileNameLength, 30 + this.fileNameLength + this.extraLength));
 	}
 	setExtra(value: Uint8Array) {
 		if (value.byteLength === this.fileNameLength) {
