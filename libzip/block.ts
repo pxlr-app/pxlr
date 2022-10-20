@@ -75,6 +75,18 @@ export class EndOfCentralDirectoryRecord {
 			this.#dataView = dataView;
 		}
 	}
+	toJSON() {
+		return {
+			numberOfThisDisk: this.numberOfThisDisk,
+			centralDirectoryDiskNumber: this.centralDirectoryDiskNumber,
+			entriesInThisDisk: this.entriesInThisDisk,
+			totalEntries: this.totalEntries,
+			sizeOfCentralDirectory: this.sizeOfCentralDirectory,
+			offsetToCentralDirectory: this.offsetToCentralDirectory,
+			commentLength: this.commentLength,
+			comment: this.comment
+		}
+	}
 }
 
 export class Zip64EndOfCentralDirectoryLocator {
@@ -112,6 +124,13 @@ export class Zip64EndOfCentralDirectoryLocator {
 	}
 	set totalNumberOfDisk(value: number) {
 		this.#dataView.setUint32(16, value, true);
+	}
+	toJSON() {
+		return {
+			centralDirectoryDiskNumber: this.centralDirectoryDiskNumber,
+			offsetToCentralDirectory: this.offsetToCentralDirectory,
+			totalNumberOfDisk: this.totalNumberOfDisk,
+		}
 	}
 }
 
@@ -217,6 +236,23 @@ export class Zip64EndOfCentralDirectoryRecord {
 			arrayBuffer.set(data, 56);
 			this.#arrayBuffer = arrayBuffer;
 			this.#dataView = dataView;
+		}
+	}
+	toJSON() {
+		return {
+			sizeOfRecord: this.sizeOfRecord,
+			createdZipSpec: this.createdZipSpec,
+			createdOS: this.createdOS,
+			extractedZipSpec: this.extractedZipSpec,
+			extractedOS: this.extractedOS,
+			numberOfThisDisk: this.numberOfThisDisk,
+			centralDirectoryDiskNumber: this.centralDirectoryDiskNumber,
+			entriesInThisDisk: this.entriesInThisDisk,
+			totalEntries: this.totalEntries,
+			sizeOfCentralDirectory: this.sizeOfCentralDirectory,
+			offsetToCentralDirectory: this.offsetToCentralDirectory,
+			commentLength: this.commentLength,
+			comment: this.comment,
 		}
 	}
 }
@@ -356,12 +392,12 @@ export class CentralDirectoryFileHeader {
 		return this.#arrayBuffer.slice(46 + this.fileNameLength, 46 + this.fileNameLength + this.extraLength);
 	}
 	set extra(value: Uint8Array) {
-		if (value.byteLength === this.fileNameLength) {
+		if (value.byteLength === this.extraLength) {
 			this.#arrayBuffer.set(value, 46 + this.fileNameLength);
 		} else {
 			const arrayBuffer = new Uint8Array(46 + this.fileNameLength + value.byteLength + this.commentLength);
 			const dataView = new DataView(arrayBuffer.buffer);
-			arrayBuffer.set(this.#arrayBuffer, 0);
+			arrayBuffer.set(this.#arrayBuffer.slice(0, 46 + this.fileNameLength), 0);
 			dataView.setUint16(30, value.byteLength, true);
 			arrayBuffer.set(value, 46 + this.fileNameLength);
 			const commentData = textEncoder.encode(this.comment);
@@ -392,12 +428,12 @@ export class CentralDirectoryFileHeader {
 	}
 	set comment(value: string) {
 		const data = textEncoder.encode(value);
-		if (data.byteLength === this.fileNameLength) {
+		if (data.byteLength === this.commentLength) {
 			this.#arrayBuffer.set(data, 46 + this.fileNameLength + this.extraLength);
 		} else {
 			const arrayBuffer = new Uint8Array(46 + this.fileNameLength + this.extraLength + data.byteLength);
 			const dataView = new DataView(arrayBuffer.buffer);
-			arrayBuffer.set(this.#arrayBuffer, 0);
+			arrayBuffer.set(this.#arrayBuffer.slice(0, 46 + this.fileNameLength), 0);
 			dataView.setUint16(32, data.byteLength, true);
 			arrayBuffer.set(data, 46 + this.fileNameLength + this.extraLength);
 			this.#arrayBuffer = arrayBuffer;
@@ -444,13 +480,37 @@ export class CentralDirectoryFileHeader {
 	set localFileOffset(value: number) {
 		this.#dataView.setUint32(42, value, true);
 	}
+	toJSON() {
+		return {
+			createdZipSpec: this.createdZipSpec,
+			createdOS: this.createdOS,
+			extractedZipSpec: this.extractedZipSpec,
+			extractedOS: this.extractedOS,
+			generalPurposeFlag: this.generalPurposeFlag,
+			compressionMethod: this.compressionMethod,
+			lastModificationDate: this.lastModificationDate,
+			crc: this.crc,
+			compressedLength: this.compressedLength,
+			uncompressedLength: this.uncompressedLength,
+			fileNameLength: this.fileNameLength,
+			fileName: this.fileName,
+			extraLength: this.extraLength,
+			extra: this.extra,
+			commentLength: this.commentLength,
+			comment: this.comment,
+			diskStart: this.diskStart,
+			internalFileAttribute: this.internalFileAttribute,
+			externalFileAttribute: this.externalFileAttribute,
+			localFileOffset: this.localFileOffset,
+		}
+	}
 }
 
 export class Zip64ExtendedInformation {
 	static SIGNATURE = 0b0001;
 	#arrayBuffer: Uint8Array;
 	#dataView: DataView;
-	constructor(length = 4) {
+	constructor(length = 0) {
 		this.#arrayBuffer = new Uint8Array(4 + length);
 		this.#dataView = new DataView(this.#arrayBuffer.buffer);
 		this.#dataView.setUint16(0, 0b0001, true);
@@ -520,7 +580,7 @@ export class Zip64ExtendedInformation {
 		return 0;
 	}
 	set localHeaderDiskNumber(value: number) {
-		if (this.length < 24) {
+		if (this.length < 28) {
 			const arrayBuffer = new Uint8Array(4 + 28);
 			const dataView = new DataView(arrayBuffer.buffer);
 			arrayBuffer.set(this.#arrayBuffer, 0);
@@ -529,6 +589,15 @@ export class Zip64ExtendedInformation {
 			this.#dataView = dataView;
 		}
 		this.#dataView.setUint32(28, value, true);
+	}
+	toJSON() {
+		return {
+			length: this.length,
+			originalUncompressedData: this.originalUncompressedData,
+			sizeOfCompressedData: this.sizeOfCompressedData,
+			offsetOfLocalHeaderRecord: this.offsetOfLocalHeaderRecord,
+			localHeaderDiskNumber: this.localHeaderDiskNumber,
+		}
 	}
 }
 
@@ -638,7 +707,7 @@ export class LocalFileHeader {
 		} else {
 			const arrayBuffer = new Uint8Array(30 + data.byteLength + this.extraLength);
 			const dataView = new DataView(arrayBuffer.buffer);
-			arrayBuffer.set(this.#arrayBuffer, 0);
+			arrayBuffer.set(this.#arrayBuffer.slice(0, 30), 0);
 			dataView.setUint16(26, data.byteLength, true);
 			arrayBuffer.set(data, 30);
 			arrayBuffer.set(this.extra, 30 + data.byteLength);
@@ -653,12 +722,12 @@ export class LocalFileHeader {
 		return new Uint8Array(this.#arrayBuffer.slice(30 + this.fileNameLength, 30 + this.fileNameLength + this.extraLength));
 	}
 	set extra(value: Uint8Array) {
-		if (value.byteLength === this.fileNameLength) {
+		if (value.byteLength === this.extraLength) {
 			this.#arrayBuffer.set(value, 30 + this.fileNameLength);
 		} else {
 			const arrayBuffer = new Uint8Array(30 + this.fileNameLength + value.byteLength);
 			const dataView = new DataView(arrayBuffer.buffer);
-			arrayBuffer.set(this.#arrayBuffer, 0);
+			arrayBuffer.set(this.#arrayBuffer.slice(0, 30 + this.fileNameLength), 0);
 			dataView.setUint16(28, value.byteLength, true);
 			arrayBuffer.set(this.extra, 30 + this.fileNameLength);
 			this.#arrayBuffer = arrayBuffer;
@@ -677,6 +746,22 @@ export class LocalFileHeader {
 				return z64ei;
 			}
 			i += 4 + dataSize;
+		}
+	}
+	toJSON() {
+		return {
+			extractedZipSpec: this.extractedZipSpec,
+			extractedOS: this.extractedOS,
+			generalPurposeFlag: this.generalPurposeFlag,
+			compressionMethod: this.compressionMethod,
+			lastModificationDate: this.lastModificationDate,
+			crc: this.crc,
+			compressedLength: this.compressedLength,
+			uncompressedLength: this.uncompressedLength,
+			fileNameLength: this.fileNameLength,
+			fileName: this.fileName,
+			extraLength: this.extraLength,
+			extra: this.extra,
 		}
 	}
 }
