@@ -38,7 +38,12 @@ export class Zip {
 				this.#eocdr.throwIfSignatureMismatch();
 				abortSignal?.throwIfAborted();
 				this.#writeCursor = this.#eocdr.offsetToCentralDirectory;
-				if (this.#eocdr.offsetToCentralDirectory === 0xFFFFFFFF) {
+				if (
+					this.#eocdr.entriesInThisDisk === 0xFFFF ||
+					this.#eocdr.totalEntries === 0xFFFF ||
+					this.#eocdr.offsetToCentralDirectory === 0xFFFFFFFF ||
+					this.#eocdr.sizeOfCentralDirectory === 0xFFFFFFFF
+				) {
 					this.#zeocdl = new Zip64EndOfCentralDirectoryLocator(20);
 					const offsetEOCDL = await this.#file.seek(offsetEOCDR - 20, SeekFrom.End);
 					await this.#file.readIntoBuffer(this.#zeocdl.arrayBuffer);
@@ -56,10 +61,6 @@ export class Zip {
 				const offsetToCentralDirectory = this.#zeocdr?.offsetToCentralDirectory ?? this.#eocdr.offsetToCentralDirectory;
 				const sizeOfCentralDirectory = this.#zeocdr?.sizeOfCentralDirectory ?? this.#eocdr.sizeOfCentralDirectory;
 				yield { state: "OPENING", entriesInThisDisk };
-
-				console.log(this.#eocdr.toJSON(), this.#eocdr.offsetToCentralDirectory === 0xFFFFFFFF);
-				console.log(this.#zeocdl?.toJSON());
-				console.log(this.#zeocdr?.toJSON());
 
 				await this.#file.seek(offsetToCentralDirectory, SeekFrom.Start);
 				for (let i = 0, j = 0; i < entriesInThisDisk && j < sizeOfCentralDirectory; ++i) {
@@ -171,33 +172,41 @@ export class Zip {
 		throw new FileClosedError();
 	}
 
-	async put(fileName: string, data: Uint8Array, abortSignal?: AbortSignal): Promise<number> {
+	async put(fileName: string, data: Uint8Array, options?: { compressionMethod: number; abortSignal?: AbortSignal }): Promise<number> {
 		if (this.#file) {
+			const { compressionMethod, abortSignal } = options ?? {};
 			const localFileOffset = this.#writeCursor;
 			await this.#file.seek(localFileOffset, SeekFrom.Start);
 			abortSignal?.throwIfAborted();
-			let lfh = new LocalFileHeader();
+			const lfh = new LocalFileHeader();
 			lfh.fileName = fileName;
 			lfh.extractedOS = 0; // MS-DOS
 			lfh.extractedZipSpec = 0x2D; // 4.5
-			lfh.compressionMethod = 0;
+			lfh.compressionMethod = compressionMethod ?? 0;
 			lfh.lastModificationDate = new Date();
+			let compressedData = data;
+			if (compressionMethod === 8) {
+				const dataStream = new Response(data).body!;
+				const compressionStream = new CompressionStream("deflate-raw");
+				const pipeline = dataStream.pipeThrough(compressionStream);
+				compressedData = new Uint8Array(await new Response(pipeline).arrayBuffer());
+			}
 			lfh.crc = crc32(data);
 			if (data.byteLength < 0xFFFFFFFF) {
 				lfh.uncompressedLength = data.byteLength;
-				lfh.compressedLength = data.byteLength;
+				lfh.compressedLength = compressedData.byteLength;
 			} else {
 				lfh.uncompressedLength = 0xFFFFFFFF;
 				lfh.compressedLength = 0xFFFFFFFF;
 				const z64ei = new Zip64ExtendedInformation(20);
 				z64ei.originalUncompressedData = data.byteLength;
-				z64ei.sizeOfCompressedData = data.byteLength;
+				z64ei.sizeOfCompressedData = compressedData.byteLength;
 				lfh.extra = z64ei.arrayBuffer;
 			}
 			let byteWritten = 0;
 			byteWritten += await this.#file.writeBuffer(lfh.arrayBuffer);
 			abortSignal?.throwIfAborted();
-			byteWritten += await this.#file.writeBuffer(data);
+			byteWritten += await this.#file.writeBuffer(compressedData);
 			abortSignal?.throwIfAborted();
 			const cdfh = new CentralDirectoryFileHeader();
 			cdfh.fileName = lfh.fileName;
@@ -212,6 +221,15 @@ export class Zip {
 			this.#writeCursor += byteWritten;
 			this.#isCentralDirectoryDirty = true;
 			return byteWritten;
+		}
+		throw new FileClosedError();
+	}
+
+	remove(fileName: string): void {
+		if (this.#file) {
+			this.#centralDirectory.delete(fileName);
+			this.#isCentralDirectoryDirty = true;
+			return;
 		}
 		throw new FileClosedError();
 	}
@@ -234,13 +252,17 @@ export class Zip {
 			// Setup EndOfCentralDirectoryRecord
 			const eocdr = new EndOfCentralDirectoryRecord();
 			eocdr.comment = this.#eocdr.comment ?? "";
-			eocdr.entriesInThisDisk = this.#centralDirectory.size;
-			eocdr.totalEntries = eocdr.entriesInThisDisk;
+			eocdr.entriesInThisDisk = Math.min(0xFFFF, this.#centralDirectory.size);
+			eocdr.totalEntries = Math.min(0xFFFF, eocdr.entriesInThisDisk);
 			eocdr.offsetToCentralDirectory = Math.min(0xFFFFFFFF, startOfCentralDirectory);
 			eocdr.sizeOfCentralDirectory = Math.min(0xFFFFFFFF, endOfCentralDirectory - startOfCentralDirectory);
 			// ZIP64 transition
-			if (endOfCentralDirectory + byteWritten >= 0xFFFFFFFF - 1) {
-				eocdr.offsetToCentralDirectory = 0xFFFFFFFF;
+			if (
+				eocdr.entriesInThisDisk === 0xFFFF ||
+				eocdr.totalEntries === 0xFFFF ||
+				eocdr.offsetToCentralDirectory === 0xFFFFFFFF ||
+				eocdr.sizeOfCentralDirectory === 0xFFFFFFFF
+			) {
 				// Write Zip64EndOfCentralDirectoryRecord
 				const zeocdr = new Zip64EndOfCentralDirectoryRecord();
 				zeocdr.comment = this.#zeocdr?.comment ?? this.#eocdr.comment;
