@@ -142,6 +142,7 @@ export class Zip64EndOfCentralDirectoryRecord {
 		this.#arrayBuffer = new Uint8Array(length);
 		this.#dataView = new DataView(this.#arrayBuffer.buffer);
 		this.#dataView.setUint32(0, Zip64EndOfCentralDirectoryRecord.SIGNATURE, true);
+		this.#dataView.setBigUint64(4, BigInt(56 - 12), true);
 	}
 	throwIfSignatureMismatch() {
 		const sig = this.#dataView.getUint32(0, true);
@@ -219,7 +220,7 @@ export class Zip64EndOfCentralDirectoryRecord {
 		this.#dataView.setBigUint64(48, BigInt(value), true);
 	}
 	get commentLength() {
-		return this.sizeOfRecord - 56;
+		return this.sizeOfRecord - (56 - 12);
 	}
 	get comment() {
 		return textDecoder.decode(this.#arrayBuffer.slice(56, 56 + this.commentLength));
@@ -232,7 +233,7 @@ export class Zip64EndOfCentralDirectoryRecord {
 			const arrayBuffer = new Uint8Array(56 + data.byteLength);
 			const dataView = new DataView(arrayBuffer.buffer);
 			arrayBuffer.set(this.#arrayBuffer, 0);
-			dataView.setBigUint64(4, BigInt(56 + data.byteLength), true);
+			dataView.setBigUint64(4, BigInt(56 + data.byteLength - 12), true);
 			arrayBuffer.set(data, 56);
 			this.#arrayBuffer = arrayBuffer;
 			this.#dataView = dataView;

@@ -1,4 +1,4 @@
-import { CentralDirectoryFileHeader, EndOfCentralDirectoryRecord, LocalFileHeader, Zip64EndOfCentralDirectoryLocator, Zip64EndOfCentralDirectoryRecord } from "./block.ts";
+import { CentralDirectoryFileHeader, EndOfCentralDirectoryRecord, LocalFileHeader, Zip64EndOfCentralDirectoryLocator, Zip64EndOfCentralDirectoryRecord, Zip64ExtendedInformation } from "./block.ts";
 import { crc32 } from "./crc32.ts";
 import { File, SeekFrom } from "./file/file.ts";
 
@@ -56,6 +56,10 @@ export class Zip {
 				const offsetToCentralDirectory = this.#zeocdr?.offsetToCentralDirectory ?? this.#eocdr.offsetToCentralDirectory;
 				const sizeOfCentralDirectory = this.#zeocdr?.sizeOfCentralDirectory ?? this.#eocdr.sizeOfCentralDirectory;
 				yield { state: "OPENING", entriesInThisDisk };
+
+				console.log(this.#eocdr.toJSON(), this.#eocdr.offsetToCentralDirectory === 0xFFFFFFFF);
+				console.log(this.#zeocdl?.toJSON());
+				console.log(this.#zeocdr?.toJSON());
 
 				await this.#file.seek(offsetToCentralDirectory, SeekFrom.Start);
 				for (let i = 0, j = 0; i < entriesInThisDisk && j < sizeOfCentralDirectory; ++i) {
@@ -179,19 +183,17 @@ export class Zip {
 			lfh.compressionMethod = 0;
 			lfh.lastModificationDate = new Date();
 			lfh.crc = crc32(data);
-			// if (data.byteLength < 0xFFFFFFFF) {
-			// 	lfh.uncompressedLength = data.byteLength;
-			// 	lfh.compressedLength = data.byteLength;
-			// } else {
-			// 	lfh.uncompressedLength = 0xFFFFFFFF;
-			// 	lfh.compressedLength = 0xFFFFFFFF;
-			// 	const z64ei = new Zip64ExtendedInformation(20);
-			// 	z64ei.setSignature();
-			// 	z64ei.originalUncompressedData = data.byteLength;
-			// 	z64ei.sizeOfCompressedData = data.byteLength;
-			// 	lfh = lfh.setExtra(z64ei);
-			// }
-			console.log(lfh);
+			if (data.byteLength < 0xFFFFFFFF) {
+				lfh.uncompressedLength = data.byteLength;
+				lfh.compressedLength = data.byteLength;
+			} else {
+				lfh.uncompressedLength = 0xFFFFFFFF;
+				lfh.compressedLength = 0xFFFFFFFF;
+				const z64ei = new Zip64ExtendedInformation(20);
+				z64ei.originalUncompressedData = data.byteLength;
+				z64ei.sizeOfCompressedData = data.byteLength;
+				lfh.extra = z64ei.arrayBuffer;
+			}
 			let byteWritten = 0;
 			byteWritten += await this.#file.writeBuffer(lfh.arrayBuffer);
 			abortSignal?.throwIfAborted();
@@ -220,17 +222,15 @@ export class Zip {
 
 	async #writeCentralDirectory(abortSignal?: AbortSignal) {
 		if (this.#file && this.#eocdr && this.#isCentralDirectoryDirty) {
-			const startOfCentralDirectory = this.#zeocdr?.offsetToCentralDirectory ?? this.#eocdr.offsetToCentralDirectory;
-			const endOfCentralDirectory = this.#writeCursor;
-			console.log("Write CentralDirectoryFileHeaders at ", startOfCentralDirectory, endOfCentralDirectory);
-			await this.#file.seek(endOfCentralDirectory, SeekFrom.Start);
+			const startOfCentralDirectory = this.#writeCursor;
+			await this.#file.seek(startOfCentralDirectory, SeekFrom.Start);
 			abortSignal?.throwIfAborted();
 			let byteWritten = 0;
 			for (const cdfh of this.#centralDirectory.values()) {
-				await this.#file.writeBuffer(cdfh.arrayBuffer);
+				byteWritten += await this.#file.writeBuffer(cdfh.arrayBuffer);
 				abortSignal?.throwIfAborted();
-				byteWritten += cdfh.arrayBuffer.byteLength;
 			}
+			const endOfCentralDirectory = startOfCentralDirectory + byteWritten;
 			// Setup EndOfCentralDirectoryRecord
 			const eocdr = new EndOfCentralDirectoryRecord();
 			eocdr.comment = this.#eocdr.comment ?? "";
@@ -257,14 +257,13 @@ export class Zip {
 				this.#zeocdr = zeocdr;
 				// Write Zip64EndOfCentralDirectoryLocator
 				const zeocdl = new Zip64EndOfCentralDirectoryLocator();
-				zeocdl.offsetToCentralDirectory = startOfCentralDirectory;
+				zeocdl.offsetToCentralDirectory = endOfCentralDirectory;
 				zeocdl.totalNumberOfDisk = 1;
 				byteWritten += await this.#file.writeBuffer(zeocdl.arrayBuffer);
 				abortSignal?.throwIfAborted();
 				this.#zeocdl = zeocdl;
 			}
 			// Write EndOfCentralDirectoryRecord
-			console.log(eocdr.offsetToCentralDirectory, eocdr.sizeOfCentralDirectory);
 			byteWritten += await this.#file.writeBuffer(eocdr.arrayBuffer);
 			abortSignal?.throwIfAborted();
 			this.#eocdr = eocdr;

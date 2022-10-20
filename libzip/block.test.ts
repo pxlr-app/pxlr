@@ -49,10 +49,12 @@ Deno.test("Zip64EndOfCentralDirectoryLocator", () => {
 Deno.test("Zip64EndOfCentralDirectoryRecord", () => {
 	const block1 = new Zip64EndOfCentralDirectoryRecord();
 	assertEquals(block1.arrayBuffer.byteLength, 56);
+	assertEquals(block1.sizeOfRecord, 44);
 
 	const block2 = new Zip64EndOfCentralDirectoryRecord();
 	block2.comment = "Hello World"
 	assertEquals(block2.arrayBuffer.byteLength, 67);
+	assertEquals(block2.sizeOfRecord, 55);
 	assertEquals(block2.commentLength, 11);
 	assertEquals(block2.comment, "Hello World");
 
