@@ -62,13 +62,13 @@ export class Zip {
 				await this.#file.seek(offsetToCentralDirectory, SeekFrom.Start);
 				for (let i = 0, j = 0; i < entriesInThisDisk && j < sizeOfCentralDirectory; ++i) {
 					const cdfhFixed = new CentralDirectoryFileHeader(46);
-					await this.#file.readIntoBuffer(cdfhFixed);
+					await this.#file.readIntoBuffer(cdfhFixed.arrayBuffer);
 					cdfhFixed.throwIfSignatureMismatch();
 					const variableData = new Uint8Array(cdfhFixed.fileNameLength + cdfhFixed.extraLength + cdfhFixed.commentLength);
 					await this.#file.readIntoBuffer(variableData);
 					const cdfh = new CentralDirectoryFileHeader(46 + variableData.byteLength);
-					cdfh.set(cdfhFixed, 0);
-					cdfh.set(variableData, 46);
+					cdfh.arrayBuffer.set(cdfhFixed.arrayBuffer, 0);
+					cdfh.arrayBuffer.set(variableData, 46);
 					this.#centralDirectory.set(cdfh.fileName, cdfh);
 					abortSignal?.throwIfAborted();
 					yield { state: 'READING', entry: cdfh, current: i };
@@ -140,14 +140,14 @@ export class Zip {
 			await this.#file.seek(cdfh.localFileOffset, SeekFrom.Start);
 			abortSignal?.throwIfAborted();
 			const lfhFixed = new LocalFileHeader(30);
-			await this.#file.readIntoBuffer(lfhFixed);
+			await this.#file.readIntoBuffer(lfhFixed.arrayBuffer);
 			lfhFixed.throwIfSignatureMismatch();
 			const variableData = new Uint8Array(lfhFixed.fileNameLength + lfhFixed.extraLength);
 			await this.#file.readIntoBuffer(variableData);
 			abortSignal?.throwIfAborted();
 			const lfh = new LocalFileHeader(30 + variableData.byteLength);
-			lfh.set(lfhFixed, 0);
-			lfh.set(variableData, 30);
+			lfh.arrayBuffer.set(lfhFixed.arrayBuffer, 0);
+			lfh.arrayBuffer.set(variableData, 30);
 			return lfh;
 		}
 		throw new FileClosedError();
@@ -174,8 +174,8 @@ export class Zip {
 			const localFileOffset = this.#writeCursor;
 			await this.#file.seek(localFileOffset, SeekFrom.Start);
 			abortSignal?.throwIfAborted();
-			let lfh = new LocalFileHeader().setFileName(fileName);
-			lfh.setSignature();
+			let lfh = new LocalFileHeader()
+			lfh.fileName = fileName;
 			lfh.extractedOS = 0 // MS-DOS
 			lfh.extractedZipSpec = 0x2D // 4.5
 			lfh.compressionMethod = 0;
@@ -195,12 +195,13 @@ export class Zip {
 			// }
 			console.log(lfh);
 			let byteWritten = 0;
-			byteWritten += await this.#file.writeBuffer(lfh);
+			byteWritten += await this.#file.writeBuffer(lfh.arrayBuffer);
 			abortSignal?.throwIfAborted();
 			byteWritten += await this.#file.writeBuffer(data);
 			abortSignal?.throwIfAborted();
-			const cdfh = new CentralDirectoryFileHeader().setFileName(lfh.fileName).setExtra(lfh.extra);
-			cdfh.setSignature();
+			const cdfh = new CentralDirectoryFileHeader()
+			cdfh.fileName = lfh.fileName;
+			cdfh.extra = lfh.extra;
 			cdfh.compressionMethod = lfh.compressionMethod;
 			cdfh.lastModificationDate = lfh.lastModificationDate;
 			cdfh.crc = lfh.crc;
@@ -228,9 +229,9 @@ export class Zip {
 			abortSignal?.throwIfAborted();
 			let byteWritten = 0;
 			for (const cdfh of this.#centralDirectory.values()) {
-				await this.#file.writeBuffer(cdfh);
+				await this.#file.writeBuffer(cdfh.arrayBuffer);
 				abortSignal?.throwIfAborted();
-				byteWritten += cdfh.byteLength;
+				byteWritten += cdfh.arrayBuffer.byteLength;
 			}
 			// Setup EndOfCentralDirectoryRecord
 			const eocdr = new EndOfCentralDirectoryRecord()
@@ -508,14 +509,13 @@ export class Zip64EndOfCentralDirectoryRecord {
 	}
 }
 
-export class CentralDirectoryFileHeader extends Uint8Array {
+export class CentralDirectoryFileHeader {
 	static SIGNATURE = 0x02014B50;
+	#arrayBuffer: Uint8Array;
 	#dataView: DataView;
 	constructor(length = 46) {
-		super(length);
-		this.#dataView = new DataView(this.buffer);
-	}
-	setSignature() {
+		this.#arrayBuffer = new Uint8Array(length);
+		this.#dataView = new DataView(this.#arrayBuffer.buffer);
 		this.#dataView.setUint32(0, CentralDirectoryFileHeader.SIGNATURE, true);
 	}
 	throwIfSignatureMismatch() {
@@ -523,6 +523,9 @@ export class CentralDirectoryFileHeader extends Uint8Array {
 		if (sig !== CentralDirectoryFileHeader.SIGNATURE) {
 			throw new SyntaxError(`Wrong signature for CentralDirectoryFileHeader, got ${sig.toString(16)}.`);
 		}
+	}
+	get arrayBuffer() {
+		return this.#arrayBuffer;
 	}
 	get createdZipSpec() {
 		return this.#dataView.getUint8(4);
@@ -615,42 +618,44 @@ export class CentralDirectoryFileHeader extends Uint8Array {
 		return this.#dataView.getUint16(28, true);
 	}
 	get fileName() {
-		return textDecoder.decode(this.slice(46, 46 + this.fileNameLength));
+		return textDecoder.decode(this.#arrayBuffer.slice(46, 46 + this.fileNameLength));
 	}
-	setFileName(value: string) {
+	set fileName(value: string) {
 		const data = textEncoder.encode(value);
 		if (data.byteLength === this.fileNameLength) {
-			this.set(data, 46);
-			return this;
+			this.#arrayBuffer.set(data, 46);
 		} else {
-			const eocdr = new CentralDirectoryFileHeader(46 + data.byteLength + this.extraLength + this.commentLength);
-			eocdr.set(this, 0);
-			eocdr.#dataView.setUint16(28, data.byteLength, true);
-			eocdr.set(data, 46);
-			eocdr.set(this.extra, 46 + data.byteLength);
+			const arrayBuffer = new Uint8Array(46 + data.byteLength + this.extraLength + this.commentLength);
+			const dataView = new DataView(arrayBuffer.buffer);
+			arrayBuffer.set(this.#arrayBuffer, 0);
+			dataView.setUint16(28, data.byteLength, true);
+			arrayBuffer.set(data, 46);
+			arrayBuffer.set(this.extra, 46 + data.byteLength);
 			const commentData = textEncoder.encode(this.comment);
-			eocdr.set(commentData, 46 + data.byteLength + this.extraLength);
-			return eocdr;
+			arrayBuffer.set(commentData, 46 + data.byteLength + this.extraLength);
+			this.#arrayBuffer = arrayBuffer;
+			this.#dataView = dataView;
 		}
 	}
 	get extraLength() {
 		return this.#dataView.getUint16(30, true);
 	}
 	get extra() {
-		return this.slice(46 + this.fileNameLength, 46 + this.fileNameLength + this.extraLength);
+		return this.#arrayBuffer.slice(46 + this.fileNameLength, 46 + this.fileNameLength + this.extraLength);
 	}
-	setExtra(value: Uint8Array) {
+	set extra(value: Uint8Array) {
 		if (value.byteLength === this.fileNameLength) {
-			this.set(value, 46 + this.fileNameLength);
-			return this;
+			this.#arrayBuffer.set(value, 46 + this.fileNameLength);
 		} else {
-			const eocdr = new CentralDirectoryFileHeader(46 + this.fileNameLength + value.byteLength + this.commentLength);
-			eocdr.set(this, 0);
-			eocdr.#dataView.setUint16(30, value.byteLength, true);
-			eocdr.set(value, 46 + this.fileNameLength);
+			const arrayBuffer = new Uint8Array(46 + this.fileNameLength + value.byteLength + this.commentLength);
+			const dataView = new DataView(arrayBuffer.buffer);
+			arrayBuffer.set(this.#arrayBuffer, 0);
+			dataView.setUint16(30, value.byteLength, true);
+			arrayBuffer.set(value, 46 + this.fileNameLength);
 			const commentData = textEncoder.encode(this.comment);
-			eocdr.set(commentData, 46 + this.fileNameLength + this.extraLength);
-			return eocdr;
+			arrayBuffer.set(commentData, 46 + this.fileNameLength + value.byteLength);
+			this.#arrayBuffer = arrayBuffer;
+			this.#dataView = dataView;
 		}
 	}
 	#getZip64ExtendedInformation() {
@@ -661,7 +666,7 @@ export class CentralDirectoryFileHeader extends Uint8Array {
 			const dataSize = view.getUint16(i + 2, true);
 			if (headerId == 0x0001) {
 				const z64ei = new Zip64ExtendedInformation(4 + dataSize);
-				z64ei.set(extra.slice(i, i + 4 + dataSize), 0);
+				z64ei.arrayBuffer.set(extra.slice(i, i + 4 + dataSize), 0);
 				return z64ei;
 			}
 			i += 4 + dataSize;
@@ -671,19 +676,20 @@ export class CentralDirectoryFileHeader extends Uint8Array {
 		return this.#dataView.getUint16(32, true);
 	}
 	get comment() {
-		return textDecoder.decode(this.slice(46 + this.fileNameLength + this.extraLength, 46 + this.fileNameLength + this.extraLength + this.commentLength));
+		return textDecoder.decode(this.#arrayBuffer.slice(46 + this.fileNameLength + this.extraLength, 46 + this.fileNameLength + this.extraLength + this.commentLength));
 	}
-	setComment(value: string) {
+	set comment(value: string) {
 		const data = textEncoder.encode(value);
 		if (data.byteLength === this.fileNameLength) {
-			this.set(data, 46 + this.fileNameLength + this.extraLength);
-			return this;
+			this.#arrayBuffer.set(data, 46 + this.fileNameLength + this.extraLength);
 		} else {
-			const eocdr = new CentralDirectoryFileHeader(46 + this.fileNameLength + this.extraLength + data.byteLength);
-			eocdr.set(this, 0);
-			eocdr.#dataView.setUint16(32, data.byteLength, true);
-			eocdr.set(data, 46 + this.fileNameLength + this.extraLength);
-			return eocdr;
+			const arrayBuffer = new Uint8Array(46 + this.fileNameLength + this.extraLength + data.byteLength);
+			const dataView = new DataView(arrayBuffer.buffer);
+			arrayBuffer.set(this.#arrayBuffer, 0);
+			dataView.setUint16(32, data.byteLength, true);
+			arrayBuffer.set(data, 46 + this.fileNameLength + this.extraLength);
+			this.#arrayBuffer = arrayBuffer;
+			this.#dataView = dataView;
 		}
 	}
 	get diskStart() {
@@ -728,31 +734,21 @@ export class CentralDirectoryFileHeader extends Uint8Array {
 	}
 }
 
-export class Zip64ExtendedInformation extends Uint8Array {
+export class Zip64ExtendedInformation {
+	static SIGNATURE = 0b0001;
+	#arrayBuffer: Uint8Array;
 	#dataView: DataView;
 	constructor(length = 4) {
-		super(length);
-		this.#dataView = new DataView(this.buffer);
-		this.#dataView.setUint16(2, length - 4, true);
-	}
-	setSignature() {
+		this.#arrayBuffer = new Uint8Array(4 + length);
+		this.#dataView = new DataView(this.#arrayBuffer.buffer);
 		this.#dataView.setUint16(0, 0b0001, true);
+		this.#dataView.setUint16(2, length, true);
+	}
+	get arrayBuffer() {
+		return this.#arrayBuffer;
 	}
 	get length() {
 		return this.#dataView.getUint16(2, true);
-	}
-	setLength(value: number) {
-		if (this.byteLength === value) {
-			return this;
-		} else {
-			const z64ei = new Zip64ExtendedInformation(value);
-			z64ei.set(this, 0);
-			z64ei.originalUncompressedData = this.originalUncompressedData;
-			z64ei.sizeOfCompressedData = this.sizeOfCompressedData;
-			z64ei.offsetOfLocalHeaderRecord = this.offsetOfLocalHeaderRecord;
-			z64ei.localHeaderDiskNumber = this.localHeaderDiskNumber;
-			return z64ei;
-		}
 	}
 	get originalUncompressedData() {
 		if (this.length >= 8) {
@@ -761,9 +757,15 @@ export class Zip64ExtendedInformation extends Uint8Array {
 		return 0;
 	}
 	set originalUncompressedData(value: number) {
-		if (this.length >= 8) {
-			this.#dataView.setBigUint64(4, BigInt(value), true);
+		if (this.length < 8) {
+			const arrayBuffer = new Uint8Array(4 + 8);
+			const dataView = new DataView(arrayBuffer.buffer);
+			arrayBuffer.set(this.#arrayBuffer, 0);
+			dataView.setUint16(2, 8, true);
+			this.#arrayBuffer = arrayBuffer;
+			this.#dataView = dataView;
 		}
+		this.#dataView.setBigUint64(4, BigInt(value), true);
 	}
 	get sizeOfCompressedData() {
 		if (this.length >= 16) {
@@ -772,9 +774,15 @@ export class Zip64ExtendedInformation extends Uint8Array {
 		return 0;
 	}
 	set sizeOfCompressedData(value: number) {
-		if (this.length >= 16) {
-			this.#dataView.setBigUint64(12, BigInt(value), true);
+		if (this.length < 16) {
+			const arrayBuffer = new Uint8Array(4 + 16);
+			const dataView = new DataView(arrayBuffer.buffer);
+			arrayBuffer.set(this.#arrayBuffer, 0);
+			dataView.setUint16(2, 16, true);
+			this.#arrayBuffer = arrayBuffer;
+			this.#dataView = dataView;
 		}
+		this.#dataView.setBigUint64(12, BigInt(value), true);
 	}
 	get offsetOfLocalHeaderRecord() {
 		if (this.length >= 24) {
@@ -783,9 +791,15 @@ export class Zip64ExtendedInformation extends Uint8Array {
 		return 0;
 	}
 	set offsetOfLocalHeaderRecord(value: number) {
-		if (this.length >= 24) {
-			this.#dataView.setBigUint64(20, BigInt(value), true);
+		if (this.length < 24) {
+			const arrayBuffer = new Uint8Array(4 + 24);
+			const dataView = new DataView(arrayBuffer.buffer);
+			arrayBuffer.set(this.#arrayBuffer, 0);
+			dataView.setUint16(2, 24, true);
+			this.#arrayBuffer = arrayBuffer;
+			this.#dataView = dataView;
 		}
+		this.#dataView.setBigUint64(20, BigInt(value), true);
 	}
 	get localHeaderDiskNumber() {
 		if (this.length >= 28) {
@@ -794,20 +808,25 @@ export class Zip64ExtendedInformation extends Uint8Array {
 		return 0;
 	}
 	set localHeaderDiskNumber(value: number) {
-		if (this.length >= 28) {
-			this.#dataView.setUint32(28, value, true);
+		if (this.length < 24) {
+			const arrayBuffer = new Uint8Array(4 + 28);
+			const dataView = new DataView(arrayBuffer.buffer);
+			arrayBuffer.set(this.#arrayBuffer, 0);
+			dataView.setUint16(2, 28, true);
+			this.#arrayBuffer = arrayBuffer;
+			this.#dataView = dataView;
 		}
+		this.#dataView.setUint32(28, value, true);
 	}
 }
 
-export class LocalFileHeader extends Uint8Array {
+export class LocalFileHeader {
 	static SIGNATURE = 0x04034b50;
+	#arrayBuffer: Uint8Array;
 	#dataView: DataView;
 	constructor(length = 30) {
-		super(length);
-		this.#dataView = new DataView(this.buffer);
-	}
-	setSignature() {
+		this.#arrayBuffer = new Uint8Array(length);
+		this.#dataView = new DataView(this.#arrayBuffer.buffer);
 		this.#dataView.setUint32(0, LocalFileHeader.SIGNATURE, true);
 	}
 	throwIfSignatureMismatch() {
@@ -815,6 +834,9 @@ export class LocalFileHeader extends Uint8Array {
 		if (sig !== LocalFileHeader.SIGNATURE) {
 			throw new SyntaxError(`Wrong signature for LocalFileHeader, got ${sig.toString(16)}.`);
 		}
+	}
+	get arrayBuffer() {
+		return this.#arrayBuffer;
 	}
 	get extractedZipSpec() {
 		return this.#dataView.getUint8(4);
@@ -895,38 +917,40 @@ export class LocalFileHeader extends Uint8Array {
 		return this.#dataView.getUint16(26, true);
 	}
 	get fileName() {
-		return textDecoder.decode(this.slice(30, 30 + this.fileNameLength));
+		return textDecoder.decode(this.#arrayBuffer.slice(30, 30 + this.fileNameLength));
 	}
-	setFileName(value: string) {
+	set fileName(value: string) {
 		const data = textEncoder.encode(value);
 		if (data.byteLength === this.fileNameLength) {
-			this.set(data, 30);
-			return this;
+			this.#arrayBuffer.set(data, 30);
 		} else {
-			const eocdr = new LocalFileHeader(30 + data.byteLength + this.extraLength);
-			eocdr.set(this, 0);
-			eocdr.#dataView.setUint16(26, data.byteLength, true);
-			eocdr.set(data, 30);
-			eocdr.set(this.extra, 30 + data.byteLength);
-			return eocdr;
+			const arrayBuffer = new Uint8Array(30 + data.byteLength + this.extraLength);
+			const dataView = new DataView(arrayBuffer.buffer);
+			arrayBuffer.set(this.#arrayBuffer, 0);
+			dataView.setUint16(26, data.byteLength, true);
+			arrayBuffer.set(data, 30);
+			arrayBuffer.set(this.extra, 30 + data.byteLength);
+			this.#arrayBuffer = arrayBuffer;
+			this.#dataView = dataView;
 		}
 	}
 	get extraLength() {
 		return this.#dataView.getUint16(28, true);
 	}
 	get extra() {
-		return new Uint8Array(this.slice(30 + this.fileNameLength, 30 + this.fileNameLength + this.extraLength));
+		return new Uint8Array(this.#arrayBuffer.slice(30 + this.fileNameLength, 30 + this.fileNameLength + this.extraLength));
 	}
-	setExtra(value: Uint8Array) {
+	set extra(value: Uint8Array) {
 		if (value.byteLength === this.fileNameLength) {
-			this.set(value, 30 + this.fileNameLength);
-			return this;
+			this.#arrayBuffer.set(value, 30 + this.fileNameLength);
 		} else {
-			const eocdr = new LocalFileHeader(30 + this.fileNameLength + value.byteLength);
-			eocdr.set(this, 0);
-			eocdr.#dataView.setUint16(28, value.byteLength, true);
-			eocdr.set(value, 30 + this.fileNameLength);
-			return eocdr;
+			const arrayBuffer = new Uint8Array(30 + this.fileNameLength + value.byteLength);
+			const dataView = new DataView(arrayBuffer.buffer);
+			arrayBuffer.set(this.#arrayBuffer, 0);
+			dataView.setUint16(28, value.byteLength, true);
+			arrayBuffer.set(this.extra, 30 + this.fileNameLength);
+			this.#arrayBuffer = arrayBuffer;
+			this.#dataView = dataView;
 		}
 	}
 	#getZip64ExtendedInformation() {
@@ -936,8 +960,8 @@ export class LocalFileHeader extends Uint8Array {
 			const headerId = view.getUint16(i, true);
 			const dataSize = view.getUint16(i + 2, true);
 			if (headerId == 0x0001) {
-				const z64ei = new Zip64ExtendedInformation(4 + dataSize);
-				z64ei.set(extra.slice(i, i + 4 + dataSize), 0);
+				const z64ei = new Zip64ExtendedInformation(dataSize);
+				z64ei.arrayBuffer.set(extra.slice(i, i + 4 + dataSize), 0);
 				return z64ei;
 			}
 			i += 4 + dataSize;
