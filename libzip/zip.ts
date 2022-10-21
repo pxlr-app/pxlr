@@ -8,11 +8,21 @@ import {
 	Zip64ExtendedInformation,
 } from "./block.ts";
 import { crc32 } from "./crc32.ts";
+import { Deferred, deferred } from "https://deno.land/std@0.160.0/async/deferred.ts";
 import { File, SeekFrom } from "./file/file.ts";
 
 export type ZipIterOpen =
 	| { state: "OPENING"; entriesInThisDisk: number }
 	| { state: "READING"; current: number; entry: CentralDirectoryFileHeader };
+
+export type OpenProgressHandlerState = 
+	| { numberOfentries: number; currentEntryNumber: 0 }
+	| { numberOfentries: number; currentEntryNumber: number; entry: CentralDirectoryFileHeader };
+
+interface TaskController {
+	pause(): void;
+	resume(): void;
+}
 
 export class Zip {
 	#file: File | undefined;
@@ -22,85 +32,153 @@ export class Zip {
 	#centralDirectory: Map<string, CentralDirectoryFileHeader>;
 	#isCentralDirectoryDirty: boolean;
 	#writeCursor: number;
+	#taskQueue: [Promise<unknown>, (controller: TaskController) => Promise<void>][];
+	#isRunningTask: boolean;
+	#drainLock: Deferred<void> | undefined;
 	constructor(file: File) {
 		this.#file = file;
 		this.#centralDirectory = new Map();
 		this.#writeCursor = 0;
 		this.#isCentralDirectoryDirty = false;
+		this.#taskQueue = [];
+		this.#isRunningTask = false;
 	}
 
-	async open(abortSignal?: AbortSignal) {
-		for await (const _ of this.iterOpen(abortSignal)) {
-			// Do nothing
-		}
+	get isBusy() {
+		return this.#isRunningTask;
 	}
 
-	async *iterOpen(abortSignal?: AbortSignal): AsyncIterableIterator<ZipIterOpen> {
+	#enqueueTask<T = unknown>(task: (controller: TaskController) => T | PromiseLike<T>, priority?: true): Promise<T> {
 		if (!this.#file) {
 			throw new ZipClosedError();
 		}
-		try {
-			// Read EndOfCentralDirectoryRecord, Zip64EndOfCentralDirectoryLocator and Zip64EndOfCentralDirectoryRecord
-			const offsetEOCDR = await this.#findEndOfCentralDirectoryRecord();
-			this.#eocdr = new EndOfCentralDirectoryRecord(-offsetEOCDR);
-			await this.#file.seek(offsetEOCDR, SeekFrom.End);
-			await this.#file.readIntoBuffer(this.#eocdr.arrayBuffer);
-			this.#eocdr.throwIfSignatureMismatch();
-			abortSignal?.throwIfAborted();
-			this.#writeCursor = this.#eocdr.offsetToCentralDirectory;
-			if (
-				this.#eocdr.entriesInThisDisk === 0xFFFF ||
-				this.#eocdr.totalEntries === 0xFFFF ||
-				this.#eocdr.offsetToCentralDirectory === 0xFFFFFFFF ||
-				this.#eocdr.sizeOfCentralDirectory === 0xFFFFFFFF
-			) {
-				this.#zeocdl = new Zip64EndOfCentralDirectoryLocator(20);
-				const offsetEOCDL = await this.#file.seek(offsetEOCDR - 20, SeekFrom.End);
-				await this.#file.readIntoBuffer(this.#zeocdl.arrayBuffer);
-				this.#zeocdl.throwIfSignatureMismatch();
-				abortSignal?.throwIfAborted();
-				this.#zeocdr = new Zip64EndOfCentralDirectoryRecord(offsetEOCDL - this.#zeocdl.offsetToCentralDirectory);
-				await this.#file.seek(this.#zeocdl.offsetToCentralDirectory, SeekFrom.Start);
-				await this.#file.readIntoBuffer(this.#zeocdr.arrayBuffer);
-				this.#zeocdr.throwIfSignatureMismatch();
-				abortSignal?.throwIfAborted();
-				this.#writeCursor = this.#zeocdl.offsetToCentralDirectory;
+		const defer = deferred<T>();
+		const wrapper = async (controller: TaskController) => {
+			try {
+				const result = await task(controller);
+				defer.resolve(result);
+			} catch (error) {
+				defer.reject(error);
 			}
-
-			const entriesInThisDisk = this.#zeocdr?.entriesInThisDisk ?? this.#eocdr.entriesInThisDisk;
-			const offsetToCentralDirectory = this.#zeocdr?.offsetToCentralDirectory ?? this.#eocdr.offsetToCentralDirectory;
-			const sizeOfCentralDirectory = this.#zeocdr?.sizeOfCentralDirectory ?? this.#eocdr.sizeOfCentralDirectory;
-			yield { state: "OPENING", entriesInThisDisk };
-
-			await this.#file.seek(offsetToCentralDirectory, SeekFrom.Start);
-			for (let i = 0, j = 0; i < entriesInThisDisk && j < sizeOfCentralDirectory; ++i) {
-				const cdfhFixed = new CentralDirectoryFileHeader(46);
-				await this.#file.readIntoBuffer(cdfhFixed.arrayBuffer);
-				cdfhFixed.throwIfSignatureMismatch();
-				const variableData = new Uint8Array(cdfhFixed.fileNameLength + cdfhFixed.extraLength + cdfhFixed.commentLength);
-				await this.#file.readIntoBuffer(variableData);
-				const cdfh = new CentralDirectoryFileHeader(46 + variableData.byteLength);
-				cdfh.arrayBuffer.set(cdfhFixed.arrayBuffer, 0);
-				cdfh.arrayBuffer.set(variableData, 46);
-				this.#centralDirectory.set(cdfh.fileName, cdfh);
-				abortSignal?.throwIfAborted();
-				yield { state: "READING", entry: cdfh, current: i };
-				j += 46 + variableData.byteLength;
-			}
-		} catch (error) {
-			if (!(error instanceof EndOfCentralDirectoryRecordNotFoundError)) {
-				throw error;
-			}
-			this.#eocdr = new EndOfCentralDirectoryRecord();
-			this.#isCentralDirectoryDirty = true;
+		};
+		if (priority === true) {
+			this.#taskQueue.unshift([defer, wrapper]);
+		} else {
+			this.#taskQueue.push([defer, wrapper]);
 		}
-		return;
+		// Begin drainning tasks
+		this.#drainTask();
+		return defer;
+	}
+
+	async #drainTask(): Promise<void> {
+		if (this.#drainLock) {
+			await this.#drainLock;
+		}
+		// console.log('drain...');
+		this.#drainLock = deferred();
+		while (this.#taskQueue.length > 0) {
+			if (this.#isRunningTask) {
+				await new Promise(r => setTimeout(r, 1));
+			}
+			else {
+				const [_, executer] = this.#taskQueue.shift()!;
+				this.#isRunningTask = true;
+				// console.log('executing task...');
+				let pause = false;
+				const controller: TaskController = {
+					pause: () => {
+						// console.log('pausing...');
+						this.#isRunningTask = true;
+						pause = true;
+					},
+					resume: () => {
+						// console.log('resuming...');
+						this.#isRunningTask = false;
+					}
+				}
+				await executer(controller);
+				// console.log('executing task... done', pause);
+				if (!pause) {
+					this.#isRunningTask = false;
+				}
+			}
+		}
+		// console.log('drain... done');
+		const lock = this.#drainLock;
+		this.#drainLock = undefined;
+		lock.resolve();
+	}
+
+	async open(options?: { abortSignal?: AbortSignal; onProgress?: (state: OpenProgressHandlerState) => void }) {
+		return await this.#enqueueTask(async () => {
+			if (!this.#file) {
+				throw new ZipClosedError();
+			}
+			const { abortSignal, onProgress } = options ?? {};
+			try {
+				// Read EndOfCentralDirectoryRecord, Zip64EndOfCentralDirectoryLocator and Zip64EndOfCentralDirectoryRecord
+				const offsetEOCDR = await this.#findEndOfCentralDirectoryRecord();
+				this.#eocdr = new EndOfCentralDirectoryRecord(-offsetEOCDR);
+				await this.#file.seek(offsetEOCDR, SeekFrom.End);
+				await this.#file.readIntoBuffer(this.#eocdr.arrayBuffer);
+				this.#eocdr.throwIfSignatureMismatch();
+				abortSignal?.throwIfAborted();
+				this.#writeCursor = this.#eocdr.offsetToCentralDirectory;
+				if (
+					this.#eocdr.entriesInThisDisk === 0xFFFF ||
+					this.#eocdr.totalEntries === 0xFFFF ||
+					this.#eocdr.offsetToCentralDirectory === 0xFFFFFFFF ||
+					this.#eocdr.sizeOfCentralDirectory === 0xFFFFFFFF
+				) {
+					this.#zeocdl = new Zip64EndOfCentralDirectoryLocator(20);
+					const offsetEOCDL = await this.#file.seek(offsetEOCDR - 20, SeekFrom.End);
+					await this.#file.readIntoBuffer(this.#zeocdl.arrayBuffer);
+					this.#zeocdl.throwIfSignatureMismatch();
+					abortSignal?.throwIfAborted();
+					this.#zeocdr = new Zip64EndOfCentralDirectoryRecord(offsetEOCDL - this.#zeocdl.offsetToCentralDirectory);
+					await this.#file.seek(this.#zeocdl.offsetToCentralDirectory, SeekFrom.Start);
+					await this.#file.readIntoBuffer(this.#zeocdr.arrayBuffer);
+					this.#zeocdr.throwIfSignatureMismatch();
+					abortSignal?.throwIfAborted();
+					this.#writeCursor = this.#zeocdl.offsetToCentralDirectory;
+				}
+	
+				const entriesInThisDisk = this.#zeocdr?.entriesInThisDisk ?? this.#eocdr.entriesInThisDisk;
+				const offsetToCentralDirectory = this.#zeocdr?.offsetToCentralDirectory ?? this.#eocdr.offsetToCentralDirectory;
+				const sizeOfCentralDirectory = this.#zeocdr?.sizeOfCentralDirectory ?? this.#eocdr.sizeOfCentralDirectory;
+				onProgress?.({ numberOfentries: entriesInThisDisk, currentEntryNumber: 0, entry: undefined })
+	
+				await this.#file.seek(offsetToCentralDirectory, SeekFrom.Start);
+				for (let i = 0, j = 0; i < entriesInThisDisk && j < sizeOfCentralDirectory; ++i) {
+					const cdfhFixed = new CentralDirectoryFileHeader(46);
+					await this.#file.readIntoBuffer(cdfhFixed.arrayBuffer);
+					cdfhFixed.throwIfSignatureMismatch();
+					const variableData = new Uint8Array(cdfhFixed.fileNameLength + cdfhFixed.extraLength + cdfhFixed.commentLength);
+					await this.#file.readIntoBuffer(variableData);
+					const cdfh = new CentralDirectoryFileHeader(46 + variableData.byteLength);
+					cdfh.arrayBuffer.set(cdfhFixed.arrayBuffer, 0);
+					cdfh.arrayBuffer.set(variableData, 46);
+					this.#centralDirectory.set(cdfh.fileName, cdfh);
+					abortSignal?.throwIfAborted();
+					onProgress?.({ numberOfentries: entriesInThisDisk, currentEntryNumber: i, entry: cdfh })
+					j += 46 + variableData.byteLength;
+				}
+			} catch (error) {
+				if (!(error instanceof EndOfCentralDirectoryRecordNotFoundError)) {
+					throw error;
+				}
+				this.#eocdr = new EndOfCentralDirectoryRecord();
+				this.#isCentralDirectoryDirty = true;
+			}
+		});
 	}
 
 	async close(): Promise<number> {
 		if (!this.#file) {
 			throw new ZipClosedError();
 		}
+		await this.#drainTask();
 		let byteWritten = 0;
 		if (this.#isCentralDirectoryDirty) {
 			byteWritten += await this.#writeCentralDirectory();
@@ -175,212 +253,232 @@ export class Zip {
 	}
 
 	async get(fileName: string, abortSignal?: AbortSignal): Promise<Uint8Array> {
-		if (!this.#file) {
-			throw new ZipClosedError();
-		}
-		const cdfh = this.getCentralDirectoryFileHeader(fileName);
-		const lfh = await this.#getLocalFileHeader(fileName, abortSignal);
-		abortSignal?.throwIfAborted();
-		let compressedSize = lfh.generalPurposeFlag & 0b100 ? lfh.compressedLength : cdfh.compressedLength;
-		if (compressedSize === 0xFFFFFFFF) {
-			const z64ei = lfh.generalPurposeFlag & 0b100 ? lfh.getZip64ExtendedInformation() : cdfh.getZip64ExtendedInformation();
-			if (z64ei) {
-				compressedSize = z64ei.sizeOfCompressedData;
+		return await this.#enqueueTask(async () => {
+			if (!this.#file) {
+				throw new ZipClosedError();
 			}
-		}
-		let compressedData = new Uint8Array(compressedSize);
-		await this.#file.readIntoBuffer(compressedData);
-		abortSignal?.throwIfAborted();
-		if (lfh.compressionMethod === 8) {
-			const dataStream = new Response(compressedData).body!;
-			const compressionStream = new CompressionStream("deflate-raw");
-			const pipeline = dataStream.pipeThrough(compressionStream);
-			compressedData = new Uint8Array(await new Response(pipeline).arrayBuffer());
-		}
-		return compressedData;
+			const cdfh = this.getCentralDirectoryFileHeader(fileName);
+			const lfh = await this.#getLocalFileHeader(fileName, abortSignal);
+			abortSignal?.throwIfAborted();
+			let compressedSize = lfh.generalPurposeFlag & 0b100 ? lfh.compressedLength : cdfh.compressedLength;
+			if (compressedSize === 0xFFFFFFFF) {
+				const z64ei = lfh.generalPurposeFlag & 0b100 ? lfh.getZip64ExtendedInformation() : cdfh.getZip64ExtendedInformation();
+				if (z64ei) {
+					compressedSize = z64ei.sizeOfCompressedData;
+				}
+			}
+			let compressedData = new Uint8Array(compressedSize);
+			await this.#file.readIntoBuffer(compressedData);
+			abortSignal?.throwIfAborted();
+			if (lfh.compressionMethod === 8) {
+				const dataStream = new Response(compressedData).body!;
+				const compressionStream = new CompressionStream("deflate-raw");
+				const pipeline = dataStream.pipeThrough(compressionStream);
+				compressedData = new Uint8Array(await new Response(pipeline).arrayBuffer());
+			}
+			return compressedData;
+		});
 	}
 
 	async getStream(fileName: string, abortSignal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
-		if (!this.#file) {
-			throw new ZipClosedError();
-		}
-		const cdfh = this.getCentralDirectoryFileHeader(fileName);
-		const lfh = await this.#getLocalFileHeader(fileName, abortSignal);
-		let compressedSize = lfh.generalPurposeFlag & 0b100 ? lfh.compressedLength : cdfh.compressedLength;
-		if (compressedSize === 0xFFFFFFFF) {
-			const z64ei = lfh.generalPurposeFlag & 0b100 ? lfh.getZip64ExtendedInformation() : cdfh.getZip64ExtendedInformation();
-			if (z64ei) {
-				compressedSize = z64ei.sizeOfCompressedData;
+		return await this.#enqueueTask(async (controller) => {
+			if (!this.#file) {
+				throw new ZipClosedError();
 			}
-		}
-		abortSignal?.throwIfAborted();
-		if (lfh.compressionMethod === 0) {
-			const readableStream = await this.#file.readStream(compressedSize);
-			return readableStream;
-		} else if (lfh.compressionMethod === 8) {
-			const readableStream = await this.#file.readStream(compressedSize);
-			return readableStream.pipeThrough(new DecompressionStream("deflate-raw"));
-		}
-		throw new CompressionMethodNotSupportedError(lfh.compressionMethod);
+			const cdfh = this.getCentralDirectoryFileHeader(fileName);
+			const lfh = await this.#getLocalFileHeader(fileName, abortSignal);
+			let compressedSize = lfh.generalPurposeFlag & 0b100 ? lfh.compressedLength : cdfh.compressedLength;
+			if (compressedSize === 0xFFFFFFFF) {
+				const z64ei = lfh.generalPurposeFlag & 0b100 ? lfh.getZip64ExtendedInformation() : cdfh.getZip64ExtendedInformation();
+				if (z64ei) {
+					compressedSize = z64ei.sizeOfCompressedData;
+				}
+			}
+			abortSignal?.throwIfAborted();
+
+			controller.pause();
+			const controllerTransform = new TransformStream<Uint8Array>({
+				flush: () => {
+					controller.resume();
+				}
+			});
+
+			if (lfh.compressionMethod === 0) {
+				const readableStream = await this.#file.readStream(compressedSize);
+				return readableStream.pipeThrough(controllerTransform);
+			} else if (lfh.compressionMethod === 8) {
+				const readableStream = await this.#file.readStream(compressedSize);
+				return readableStream.pipeThrough(new DecompressionStream("deflate-raw")).pipeThrough(controllerTransform);
+			}
+			throw new CompressionMethodNotSupportedError(lfh.compressionMethod);
+		});
 	}
 
 	async put(fileName: string, data: Uint8Array, options?: { compressionMethod: number; abortSignal?: AbortSignal }): Promise<number> {
-		if (!this.#file) {
-			throw new ZipClosedError();
-		}
-		const { compressionMethod, abortSignal } = options ?? {};
-		const localFileOffset = this.#writeCursor;
-		await this.#file.seek(localFileOffset, SeekFrom.Start);
-		abortSignal?.throwIfAborted();
-		const lfh = new LocalFileHeader();
-		lfh.fileName = fileName;
-		lfh.extractedOS = 0; // MS-DOS
-		lfh.extractedZipSpec = 0x2D; // 4.5
-		lfh.compressionMethod = compressionMethod ?? 0;
-		lfh.lastModificationDate = new Date();
-		let compressedData = data;
-		if (compressionMethod === 8) {
-			const dataStream = new Response(data).body!;
-			const compressionStream = new CompressionStream("deflate-raw");
-			const pipeline = dataStream.pipeThrough(compressionStream);
-			compressedData = new Uint8Array(await new Response(pipeline).arrayBuffer());
-		}
-		lfh.crc = crc32(data);
-		if (data.byteLength < 0xFFFFFFFF) {
-			lfh.uncompressedLength = data.byteLength;
-			lfh.compressedLength = compressedData.byteLength;
-		} else {
-			lfh.uncompressedLength = 0xFFFFFFFF;
-			lfh.compressedLength = 0xFFFFFFFF;
-			const z64ei = new Zip64ExtendedInformation(20);
-			z64ei.originalUncompressedData = data.byteLength;
-			z64ei.sizeOfCompressedData = compressedData.byteLength;
-			lfh.extra = z64ei.arrayBuffer;
-		}
-		let byteWritten = 0;
-		byteWritten += await this.#file.writeBuffer(lfh.arrayBuffer);
-		abortSignal?.throwIfAborted();
-		byteWritten += await this.#file.writeBuffer(compressedData);
-		abortSignal?.throwIfAborted();
-		const cdfh = new CentralDirectoryFileHeader();
-		cdfh.fileName = lfh.fileName;
-		cdfh.extractedOS = 0; // MS-DOS
-		cdfh.extractedZipSpec = 0x2D; // 4.5
-		cdfh.extra = lfh.extra;
-		cdfh.compressionMethod = lfh.compressionMethod;
-		cdfh.lastModificationDate = lfh.lastModificationDate;
-		cdfh.crc = lfh.crc;
-		cdfh.uncompressedLength = lfh.uncompressedLength;
-		cdfh.compressedLength = lfh.compressedLength;
-		cdfh.localFileOffset = localFileOffset;
-		this.#centralDirectory.set(fileName, cdfh);
-		this.#writeCursor += byteWritten;
-		this.#isCentralDirectoryDirty = true;
-		return byteWritten;
+		return await this.#enqueueTask(async () => {
+			if (!this.#file) {
+				throw new ZipClosedError();
+			}
+			const { compressionMethod, abortSignal } = options ?? {};
+			const localFileOffset = this.#writeCursor;
+			await this.#file.seek(localFileOffset, SeekFrom.Start);
+			abortSignal?.throwIfAborted();
+			const lfh = new LocalFileHeader();
+			lfh.fileName = fileName;
+			lfh.extractedOS = 0; // MS-DOS
+			lfh.extractedZipSpec = 0x2D; // 4.5
+			lfh.compressionMethod = compressionMethod ?? 0;
+			lfh.lastModificationDate = new Date();
+			let compressedData = data;
+			if (compressionMethod === 8) {
+				const dataStream = new Response(data).body!;
+				const compressionStream = new CompressionStream("deflate-raw");
+				const pipeline = dataStream.pipeThrough(compressionStream);
+				compressedData = new Uint8Array(await new Response(pipeline).arrayBuffer());
+			}
+			lfh.crc = crc32(data);
+			if (data.byteLength < 0xFFFFFFFF) {
+				lfh.uncompressedLength = data.byteLength;
+				lfh.compressedLength = compressedData.byteLength;
+			} else {
+				lfh.uncompressedLength = 0xFFFFFFFF;
+				lfh.compressedLength = 0xFFFFFFFF;
+				const z64ei = new Zip64ExtendedInformation(20);
+				z64ei.originalUncompressedData = data.byteLength;
+				z64ei.sizeOfCompressedData = compressedData.byteLength;
+				lfh.extra = z64ei.arrayBuffer;
+			}
+			let byteWritten = 0;
+			byteWritten += await this.#file.writeBuffer(lfh.arrayBuffer);
+			abortSignal?.throwIfAborted();
+			byteWritten += await this.#file.writeBuffer(compressedData);
+			abortSignal?.throwIfAborted();
+			const cdfh = new CentralDirectoryFileHeader();
+			cdfh.fileName = lfh.fileName;
+			cdfh.extractedOS = 0; // MS-DOS
+			cdfh.extractedZipSpec = 0x2D; // 4.5
+			cdfh.extra = lfh.extra;
+			cdfh.compressionMethod = lfh.compressionMethod;
+			cdfh.lastModificationDate = lfh.lastModificationDate;
+			cdfh.crc = lfh.crc;
+			cdfh.uncompressedLength = lfh.uncompressedLength;
+			cdfh.compressedLength = lfh.compressedLength;
+			cdfh.localFileOffset = localFileOffset;
+			this.#centralDirectory.set(fileName, cdfh);
+			this.#writeCursor += byteWritten;
+			this.#isCentralDirectoryDirty = true;
+			return byteWritten;
+		});
 	}
 
 	async putStream(fileName: string, options?: { compressionMethod: number; abortSignal?: AbortSignal }): Promise<WritableStream<Uint8Array>> {
-		if (!this.#file) {
-			throw new ZipClosedError();
-		}
-		const { compressionMethod, abortSignal } = options ?? {};
-		const localFileOffset = this.#writeCursor;
-		let byteWritten = 0;
-		await this.#file.seek(localFileOffset, SeekFrom.Start);
+		return await this.#enqueueTask(async (controller) => {
+			if (!this.#file) {
+				throw new ZipClosedError();
+			}
+			const { compressionMethod, abortSignal } = options ?? {};
+			const localFileOffset = this.#writeCursor;
+			let byteWritten = 0;
+			await this.#file.seek(localFileOffset, SeekFrom.Start);
 
-		// Write LocalFileHeader
-		const lfh = new LocalFileHeader();
-		lfh.fileName = fileName;
-		lfh.extractedOS = 0; // MS-DOS
-		lfh.extractedZipSpec = 0x2D; // 4.5
-		lfh.generalPurposeFlag = 0b1000;
-		lfh.compressionMethod = compressionMethod ?? 0;
-		lfh.lastModificationDate = new Date();
-		lfh.uncompressedLength = 0xFFFFFFFF;
-		lfh.compressedLength = 0xFFFFFFFF;
-		byteWritten += await this.#file.writeBuffer(lfh.arrayBuffer);
-		this.#isCentralDirectoryDirty = true;
+			// Write LocalFileHeader
+			const lfh = new LocalFileHeader();
+			lfh.fileName = fileName;
+			lfh.extractedOS = 0; // MS-DOS
+			lfh.extractedZipSpec = 0x2D; // 4.5
+			lfh.generalPurposeFlag = 0b1000;
+			lfh.compressionMethod = compressionMethod ?? 0;
+			lfh.lastModificationDate = new Date();
+			lfh.uncompressedLength = 0xFFFFFFFF;
+			lfh.compressedLength = 0xFFFFFFFF;
+			byteWritten += await this.#file.writeBuffer(lfh.arrayBuffer);
+			this.#isCentralDirectoryDirty = true;
 
-		const z64dd = new Zip64DataDescriptor();
+			const z64dd = new Zip64DataDescriptor();
 
-		// Calculate uncompressedSize and crcOfUncompressedData
-		const uncompressedTransform = new TransformStream<Uint8Array>({
-			transform: (chunk, controller) => {
-				z64dd.uncompressedLength += chunk.byteLength;
-				z64dd.crc = crc32(chunk, z64dd.crc);
-				controller.enqueue(chunk);
-			},
-		});
-		// Calculate compressedSize
-		const compressedTransform = new TransformStream<Uint8Array>({
-			transform: (chunk, controller) => {
-				z64dd.compressedLength += chunk.byteLength;
-				controller.enqueue(chunk);
-			},
-		});
+			// Calculate uncompressedSize and crcOfUncompressedData
+			const uncompressedTransform = new TransformStream<Uint8Array>({
+				transform: (chunk, controller) => {
+					z64dd.uncompressedLength += chunk.byteLength;
+					z64dd.crc = crc32(chunk, z64dd.crc);
+					controller.enqueue(chunk);
+				},
+			});
+			// Calculate compressedSize
+			const compressedTransform = new TransformStream<Uint8Array>({
+				transform: (chunk, controller) => {
+					z64dd.compressedLength += chunk.byteLength;
+					controller.enqueue(chunk);
+				},
+			});
 
-		// Get contentWritableStream
-		const contentWritableStream = await this.#file.writeStream();
+			// Get contentWritableStream
+			const contentWritableStream = await this.#file.writeStream();
 
-		// Setup pipeline
-		if (lfh.compressionMethod === 8) {
-			const compressionTransform = new CompressionStream("deflate-raw");
-			uncompressedTransform.readable.pipeThrough(compressionTransform, { signal: abortSignal });
-			compressionTransform.readable.pipeThrough(compressedTransform, { signal: abortSignal });
-		} else {
-			uncompressedTransform.readable.pipeThrough(compressedTransform, { signal: abortSignal });
-		}
-		const pipeline = compressedTransform.readable.pipeTo(contentWritableStream, { signal: abortSignal });
-		const contentWriter = uncompressedTransform.writable.getWriter();
+			// Setup pipeline
+			if (lfh.compressionMethod === 8) {
+				const compressionTransform = new CompressionStream("deflate-raw");
+				uncompressedTransform.readable.pipeThrough(compressionTransform, { signal: abortSignal });
+				compressionTransform.readable.pipeThrough(compressedTransform, { signal: abortSignal });
+			} else {
+				uncompressedTransform.readable.pipeThrough(compressedTransform, { signal: abortSignal });
+			}
+			const pipeline = compressedTransform.readable.pipeTo(contentWritableStream, { signal: abortSignal });
+			const contentWriter = uncompressedTransform.writable.getWriter();
 
-		return new WritableStream({
-			write: async (chunk) => {
-				await contentWriter.write(chunk);
-			},
-			close: async () => {
-				// Close and wait for pipeline to finish up
-				await contentWriter.close();
-				await pipeline;
+			controller.pause();
 
-				byteWritten += z64dd.compressedLength;
+			return new WritableStream({
+				write: async (chunk) => {
+					await contentWriter.write(chunk);
+				},
+				close: async () => {
+					// Close and wait for pipeline to finish up
+					await contentWriter.close();
+					await pipeline;
 
-				// Write DataDescriptor
-				byteWritten += await this.#file!.writeBuffer(z64dd.arrayBuffer);
+					byteWritten += z64dd.compressedLength;
 
-				// Write CentralDirectoryFileHeader
-				const cdfh = new CentralDirectoryFileHeader();
-				cdfh.fileName = lfh.fileName;
-				cdfh.extra = lfh.extra;
-				cdfh.generalPurposeFlag = lfh.generalPurposeFlag;
-				cdfh.compressionMethod = lfh.compressionMethod;
-				cdfh.lastModificationDate = lfh.lastModificationDate;
-				cdfh.crc = z64dd.crc;
-				cdfh.localFileOffset = localFileOffset;
-				cdfh.uncompressedLength = z64dd.uncompressedLength;
-				cdfh.compressedLength = z64dd.compressedLength;
-				// TODO only set zip64 when needed
-				cdfh.uncompressedLength = 0xFFFFFFFF;
-				cdfh.compressedLength = 0xFFFFFFFF;
-				cdfh.localFileOffset = 0xFFFFFFFF;
-				const z64ei = new Zip64ExtendedInformation(24);
-				z64ei.offsetOfLocalHeaderRecord = localFileOffset;
-				z64ei.originalUncompressedData = z64dd.uncompressedLength;
-				z64ei.sizeOfCompressedData = z64dd.compressedLength;
-				cdfh.extra = z64ei.arrayBuffer;
-				this.#centralDirectory.set(fileName, cdfh);
+					// Write DataDescriptor
+					byteWritten += await this.#file!.writeBuffer(z64dd.arrayBuffer);
 
-				this.#writeCursor += byteWritten;
-			},
+					// Write CentralDirectoryFileHeader
+					const cdfh = new CentralDirectoryFileHeader();
+					cdfh.fileName = lfh.fileName;
+					cdfh.extra = lfh.extra;
+					cdfh.generalPurposeFlag = lfh.generalPurposeFlag;
+					cdfh.compressionMethod = lfh.compressionMethod;
+					cdfh.lastModificationDate = lfh.lastModificationDate;
+					cdfh.crc = z64dd.crc;
+					cdfh.localFileOffset = localFileOffset;
+					cdfh.uncompressedLength = z64dd.uncompressedLength;
+					cdfh.compressedLength = z64dd.compressedLength;
+					// TODO only set zip64 when needed
+					cdfh.uncompressedLength = 0xFFFFFFFF;
+					cdfh.compressedLength = 0xFFFFFFFF;
+					cdfh.localFileOffset = 0xFFFFFFFF;
+					const z64ei = new Zip64ExtendedInformation(24);
+					z64ei.offsetOfLocalHeaderRecord = localFileOffset;
+					z64ei.originalUncompressedData = z64dd.uncompressedLength;
+					z64ei.sizeOfCompressedData = z64dd.compressedLength;
+					cdfh.extra = z64ei.arrayBuffer;
+					this.#centralDirectory.set(fileName, cdfh);
+
+					this.#writeCursor += byteWritten;
+					controller.resume();
+				},
+			});
 		});
 	}
 
-	remove(fileName: string): void {
-		if (this.#file) {
+	async remove(fileName: string): Promise<void> {
+		return await this.#enqueueTask(() => {
+			if (!this.#file) {
+				throw new ZipClosedError();
+			}
 			this.#centralDirectory.delete(fileName);
 			this.#isCentralDirectoryDirty = true;
-			return;
-		}
-		throw new ZipClosedError();
+		});
 	}
 
 	async #writeCentralDirectory(abortSignal?: AbortSignal) {

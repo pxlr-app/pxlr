@@ -134,7 +134,7 @@ Deno.test("Zip2", async (t) => {
 
 			assertEquals(await zip.put(`foo.txt`, textEncoder.encode("foo")), 40);
 
-			zip.remove(`foo.txt`);
+			await zip.remove(`foo.txt`);
 
 			const stream = await zip.putStream("bar.txt");
 			const writer = stream.getWriter();
@@ -158,6 +158,52 @@ Deno.test("Zip2", async (t) => {
 
 			const fooContent = textDecoder.decode(await zip.get("foo.txt"));
 			assertEquals(fooContent, "foo2");
+
+			await zip.close();
+			await denoFile.close();
+			fsFile.close();
+		}
+	});
+
+	await t.step("non-awaited mixed", async () => {
+		const tmpFile = await Deno.makeTempFile({ suffix: ".zip" });
+		{
+			const fsFile = await Deno.open(tmpFile, { create: true, read: true, write: true, truncate: true });
+			const denoFile = new DenoFile(fsFile);
+			const zip = new Zip(denoFile);
+			await zip.open();
+
+			zip.put(`foo.txt`, textEncoder.encode("foo"));
+			zip.remove(`foo.txt`);
+			//zip.put(`foo.txt`, textEncoder.encode("foo2"));
+			const stream = await zip.putStream("foo.txt");
+			const writer = stream.getWriter();
+			await writer.write(textEncoder.encode("foo2"));
+			await writer.close();
+			zip.put(`bar.txt`, textEncoder.encode("bar"));
+
+			assertEquals(await new Response(await zip.getStream("bar.txt")).text(), "bar");
+
+			zip.put(`baz.txt`, textEncoder.encode("baz"));
+
+			await zip.close();
+			await denoFile.close();
+			fsFile.close();
+		}
+		{
+			const fsFile = await Deno.open(tmpFile, { read: true, write: false, truncate: false });
+			const denoFile = new DenoFile(fsFile);
+			const zip = new Zip(denoFile);
+			await zip.open();
+
+			const barContent = textDecoder.decode(await zip.get("bar.txt"));
+			assertEquals(barContent, "bar");
+
+			const fooContent = textDecoder.decode(await zip.get("foo.txt"));
+			assertEquals(fooContent, "foo2");
+
+			const bazContent = textDecoder.decode(await zip.get("baz.txt"));
+			assertEquals(bazContent, "baz");
 
 			await zip.close();
 			await denoFile.close();
