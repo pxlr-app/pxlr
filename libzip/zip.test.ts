@@ -3,7 +3,7 @@ import { fromFileUrl } from "https://deno.land/std@0.159.0/path/mod.ts";
 import { Zip } from "./zip.ts";
 import { DenoFile } from "./file/deno.ts";
 
-Deno.test("Zip2", async (t) => {
+Deno.test("Zip", async (t) => {
 	const textEncoder = new TextEncoder();
 	const textDecoder = new TextDecoder();
 

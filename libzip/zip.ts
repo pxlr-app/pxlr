@@ -8,7 +8,7 @@ import {
 	Zip64ExtendedInformation,
 } from "./block.ts";
 import { crc32 } from "./crc32.ts";
-import { Deferred, deferred } from "https://deno.land/std@0.160.0/async/deferred.ts";
+import { Lock } from "./lock.ts";
 import { File, SeekFrom } from "./file/file.ts";
 
 export type ZipIterOpen =
@@ -32,86 +32,22 @@ export class Zip {
 	#centralDirectory: Map<string, CentralDirectoryFileHeader>;
 	#isCentralDirectoryDirty: boolean;
 	#writeCursor: number;
-	#taskQueue: [Promise<unknown>, (controller: TaskController) => Promise<void>][];
-	#isRunningTask: boolean;
-	#drainLock: Deferred<void> | undefined;
+	#lock: Lock;
 	constructor(file: File) {
 		this.#file = file;
 		this.#centralDirectory = new Map();
 		this.#writeCursor = 0;
 		this.#isCentralDirectoryDirty = false;
-		this.#taskQueue = [];
-		this.#isRunningTask = false;
+		this.#lock = new Lock();
 	}
 
 	get isBusy() {
-		return this.#isRunningTask;
-	}
-
-	#enqueueTask<T = unknown>(task: (controller: TaskController) => T | PromiseLike<T>, priority?: true): Promise<T> {
-		if (!this.#file) {
-			throw new ZipClosedError();
-		}
-		const defer = deferred<T>();
-		const wrapper = async (controller: TaskController) => {
-			try {
-				const result = await task(controller);
-				defer.resolve(result);
-			} catch (error) {
-				defer.reject(error);
-			}
-		};
-		if (priority === true) {
-			this.#taskQueue.unshift([defer, wrapper]);
-		} else {
-			this.#taskQueue.push([defer, wrapper]);
-		}
-		// Begin drainning tasks
-		this.#drainTask();
-		return defer;
-	}
-
-	async #drainTask(): Promise<void> {
-		if (this.#drainLock) {
-			await this.#drainLock;
-		}
-		// console.log('drain...');
-		this.#drainLock = deferred();
-		while (this.#taskQueue.length > 0) {
-			if (this.#isRunningTask) {
-				await new Promise(r => setTimeout(r, 1));
-			}
-			else {
-				const [_, executer] = this.#taskQueue.shift()!;
-				this.#isRunningTask = true;
-				// console.log('executing task...');
-				let pause = false;
-				const controller: TaskController = {
-					pause: () => {
-						// console.log('pausing...');
-						this.#isRunningTask = true;
-						pause = true;
-					},
-					resume: () => {
-						// console.log('resuming...');
-						this.#isRunningTask = false;
-					}
-				}
-				await executer(controller);
-				// console.log('executing task... done', pause);
-				if (!pause) {
-					this.#isRunningTask = false;
-				}
-			}
-		}
-		// console.log('drain... done');
-		const lock = this.#drainLock;
-		this.#drainLock = undefined;
-		lock.resolve();
+		return !this.#lock.isFree;
 	}
 
 	async open(options?: { abortSignal?: AbortSignal; onProgress?: (state: OpenProgressHandlerState) => void }) {
-		return await this.#enqueueTask(async () => {
+		const releaseLock = await this.#lock.acquire();
+		try {
 			if (!this.#file) {
 				throw new ZipClosedError();
 			}
@@ -143,12 +79,12 @@ export class Zip {
 					abortSignal?.throwIfAborted();
 					this.#writeCursor = this.#zeocdl.offsetToCentralDirectory;
 				}
-	
+
 				const entriesInThisDisk = this.#zeocdr?.entriesInThisDisk ?? this.#eocdr.entriesInThisDisk;
 				const offsetToCentralDirectory = this.#zeocdr?.offsetToCentralDirectory ?? this.#eocdr.offsetToCentralDirectory;
 				const sizeOfCentralDirectory = this.#zeocdr?.sizeOfCentralDirectory ?? this.#eocdr.sizeOfCentralDirectory;
 				onProgress?.({ numberOfentries: entriesInThisDisk, currentEntryNumber: 0, entry: undefined })
-	
+
 				await this.#file.seek(offsetToCentralDirectory, SeekFrom.Start);
 				for (let i = 0, j = 0; i < entriesInThisDisk && j < sizeOfCentralDirectory; ++i) {
 					const cdfhFixed = new CentralDirectoryFileHeader(46);
@@ -171,25 +107,31 @@ export class Zip {
 				this.#eocdr = new EndOfCentralDirectoryRecord();
 				this.#isCentralDirectoryDirty = true;
 			}
-		});
+		} finally {
+			releaseLock();
+		}
 	}
 
 	async close(): Promise<number> {
-		if (!this.#file) {
-			throw new ZipClosedError();
+		const releaseLock = await this.#lock.acquire();
+		try {
+			if (!this.#file) {
+				throw new ZipClosedError();
+			}
+			let byteWritten = 0;
+			if (this.#isCentralDirectoryDirty) {
+				byteWritten += await this.#writeCentralDirectory();
+			}
+			this.#file = undefined;
+			this.#centralDirectory.clear();
+			this.#eocdr = undefined;
+			this.#zeocdl = undefined;
+			this.#zeocdr = undefined;
+			this.#isCentralDirectoryDirty = false;
+			return byteWritten;
+		} finally {
+			releaseLock();
 		}
-		await this.#drainTask();
-		let byteWritten = 0;
-		if (this.#isCentralDirectoryDirty) {
-			byteWritten += await this.#writeCentralDirectory();
-		}
-		this.#file = undefined;
-		this.#centralDirectory.clear();
-		this.#eocdr = undefined;
-		this.#zeocdl = undefined;
-		this.#zeocdr = undefined;
-		this.#isCentralDirectoryDirty = false;
-		return byteWritten;
 	}
 
 	async #findEndOfCentralDirectoryRecord(offset = -22): Promise<number> {
@@ -226,6 +168,10 @@ export class Zip {
 		return cdfh;
 	}
 
+	*iterCentralDirectoryFileHeader(): IterableIterator<Readonly<CentralDirectoryFileHeader>> {
+		yield* this.#centralDirectory.values();
+	}
+
 	async #getLocalFileHeader(fileName: string, abortSignal?: AbortSignal): Promise<LocalFileHeader> {
 		if (!this.#file) {
 			throw new ZipClosedError();
@@ -253,7 +199,8 @@ export class Zip {
 	}
 
 	async get(fileName: string, abortSignal?: AbortSignal): Promise<Uint8Array> {
-		return await this.#enqueueTask(async () => {
+		const releaseLock = await this.#lock.acquire();
+		try {
 			if (!this.#file) {
 				throw new ZipClosedError();
 			}
@@ -269,6 +216,7 @@ export class Zip {
 			}
 			let compressedData = new Uint8Array(compressedSize);
 			await this.#file.readIntoBuffer(compressedData);
+			releaseLock();
 			abortSignal?.throwIfAborted();
 			if (lfh.compressionMethod === 8) {
 				const dataStream = new Response(compressedData).body!;
@@ -277,11 +225,14 @@ export class Zip {
 				compressedData = new Uint8Array(await new Response(pipeline).arrayBuffer());
 			}
 			return compressedData;
-		});
+		} finally {
+			releaseLock();
+		}
 	}
 
 	async getStream(fileName: string, abortSignal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
-		return await this.#enqueueTask(async (controller) => {
+		const releaseLock = await this.#lock.acquire();
+		try {
 			if (!this.#file) {
 				throw new ZipClosedError();
 			}
@@ -296,10 +247,9 @@ export class Zip {
 			}
 			abortSignal?.throwIfAborted();
 
-			controller.pause();
 			const controllerTransform = new TransformStream<Uint8Array>({
 				flush: () => {
-					controller.resume();
+					releaseLock();
 				}
 			});
 
@@ -311,11 +261,15 @@ export class Zip {
 				return readableStream.pipeThrough(new DecompressionStream("deflate-raw")).pipeThrough(controllerTransform);
 			}
 			throw new CompressionMethodNotSupportedError(lfh.compressionMethod);
-		});
+		} catch (error) {
+			releaseLock();
+			throw error;
+		}
 	}
 
 	async put(fileName: string, data: Uint8Array, options?: { compressionMethod: number; abortSignal?: AbortSignal }): Promise<number> {
-		return await this.#enqueueTask(async () => {
+		const releaseLock = await this.#lock.acquire();
+		try {
 			if (!this.#file) {
 				throw new ZipClosedError();
 			}
@@ -368,11 +322,15 @@ export class Zip {
 			this.#writeCursor += byteWritten;
 			this.#isCentralDirectoryDirty = true;
 			return byteWritten;
-		});
+		}
+		finally {
+			releaseLock();
+		}
 	}
 
 	async putStream(fileName: string, options?: { compressionMethod: number; abortSignal?: AbortSignal }): Promise<WritableStream<Uint8Array>> {
-		return await this.#enqueueTask(async (controller) => {
+		const releaseLock = await this.#lock.acquire();
+		try {
 			if (!this.#file) {
 				throw new ZipClosedError();
 			}
@@ -426,8 +384,6 @@ export class Zip {
 			const pipeline = compressedTransform.readable.pipeTo(contentWritableStream, { signal: abortSignal });
 			const contentWriter = uncompressedTransform.writable.getWriter();
 
-			controller.pause();
-
 			return new WritableStream({
 				write: async (chunk) => {
 					await contentWriter.write(chunk);
@@ -465,20 +421,26 @@ export class Zip {
 					this.#centralDirectory.set(fileName, cdfh);
 
 					this.#writeCursor += byteWritten;
-					controller.resume();
+					releaseLock();
 				},
 			});
-		});
+		} catch (error) {
+			releaseLock();
+			throw error;
+		}
 	}
 
 	async remove(fileName: string): Promise<void> {
-		return await this.#enqueueTask(() => {
+		const releaseLock = await this.#lock.acquire();
+		try {
 			if (!this.#file) {
 				throw new ZipClosedError();
 			}
 			this.#centralDirectory.delete(fileName);
 			this.#isCentralDirectoryDirty = true;
-		});
+		} finally {
+			releaseLock();
+		}
 	}
 
 	async #writeCentralDirectory(abortSignal?: AbortSignal) {
