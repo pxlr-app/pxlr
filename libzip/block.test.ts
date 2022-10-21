@@ -1,5 +1,14 @@
 import { assertEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
-import { CentralDirectoryFileHeader, EndOfCentralDirectoryRecord, LocalFileHeader, Zip64EndOfCentralDirectoryLocator, Zip64EndOfCentralDirectoryRecord, Zip64ExtendedInformation } from "./block.ts";
+import {
+	CentralDirectoryFileHeader,
+	DataDescriptor,
+	EndOfCentralDirectoryRecord,
+	LocalFileHeader,
+	Zip64DataDescriptor,
+	Zip64EndOfCentralDirectoryLocator,
+	Zip64EndOfCentralDirectoryRecord,
+	Zip64ExtendedInformation,
+} from "./block.ts";
 
 Deno.test("EndOfCentralDirectoryRecord", () => {
 	const block1 = new EndOfCentralDirectoryRecord();
@@ -8,7 +17,7 @@ Deno.test("EndOfCentralDirectoryRecord", () => {
 	assertEquals(block1.comment, "");
 
 	const block2 = new EndOfCentralDirectoryRecord();
-	block2.comment = "Hello World"
+	block2.comment = "Hello World";
 	assertEquals(block2.arrayBuffer.byteLength, 33);
 	assertEquals(block2.commentLength, 11);
 	assertEquals(block2.comment, "Hello World");
@@ -20,7 +29,7 @@ Deno.test("EndOfCentralDirectoryRecord", () => {
 	block3.totalEntries = 4;
 	block3.sizeOfCentralDirectory = 5;
 	block3.offsetToCentralDirectory = 6;
-	block3.comment = "Hello World"
+	block3.comment = "Hello World";
 	assertEquals(block3.arrayBuffer.byteLength, 33);
 	assertEquals(block3.numberOfThisDisk, 1);
 	assertEquals(block3.centralDirectoryDiskNumber, 2);
@@ -52,7 +61,7 @@ Deno.test("Zip64EndOfCentralDirectoryRecord", () => {
 	assertEquals(block1.sizeOfRecord, 44);
 
 	const block2 = new Zip64EndOfCentralDirectoryRecord();
-	block2.comment = "Hello World"
+	block2.comment = "Hello World";
 	assertEquals(block2.arrayBuffer.byteLength, 67);
 	assertEquals(block2.sizeOfRecord, 55);
 	assertEquals(block2.commentLength, 11);
@@ -88,13 +97,13 @@ Deno.test("CentralDirectoryFileHeader", () => {
 	assertEquals(block1.arrayBuffer.byteLength, 46);
 
 	const block2 = new CentralDirectoryFileHeader();
-	block2.fileName = "Hello World"
+	block2.fileName = "Hello World";
 	assertEquals(block2.arrayBuffer.byteLength, 57);
 	assertEquals(block2.fileNameLength, 11);
 	assertEquals(block2.fileName, "Hello World");
 
 	const block3 = new CentralDirectoryFileHeader();
-	block3.comment = "Hello World"
+	block3.comment = "Hello World";
 	assertEquals(block3.arrayBuffer.byteLength, 57);
 	assertEquals(block3.commentLength, 11);
 	assertEquals(block3.comment, "Hello World");
@@ -103,11 +112,11 @@ Deno.test("CentralDirectoryFileHeader", () => {
 	block4.extra = new Uint8Array(4);
 	assertEquals(block4.arrayBuffer.byteLength, 50);
 	assertEquals(block4.extraLength, 4);
-	assertEquals(Array.from(block4.extra), [0,0,0,0]);
+	assertEquals(Array.from(block4.extra), [0, 0, 0, 0]);
 
 	const block5 = new CentralDirectoryFileHeader();
-	block5.fileName = "Hello World"
-	block5.comment = "Foobar"
+	block5.fileName = "Hello World";
+	block5.comment = "Foobar";
 	assertEquals(block5.arrayBuffer.byteLength, 63);
 	assertEquals(block5.fileNameLength, 11);
 	assertEquals(block5.fileName, "Hello World");
@@ -115,22 +124,22 @@ Deno.test("CentralDirectoryFileHeader", () => {
 	assertEquals(block5.comment, "Foobar");
 
 	const block6 = new CentralDirectoryFileHeader();
-	block6.fileName = "Hello World"
+	block6.fileName = "Hello World";
 	block6.extra = new Uint8Array(4);
 	assertEquals(block6.arrayBuffer.byteLength, 61);
 	assertEquals(block6.fileNameLength, 11);
 	assertEquals(block6.fileName, "Hello World");
 	assertEquals(block6.extraLength, 4);
-	assertEquals(Array.from(block6.extra), [0,0,0,0]);
+	assertEquals(Array.from(block6.extra), [0, 0, 0, 0]);
 
 	const block7 = new CentralDirectoryFileHeader();
-	block7.comment = "Foobar"
+	block7.comment = "Foobar";
 	block7.extra = new Uint8Array(4);
 	assertEquals(block7.arrayBuffer.byteLength, 56);
 	assertEquals(block7.commentLength, 6);
 	assertEquals(block7.comment, "Foobar");
 	assertEquals(block7.extraLength, 4);
-	assertEquals(Array.from(block7.extra), [0,0,0,0]);
+	assertEquals(Array.from(block7.extra), [0, 0, 0, 0]);
 
 	const block8 = new CentralDirectoryFileHeader();
 	const now = new Date(2022, 9, 20, 1, 2, 0);
@@ -221,7 +230,7 @@ Deno.test("LocalFileHeader", () => {
 	assertEquals(block1.arrayBuffer.byteLength, 30);
 
 	const block2 = new LocalFileHeader();
-	block2.fileName = "Hello World"
+	block2.fileName = "Hello World";
 	assertEquals(block2.arrayBuffer.byteLength, 41);
 	assertEquals(block2.fileNameLength, 11);
 	assertEquals(block2.fileName, "Hello World");
@@ -230,16 +239,16 @@ Deno.test("LocalFileHeader", () => {
 	block3.extra = new Uint8Array(4);
 	assertEquals(block3.arrayBuffer.byteLength, 34);
 	assertEquals(block3.extraLength, 4);
-	assertEquals(Array.from(block3.extra), [0,0,0,0]);
+	assertEquals(Array.from(block3.extra), [0, 0, 0, 0]);
 
 	const block4 = new LocalFileHeader();
-	block4.fileName = "Hello World"
+	block4.fileName = "Hello World";
 	block4.extra = new Uint8Array(4);
 	assertEquals(block4.arrayBuffer.byteLength, 45);
 	assertEquals(block4.fileNameLength, 11);
 	assertEquals(block4.fileName, "Hello World");
 	assertEquals(block4.extraLength, 4);
-	assertEquals(Array.from(block4.extra), [0,0,0,0]);
+	assertEquals(Array.from(block4.extra), [0, 0, 0, 0]);
 
 	const block5 = new LocalFileHeader();
 	const now = new Date(2022, 9, 20, 1, 2, 0);
@@ -259,4 +268,32 @@ Deno.test("LocalFileHeader", () => {
 	assertEquals(block5.crc, 5);
 	assertEquals(block5.compressedLength, 6);
 	assertEquals(block5.uncompressedLength, 7);
+});
+
+Deno.test("DataDescriptor", () => {
+	const block1 = new DataDescriptor();
+	assertEquals(block1.arrayBuffer.byteLength, 16);
+
+	const block2 = new DataDescriptor();
+	block2.crc = 1;
+	block2.compressedLength = 2;
+	block2.uncompressedLength = 3;
+	assertEquals(block2.arrayBuffer.byteLength, 16);
+	assertEquals(block2.crc, 1);
+	assertEquals(block2.compressedLength, 2);
+	assertEquals(block2.uncompressedLength, 3);
+});
+
+Deno.test("Zip64DataDescriptor", () => {
+	const block1 = new Zip64DataDescriptor();
+	assertEquals(block1.arrayBuffer.byteLength, 24);
+
+	const block2 = new Zip64DataDescriptor();
+	block2.crc = 1;
+	block2.compressedLength = 2;
+	block2.uncompressedLength = 3;
+	assertEquals(block2.arrayBuffer.byteLength, 24);
+	assertEquals(block2.crc, 1);
+	assertEquals(block2.compressedLength, 2);
+	assertEquals(block2.uncompressedLength, 3);
 });

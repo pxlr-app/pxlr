@@ -84,8 +84,8 @@ export class EndOfCentralDirectoryRecord {
 			sizeOfCentralDirectory: this.sizeOfCentralDirectory,
 			offsetToCentralDirectory: this.offsetToCentralDirectory,
 			commentLength: this.commentLength,
-			comment: this.comment
-		}
+			comment: this.comment,
+		};
 	}
 }
 
@@ -130,7 +130,7 @@ export class Zip64EndOfCentralDirectoryLocator {
 			centralDirectoryDiskNumber: this.centralDirectoryDiskNumber,
 			offsetToCentralDirectory: this.offsetToCentralDirectory,
 			totalNumberOfDisk: this.totalNumberOfDisk,
-		}
+		};
 	}
 }
 
@@ -254,7 +254,7 @@ export class Zip64EndOfCentralDirectoryRecord {
 			offsetToCentralDirectory: this.offsetToCentralDirectory,
 			commentLength: this.commentLength,
 			comment: this.comment,
-		}
+		};
 	}
 }
 
@@ -336,29 +336,13 @@ export class CentralDirectoryFileHeader {
 		this.#dataView.setUint32(16, value, true);
 	}
 	get compressedLength() {
-		const value = this.#dataView.getUint32(20, true);
-		if (value == 0xFFFFFFFF) {
-			const z64ei = this.#getZip64ExtendedInformation();
-			if (z64ei) {
-				return z64ei.sizeOfCompressedData;
-			}
-			return 0;
-		}
-		return value;
+		return this.#dataView.getUint32(20, true);
 	}
 	set compressedLength(value: number) {
 		this.#dataView.setUint32(20, value, true);
 	}
 	get uncompressedLength() {
-		const value = this.#dataView.getUint32(24, true);
-		if (value == 0xFFFFFFFF) {
-			const z64ei = this.#getZip64ExtendedInformation();
-			if (z64ei) {
-				return z64ei.originalUncompressedData;
-			}
-			return 0;
-		}
-		return value;
+		return this.#dataView.getUint32(24, true);
 	}
 	set uncompressedLength(value: number) {
 		this.#dataView.setUint32(24, value, true);
@@ -407,7 +391,7 @@ export class CentralDirectoryFileHeader {
 			this.#dataView = dataView;
 		}
 	}
-	#getZip64ExtendedInformation() {
+	getZip64ExtendedInformation() {
 		const extra = this.extra;
 		const view = new DataView(extra.buffer);
 		for (let i = 0, l = extra.byteLength; i < l;) {
@@ -444,7 +428,7 @@ export class CentralDirectoryFileHeader {
 	get diskStart() {
 		const value = this.#dataView.getUint16(34, true);
 		if (value == 0xFFFFFFFF) {
-			const z64ei = this.#getZip64ExtendedInformation();
+			const z64ei = this.getZip64ExtendedInformation();
 			if (z64ei) {
 				return z64ei.localHeaderDiskNumber;
 			}
@@ -468,15 +452,7 @@ export class CentralDirectoryFileHeader {
 		this.#dataView.setUint32(38, value, true);
 	}
 	get localFileOffset() {
-		const value = this.#dataView.getUint32(42, true);
-		if (value == 0xFFFFFFFF) {
-			const z64ei = this.#getZip64ExtendedInformation();
-			if (z64ei) {
-				return z64ei.offsetOfLocalHeaderRecord;
-			}
-			return 0;
-		}
-		return value;
+		return this.#dataView.getUint32(42, true);
 	}
 	set localFileOffset(value: number) {
 		this.#dataView.setUint32(42, value, true);
@@ -503,7 +479,7 @@ export class CentralDirectoryFileHeader {
 			internalFileAttribute: this.internalFileAttribute,
 			externalFileAttribute: this.externalFileAttribute,
 			localFileOffset: this.localFileOffset,
-		}
+		};
 	}
 }
 
@@ -598,7 +574,7 @@ export class Zip64ExtendedInformation {
 			sizeOfCompressedData: this.sizeOfCompressedData,
 			offsetOfLocalHeaderRecord: this.offsetOfLocalHeaderRecord,
 			localHeaderDiskNumber: this.localHeaderDiskNumber,
-		}
+		};
 	}
 }
 
@@ -668,29 +644,13 @@ export class LocalFileHeader {
 		this.#dataView.setUint32(14, value, true);
 	}
 	get compressedLength() {
-		const value = this.#dataView.getUint32(18, true);
-		if (value == 0xFFFFFFFF) {
-			const z64ei = this.#getZip64ExtendedInformation();
-			if (z64ei) {
-				return z64ei.sizeOfCompressedData;
-			}
-			return 0;
-		}
-		return value;
+		return this.#dataView.getUint32(18, true);
 	}
 	set compressedLength(value: number) {
 		this.#dataView.setUint32(18, value, true);
 	}
 	get uncompressedLength() {
-		const value = this.#dataView.getUint32(22, true);
-		if (value == 0xFFFFFFFF) {
-			const z64ei = this.#getZip64ExtendedInformation();
-			if (z64ei) {
-				return z64ei.originalUncompressedData;
-			}
-			return 0;
-		}
-		return value;
+		return this.#dataView.getUint32(22, true);
 	}
 	set uncompressedLength(value: number) {
 		this.#dataView.setUint32(22, value, true);
@@ -735,7 +695,7 @@ export class LocalFileHeader {
 			this.#dataView = dataView;
 		}
 	}
-	#getZip64ExtendedInformation() {
+	getZip64ExtendedInformation() {
 		const extra = this.extra;
 		const view = new DataView(extra.buffer);
 		for (let i = 0, l = extra.byteLength; i < l;) {
@@ -763,6 +723,84 @@ export class LocalFileHeader {
 			fileName: this.fileName,
 			extraLength: this.extraLength,
 			extra: this.extra,
-		}
+		};
+	}
+}
+
+export class DataDescriptor {
+	static SIGNATURE = 0x08074b50;
+	#arrayBuffer: Uint8Array;
+	#dataView: DataView;
+	constructor() {
+		this.#arrayBuffer = new Uint8Array(16);
+		this.#dataView = new DataView(this.#arrayBuffer.buffer);
+		this.#dataView.setUint32(0, DataDescriptor.SIGNATURE, true);
+	}
+	get arrayBuffer() {
+		return this.#arrayBuffer;
+	}
+	get crc() {
+		return this.#dataView.getUint32(4, true);
+	}
+	set crc(value: number) {
+		this.#dataView.setUint32(4, value, true);
+	}
+	get compressedLength() {
+		return this.#dataView.getUint32(8, true);
+	}
+	set compressedLength(value: number) {
+		this.#dataView.setUint32(8, value, true);
+	}
+	get uncompressedLength() {
+		return this.#dataView.getUint32(12, true);
+	}
+	set uncompressedLength(value: number) {
+		this.#dataView.setUint32(12, value, true);
+	}
+	toJSON() {
+		return {
+			crc: this.crc,
+			compressedLength: this.compressedLength,
+			uncompressedLength: this.uncompressedLength,
+		};
+	}
+}
+
+export class Zip64DataDescriptor {
+	static SIGNATURE = 0x08074b50;
+	#arrayBuffer: Uint8Array;
+	#dataView: DataView;
+	constructor() {
+		this.#arrayBuffer = new Uint8Array(24);
+		this.#dataView = new DataView(this.#arrayBuffer.buffer);
+		this.#dataView.setUint32(0, Zip64DataDescriptor.SIGNATURE, true);
+	}
+	get arrayBuffer() {
+		return this.#arrayBuffer;
+	}
+	get crc() {
+		return this.#dataView.getUint32(4, true);
+	}
+	set crc(value: number) {
+		this.#dataView.setUint32(4, value, true);
+	}
+	get compressedLength() {
+		return Number(this.#dataView.getBigUint64(8, true));
+	}
+	set compressedLength(value: number) {
+		this.#dataView.setBigUint64(8, BigInt(value), true);
+	}
+	get uncompressedLength() {
+		return Number(this.#dataView.getBigUint64(16, true));
+	}
+	set uncompressedLength(value: number) {
+		this.#dataView.setBigUint64(16, BigInt(value), true);
+	}
+	toJSON() {
+		return {
+			crc: this.crc,
+			compressedLength: this.compressedLength,
+			uncompressedLength: this.uncompressedLength,
+		};
 	}
 }
