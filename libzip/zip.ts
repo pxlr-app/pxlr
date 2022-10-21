@@ -216,14 +216,14 @@ export class Zip {
 			}
 			let compressedData = new Uint8Array(compressedSize);
 			await this.#file.readIntoBuffer(compressedData);
-			releaseLock();
 			abortSignal?.throwIfAborted();
 			if (lfh.compressionMethod === 8) {
 				const dataStream = new Response(compressedData).body!;
-				const compressionStream = new CompressionStream("deflate-raw");
+				const compressionStream = new DecompressionStream("deflate-raw");
 				const pipeline = dataStream.pipeThrough(compressionStream);
 				compressedData = new Uint8Array(await new Response(pipeline).arrayBuffer());
 			}
+			releaseLock();
 			return compressedData;
 		} finally {
 			releaseLock();
