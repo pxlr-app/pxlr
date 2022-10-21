@@ -174,6 +174,32 @@ export class Zip {
 		return lfh;
 	}
 
+	async get(fileName: string, abortSignal?: AbortSignal): Promise<Uint8Array> {
+		if (!this.#file) {
+			throw new ZipClosedError();
+		}
+		const cdfh = this.getCentralDirectoryFileHeader(fileName);
+		const lfh = await this.#getLocalFileHeader(fileName, abortSignal);
+		abortSignal?.throwIfAborted();
+		let compressedSize = lfh.generalPurposeFlag & 0b100 ? lfh.compressedLength : cdfh.compressedLength;
+		if (compressedSize === 0xFFFFFFFF) {
+			const z64ei = lfh.generalPurposeFlag & 0b100 ? lfh.getZip64ExtendedInformation() : cdfh.getZip64ExtendedInformation();
+			if (z64ei) {
+				compressedSize = z64ei.sizeOfCompressedData;
+			}
+		}
+		let compressedData = new Uint8Array(compressedSize);
+		await this.#file.readIntoBuffer(compressedData);
+		abortSignal?.throwIfAborted();
+		if (lfh.compressionMethod === 8) {
+			const dataStream = new Response(compressedData).body!;
+			const compressionStream = new CompressionStream("deflate-raw");
+			const pipeline = dataStream.pipeThrough(compressionStream);
+			compressedData = new Uint8Array(await new Response(pipeline).arrayBuffer());
+		}
+		return compressedData;
+	}
+
 	async getStream(fileName: string, abortSignal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
 		if (!this.#file) {
 			throw new ZipClosedError();
