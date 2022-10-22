@@ -174,12 +174,14 @@ Deno.test("Zip", async (t) => {
 			await zip.open();
 
 			zip.put(`foo.txt`, textEncoder.encode("foo"));
+
 			zip.remove(`foo.txt`);
-			//zip.put(`foo.txt`, textEncoder.encode("foo2"));
+
 			const stream = await zip.putStream("foo.txt");
 			const writer = stream.getWriter();
 			await writer.write(textEncoder.encode("foo2"));
 			await writer.close();
+
 			zip.put(`bar.txt`, textEncoder.encode("bar"));
 
 			assertEquals(await new Response(await zip.getStream("bar.txt")).text(), "bar");

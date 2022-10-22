@@ -19,9 +19,9 @@ Deno.test("ZipFilesystem", async (t) => {
 			await writer.write(textEncoder.encode("# Hello World"));
 			await writer.close();
 
-			for await (const path of zipfs.list("")) {
-				console.log(path);
-			}
+			// for await (const path of zipfs.list("")) {
+			// 	console.log(path);
+			// }
 
 			await zip.close();
 			await denoFile.close();

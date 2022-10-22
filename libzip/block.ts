@@ -262,6 +262,9 @@ export class CentralDirectoryFileHeader {
 	static SIGNATURE = 0x02014B50;
 	#arrayBuffer: Uint8Array;
 	#dataView: DataView;
+	isDirty = true;
+	hasVariableDataChanged = false;
+	centralDirectoryFileHeaderOffset = 0;
 	constructor(length = 46) {
 		this.#arrayBuffer = new Uint8Array(length);
 		this.#dataView = new DataView(this.#arrayBuffer.buffer);
@@ -391,18 +394,18 @@ export class CentralDirectoryFileHeader {
 			this.#dataView = dataView;
 		}
 	}
-	getZip64ExtendedInformation() {
-		const extra = this.extra;
-		const view = new DataView(extra.buffer);
-		for (let i = 0, l = extra.byteLength; i < l;) {
-			const headerId = view.getUint16(i, true);
-			const dataSize = view.getUint16(i + 2, true);
-			if (headerId == 0x0001) {
-				const z64ei = new Zip64ExtendedInformation(4 + dataSize);
-				z64ei.arrayBuffer.set(extra.slice(i, i + 4 + dataSize), 0);
-				return z64ei;
+	get extensibleDataFields() {
+		return new ExtensibleDataFields(this.extra);
+	}
+	set extensibleDataFields(value: ExtensibleDataFields) {
+		this.extra = value.arrayBuffer;
+	}
+	getZip64ExtensibleDataField() {
+		const extensibleDataFields = this.extensibleDataFields;
+		for (const edf of extensibleDataFields) {
+			if (edf instanceof Zip64ExtensibleDataField) {
+				return edf;
 			}
-			i += 4 + dataSize;
 		}
 	}
 	get commentLength() {
@@ -426,15 +429,7 @@ export class CentralDirectoryFileHeader {
 		}
 	}
 	get diskStart() {
-		const value = this.#dataView.getUint16(34, true);
-		if (value == 0xFFFFFFFF) {
-			const z64ei = this.getZip64ExtendedInformation();
-			if (z64ei) {
-				return z64ei.localHeaderDiskNumber;
-			}
-			return 0;
-		}
-		return value;
+		return this.#dataView.getUint16(34, true);
 	}
 	set diskStart(value: number) {
 		this.#dataView.setUint16(34, value, true);
@@ -479,101 +474,6 @@ export class CentralDirectoryFileHeader {
 			internalFileAttribute: this.internalFileAttribute,
 			externalFileAttribute: this.externalFileAttribute,
 			localFileOffset: this.localFileOffset,
-		};
-	}
-}
-
-export class Zip64ExtendedInformation {
-	static SIGNATURE = 0b0001;
-	#arrayBuffer: Uint8Array;
-	#dataView: DataView;
-	constructor(length = 0) {
-		this.#arrayBuffer = new Uint8Array(4 + length);
-		this.#dataView = new DataView(this.#arrayBuffer.buffer);
-		this.#dataView.setUint16(0, 0b0001, true);
-		this.#dataView.setUint16(2, length, true);
-	}
-	get arrayBuffer() {
-		return this.#arrayBuffer;
-	}
-	get length() {
-		return this.#dataView.getUint16(2, true);
-	}
-	get originalUncompressedData() {
-		if (this.length >= 8) {
-			return Number(this.#dataView.getBigUint64(4, true));
-		}
-		return 0;
-	}
-	set originalUncompressedData(value: number) {
-		if (this.length < 8) {
-			const arrayBuffer = new Uint8Array(4 + 8);
-			const dataView = new DataView(arrayBuffer.buffer);
-			arrayBuffer.set(this.#arrayBuffer, 0);
-			dataView.setUint16(2, 8, true);
-			this.#arrayBuffer = arrayBuffer;
-			this.#dataView = dataView;
-		}
-		this.#dataView.setBigUint64(4, BigInt(value), true);
-	}
-	get sizeOfCompressedData() {
-		if (this.length >= 16) {
-			return Number(this.#dataView.getBigUint64(12, true));
-		}
-		return 0;
-	}
-	set sizeOfCompressedData(value: number) {
-		if (this.length < 16) {
-			const arrayBuffer = new Uint8Array(4 + 16);
-			const dataView = new DataView(arrayBuffer.buffer);
-			arrayBuffer.set(this.#arrayBuffer, 0);
-			dataView.setUint16(2, 16, true);
-			this.#arrayBuffer = arrayBuffer;
-			this.#dataView = dataView;
-		}
-		this.#dataView.setBigUint64(12, BigInt(value), true);
-	}
-	get offsetOfLocalHeaderRecord() {
-		if (this.length >= 24) {
-			return Number(this.#dataView.getBigUint64(20, true));
-		}
-		return 0;
-	}
-	set offsetOfLocalHeaderRecord(value: number) {
-		if (this.length < 24) {
-			const arrayBuffer = new Uint8Array(4 + 24);
-			const dataView = new DataView(arrayBuffer.buffer);
-			arrayBuffer.set(this.#arrayBuffer, 0);
-			dataView.setUint16(2, 24, true);
-			this.#arrayBuffer = arrayBuffer;
-			this.#dataView = dataView;
-		}
-		this.#dataView.setBigUint64(20, BigInt(value), true);
-	}
-	get localHeaderDiskNumber() {
-		if (this.length >= 28) {
-			return this.#dataView.getUint32(28, true);
-		}
-		return 0;
-	}
-	set localHeaderDiskNumber(value: number) {
-		if (this.length < 28) {
-			const arrayBuffer = new Uint8Array(4 + 28);
-			const dataView = new DataView(arrayBuffer.buffer);
-			arrayBuffer.set(this.#arrayBuffer, 0);
-			dataView.setUint16(2, 28, true);
-			this.#arrayBuffer = arrayBuffer;
-			this.#dataView = dataView;
-		}
-		this.#dataView.setUint32(28, value, true);
-	}
-	toJSON() {
-		return {
-			length: this.length,
-			originalUncompressedData: this.originalUncompressedData,
-			sizeOfCompressedData: this.sizeOfCompressedData,
-			offsetOfLocalHeaderRecord: this.offsetOfLocalHeaderRecord,
-			localHeaderDiskNumber: this.localHeaderDiskNumber,
 		};
 	}
 }
@@ -695,19 +595,29 @@ export class LocalFileHeader {
 			this.#dataView = dataView;
 		}
 	}
-	getZip64ExtendedInformation() {
-		const extra = this.extra;
-		const view = new DataView(extra.buffer);
-		for (let i = 0, l = extra.byteLength; i < l;) {
-			const headerId = view.getUint16(i, true);
-			const dataSize = view.getUint16(i + 2, true);
-			if (headerId == 0x0001) {
-				const z64ei = new Zip64ExtendedInformation(dataSize);
-				z64ei.arrayBuffer.set(extra.slice(i, i + 4 + dataSize), 0);
-				return z64ei;
+	get extensibleDataFields() {
+		return new ExtensibleDataFields(this.extra);
+	}
+	set extensibleDataFields(value: ExtensibleDataFields) {
+		this.extra = value.arrayBuffer;
+	}
+	getZip64ExtensibleDataField() {
+		const extensibleDataFields = this.extensibleDataFields;
+		for (const edf of extensibleDataFields) {
+			if (edf instanceof Zip64ExtensibleDataField) {
+				return edf;
 			}
-			i += 4 + dataSize;
 		}
+	}
+	getCompressedLength(cdfh: Readonly<CentralDirectoryFileHeader>) {
+		const compressedSize = this.generalPurposeFlag & 0b100 ? this.compressedLength : cdfh.compressedLength;
+		if (compressedSize === 0xFFFFFFFF) {
+			const z64ei = this.generalPurposeFlag & 0b100 ? this.getZip64ExtensibleDataField() : cdfh.getZip64ExtensibleDataField();
+			if (z64ei && z64ei.sizeOfCompressedData !== null) {
+				return z64ei.sizeOfCompressedData;
+			}
+		}
+		return compressedSize;
 	}
 	toJSON() {
 		return {
@@ -723,6 +633,144 @@ export class LocalFileHeader {
 			fileName: this.fileName,
 			extraLength: this.extraLength,
 			extra: this.extra,
+		};
+	}
+}
+
+export class ExtensibleDataFields {
+	#arrayBuffer: Uint8Array;
+	#dataView: DataView;
+	constructor(arrayBuffer_or_length: Uint8Array | number) {
+		this.#arrayBuffer = arrayBuffer_or_length instanceof Uint8Array ? arrayBuffer_or_length : new Uint8Array(4 + arrayBuffer_or_length);
+		this.#dataView = new DataView(this.#arrayBuffer.buffer);
+	}
+	get arrayBuffer() {
+		return this.#arrayBuffer;
+	}
+	*[Symbol.iterator](): IterableIterator<ExtensibleDataField> {
+		for (let i = 0, l = this.arrayBuffer.length; i < l;) {
+			const headerId = this.#dataView.getUint16(i, true);
+			const length = this.#dataView.getUint16(i + 2, true);
+			const data = this.#arrayBuffer.slice(i, i + 4 + length);
+			i += i + 4 + length;
+			if (headerId === Zip64ExtensibleDataField.SIGNATURE) {
+				yield new Zip64ExtensibleDataField(data);
+			} else {
+				yield new ExtensibleDataField(data);
+			}
+		}
+	}
+	addExtensibleDataField(extensibleDataField: ExtensibleDataField) {
+		let length = 0;
+		for (const df of this) {
+			if (df.headerId !== extensibleDataField.headerId) {
+				length += df.arrayBuffer.byteLength;
+			}
+		}
+		const arrayBuffer = new Uint8Array(length + extensibleDataField.arrayBuffer.byteLength);
+		let offset = 0;
+		for (const df of this) {
+			if (df.headerId !== extensibleDataField.headerId) {
+				arrayBuffer.set(df.arrayBuffer, offset);
+				offset += arrayBuffer.byteLength;
+			}
+		}
+		arrayBuffer.set(extensibleDataField.arrayBuffer, offset);
+		this.#arrayBuffer = arrayBuffer;
+		this.#dataView = new DataView(this.#arrayBuffer.buffer);
+	}
+}
+
+export class ExtensibleDataField {
+	#arrayBuffer: Uint8Array;
+	#dataView: DataView;
+	constructor(arrayBuffer_or_length: Uint8Array | number) {
+		this.#arrayBuffer = arrayBuffer_or_length instanceof Uint8Array ? arrayBuffer_or_length : new Uint8Array(4 + arrayBuffer_or_length);
+		this.#dataView = new DataView(this.arrayBuffer.buffer);
+	}
+	get arrayBuffer() {
+		return this.#arrayBuffer;
+	}
+	protected get dataView() {
+		return this.#dataView;
+	}
+	get headerId() {
+		return this.dataView.getUint16(0, true);
+	}
+	set headerId(value: number) {
+		this.dataView.setUint16(0, value, true);
+	}
+	get length() {
+		return this.dataView.getUint16(2, true);
+	}
+	set length(value: number) {
+		this.dataView.setUint16(2, value, true);
+		const arrayBuffer = new Uint8Array(4 + value);
+		arrayBuffer.set(this.arrayBuffer, 0);
+	}
+}
+
+export class Zip64ExtensibleDataField extends ExtensibleDataField {
+	static SIGNATURE = 0b0001;
+	constructor(arrayBuffer: Uint8Array);
+	constructor(length: number);
+	constructor(arrayBuffer_or_length: Uint8Array | number) {
+		super(arrayBuffer_or_length);
+		this.dataView.setUint16(0, 0b0001, true);
+		this.dataView.setUint16(2, this.arrayBuffer.length - 4, true);
+	}
+
+	get originalUncompressedData() {
+		if (this.length >= 8) {
+			return Number(this.dataView.getBigUint64(4, true));
+		}
+		return null;
+	}
+	set originalUncompressedData(value: number | null) {
+		if (value !== null && this.length >= 8) {
+			this.dataView.setBigUint64(4, BigInt(value), true);
+		}
+	}
+	get sizeOfCompressedData() {
+		if (this.length >= 16) {
+			return Number(this.dataView.getBigUint64(12, true));
+		}
+		return null;
+	}
+	set sizeOfCompressedData(value: number | null) {
+		if (value !== null && this.length >= 16) {
+			this.dataView.setBigUint64(12, BigInt(value), true);
+		}
+	}
+	get offsetOfLocalHeaderRecord() {
+		if (this.length >= 24) {
+			return Number(this.dataView.getBigUint64(20, true));
+		}
+		return null;
+	}
+	set offsetOfLocalHeaderRecord(value: number | null) {
+		if (value !== null && this.length >= 24) {
+			this.dataView.setBigUint64(20, BigInt(value), true);
+		}
+	}
+	get localHeaderDiskNumber() {
+		if (this.length >= 28) {
+			return this.dataView.getUint32(28, true);
+		}
+		return null;
+	}
+	set localHeaderDiskNumber(value: number | null) {
+		if (value !== null && this.length >= 28) {
+			this.dataView.setUint32(28, value, true);
+		}
+	}
+	toJSON() {
+		return {
+			length: this.length,
+			originalUncompressedData: this.originalUncompressedData,
+			sizeOfCompressedData: this.sizeOfCompressedData,
+			offsetOfLocalHeaderRecord: this.offsetOfLocalHeaderRecord,
+			localHeaderDiskNumber: this.localHeaderDiskNumber,
 		};
 	}
 }

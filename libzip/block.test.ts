@@ -7,7 +7,7 @@ import {
 	Zip64DataDescriptor,
 	Zip64EndOfCentralDirectoryLocator,
 	Zip64EndOfCentralDirectoryRecord,
-	Zip64ExtendedInformation,
+	Zip64ExtensibleDataField,
 } from "./block.ts";
 
 Deno.test("EndOfCentralDirectoryRecord", () => {
@@ -174,45 +174,55 @@ Deno.test("CentralDirectoryFileHeader", () => {
 });
 
 Deno.test("Zip64ExtendedInformation", () => {
-	const block1 = new Zip64ExtendedInformation();
+	const block1 = new Zip64ExtensibleDataField(0);
+	block1.originalUncompressedData = 1;
+	block1.sizeOfCompressedData = 2;
+	block1.offsetOfLocalHeaderRecord = 3;
+	block1.localHeaderDiskNumber = 4;
 	assertEquals(block1.arrayBuffer.byteLength, 4);
 	assertEquals(block1.length, 0);
-	assertEquals(block1.originalUncompressedData, 0);
-	assertEquals(block1.sizeOfCompressedData, 0);
-	assertEquals(block1.offsetOfLocalHeaderRecord, 0);
-	assertEquals(block1.localHeaderDiskNumber, 0);
+	assertEquals(block1.originalUncompressedData, null);
+	assertEquals(block1.sizeOfCompressedData, null);
+	assertEquals(block1.offsetOfLocalHeaderRecord, null);
+	assertEquals(block1.localHeaderDiskNumber, null);
 
-	const block2 = new Zip64ExtendedInformation();
+	const block2 = new Zip64ExtensibleDataField(8);
 	block2.originalUncompressedData = 1;
+	block2.sizeOfCompressedData = 2;
+	block2.offsetOfLocalHeaderRecord = 3;
+	block2.localHeaderDiskNumber = 4;
 	assertEquals(block2.arrayBuffer.byteLength, 12);
 	assertEquals(block2.length, 8);
 	assertEquals(block2.originalUncompressedData, 1);
-	assertEquals(block2.sizeOfCompressedData, 0);
-	assertEquals(block2.offsetOfLocalHeaderRecord, 0);
-	assertEquals(block2.localHeaderDiskNumber, 0);
+	assertEquals(block2.sizeOfCompressedData, null);
+	assertEquals(block2.offsetOfLocalHeaderRecord, null);
+	assertEquals(block2.localHeaderDiskNumber, null);
 
-	const block3 = new Zip64ExtendedInformation();
+	const block3 = new Zip64ExtensibleDataField(16);
 	block3.originalUncompressedData = 1;
 	block3.sizeOfCompressedData = 2;
+	block3.offsetOfLocalHeaderRecord = 3;
+	block3.localHeaderDiskNumber = 4;
 	assertEquals(block3.arrayBuffer.byteLength, 20);
 	assertEquals(block3.length, 16);
 	assertEquals(block3.originalUncompressedData, 1);
 	assertEquals(block3.sizeOfCompressedData, 2);
-	assertEquals(block3.offsetOfLocalHeaderRecord, 0);
-	assertEquals(block3.localHeaderDiskNumber, 0);
+	assertEquals(block3.offsetOfLocalHeaderRecord, null);
+	assertEquals(block3.localHeaderDiskNumber, null);
 
-	const block4 = new Zip64ExtendedInformation();
+	const block4 = new Zip64ExtensibleDataField(24);
 	block4.originalUncompressedData = 1;
 	block4.sizeOfCompressedData = 2;
 	block4.offsetOfLocalHeaderRecord = 3;
+	block4.localHeaderDiskNumber = 4;
 	assertEquals(block4.arrayBuffer.byteLength, 28);
 	assertEquals(block4.length, 24);
 	assertEquals(block4.originalUncompressedData, 1);
 	assertEquals(block4.sizeOfCompressedData, 2);
 	assertEquals(block4.offsetOfLocalHeaderRecord, 3);
-	assertEquals(block4.localHeaderDiskNumber, 0);
+	assertEquals(block4.localHeaderDiskNumber, null);
 
-	const block5 = new Zip64ExtendedInformation();
+	const block5 = new Zip64ExtensibleDataField(28);
 	block5.originalUncompressedData = 1;
 	block5.sizeOfCompressedData = 2;
 	block5.offsetOfLocalHeaderRecord = 3;

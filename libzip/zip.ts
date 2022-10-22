@@ -5,7 +5,7 @@ import {
 	Zip64DataDescriptor,
 	Zip64EndOfCentralDirectoryLocator,
 	Zip64EndOfCentralDirectoryRecord,
-	Zip64ExtendedInformation,
+	Zip64ExtensibleDataField,
 } from "./block.ts";
 import { crc32 } from "./crc32.ts";
 import { Lock } from "./lock.ts";
@@ -15,7 +15,7 @@ export type ZipIterOpen =
 	| { state: "OPENING"; entriesInThisDisk: number }
 	| { state: "READING"; current: number; entry: CentralDirectoryFileHeader };
 
-export type OpenProgressHandlerState = 
+export type OpenProgressHandlerState =
 	| { numberOfentries: number; currentEntryNumber: 0 }
 	| { numberOfentries: number; currentEntryNumber: number; entry: CentralDirectoryFileHeader };
 
@@ -83,7 +83,7 @@ export class Zip {
 				const entriesInThisDisk = this.#zeocdr?.entriesInThisDisk ?? this.#eocdr.entriesInThisDisk;
 				const offsetToCentralDirectory = this.#zeocdr?.offsetToCentralDirectory ?? this.#eocdr.offsetToCentralDirectory;
 				const sizeOfCentralDirectory = this.#zeocdr?.sizeOfCentralDirectory ?? this.#eocdr.sizeOfCentralDirectory;
-				onProgress?.({ numberOfentries: entriesInThisDisk, currentEntryNumber: 0, entry: undefined })
+				onProgress?.({ numberOfentries: entriesInThisDisk, currentEntryNumber: 0, entry: undefined });
 
 				await this.#file.seek(offsetToCentralDirectory, SeekFrom.Start);
 				for (let i = 0, j = 0; i < entriesInThisDisk && j < sizeOfCentralDirectory; ++i) {
@@ -93,11 +93,13 @@ export class Zip {
 					const variableData = new Uint8Array(cdfhFixed.fileNameLength + cdfhFixed.extraLength + cdfhFixed.commentLength);
 					await this.#file.readIntoBuffer(variableData);
 					const cdfh = new CentralDirectoryFileHeader(46 + variableData.byteLength);
+					cdfh.isDirty = false;
+					cdfh.centralDirectoryFileHeaderOffset = offsetToCentralDirectory + j;
 					cdfh.arrayBuffer.set(cdfhFixed.arrayBuffer, 0);
 					cdfh.arrayBuffer.set(variableData, 46);
 					this.#centralDirectory.set(cdfh.fileName, cdfh);
 					abortSignal?.throwIfAborted();
-					onProgress?.({ numberOfentries: entriesInThisDisk, currentEntryNumber: i, entry: cdfh })
+					onProgress?.({ numberOfentries: entriesInThisDisk, currentEntryNumber: i, entry: cdfh });
 					j += 46 + variableData.byteLength;
 				}
 			} catch (error) {
@@ -179,8 +181,8 @@ export class Zip {
 		const cdfh = this.getCentralDirectoryFileHeader(fileName);
 		let localFileOffset = cdfh.localFileOffset;
 		if (localFileOffset === 0xFFFFFFFF) {
-			const z64ei = cdfh.getZip64ExtendedInformation();
-			if (z64ei) {
+			const z64ei = cdfh.getZip64ExtensibleDataField();
+			if (z64ei && z64ei.offsetOfLocalHeaderRecord !== null) {
 				localFileOffset = z64ei.offsetOfLocalHeaderRecord;
 			}
 		}
@@ -207,13 +209,7 @@ export class Zip {
 			const cdfh = this.getCentralDirectoryFileHeader(fileName);
 			const lfh = await this.#getLocalFileHeader(fileName, abortSignal);
 			abortSignal?.throwIfAborted();
-			let compressedSize = lfh.generalPurposeFlag & 0b100 ? lfh.compressedLength : cdfh.compressedLength;
-			if (compressedSize === 0xFFFFFFFF) {
-				const z64ei = lfh.generalPurposeFlag & 0b100 ? lfh.getZip64ExtendedInformation() : cdfh.getZip64ExtendedInformation();
-				if (z64ei) {
-					compressedSize = z64ei.sizeOfCompressedData;
-				}
-			}
+			const compressedSize = lfh.getCompressedLength(cdfh);
 			let compressedData = new Uint8Array(compressedSize);
 			await this.#file.readIntoBuffer(compressedData);
 			abortSignal?.throwIfAborted();
@@ -238,19 +234,13 @@ export class Zip {
 			}
 			const cdfh = this.getCentralDirectoryFileHeader(fileName);
 			const lfh = await this.#getLocalFileHeader(fileName, abortSignal);
-			let compressedSize = lfh.generalPurposeFlag & 0b100 ? lfh.compressedLength : cdfh.compressedLength;
-			if (compressedSize === 0xFFFFFFFF) {
-				const z64ei = lfh.generalPurposeFlag & 0b100 ? lfh.getZip64ExtendedInformation() : cdfh.getZip64ExtendedInformation();
-				if (z64ei) {
-					compressedSize = z64ei.sizeOfCompressedData;
-				}
-			}
+			const compressedSize = lfh.getCompressedLength(cdfh);
 			abortSignal?.throwIfAborted();
 
 			const controllerTransform = new TransformStream<Uint8Array>({
 				flush: () => {
 					releaseLock();
-				}
+				},
 			});
 
 			if (lfh.compressionMethod === 0) {
@@ -274,15 +264,6 @@ export class Zip {
 				throw new ZipClosedError();
 			}
 			const { compressionMethod, abortSignal } = options ?? {};
-			const localFileOffset = this.#writeCursor;
-			await this.#file.seek(localFileOffset, SeekFrom.Start);
-			abortSignal?.throwIfAborted();
-			const lfh = new LocalFileHeader();
-			lfh.fileName = fileName;
-			lfh.extractedOS = 0; // MS-DOS
-			lfh.extractedZipSpec = 0x2D; // 4.5
-			lfh.compressionMethod = compressionMethod ?? 0;
-			lfh.lastModificationDate = new Date();
 			let compressedData = data;
 			if (compressionMethod === 8) {
 				const dataStream = new Response(data).body!;
@@ -290,6 +271,32 @@ export class Zip {
 				const pipeline = dataStream.pipeThrough(compressionStream);
 				compressedData = new Uint8Array(await new Response(pipeline).arrayBuffer());
 			}
+			let cdfh: CentralDirectoryFileHeader;
+			let lfh: LocalFileHeader;
+			let exists = false;
+			try {
+				cdfh = this.getCentralDirectoryFileHeader(fileName) as CentralDirectoryFileHeader;
+				lfh = await this.#getLocalFileHeader(fileName);
+				exists = true;
+			} catch (_) {
+				cdfh = new CentralDirectoryFileHeader();
+				lfh = new LocalFileHeader();
+			}
+			const oldCompressedSize = lfh.getCompressedLength(cdfh);
+			let localFileOffset = this.#writeCursor;
+
+			// Edit inplace of old LocalFileHeader if compressed size match
+			if (exists && compressedData.byteLength === oldCompressedSize) {
+				localFileOffset = cdfh.localFileOffset;
+			}
+			await this.#file.seek(localFileOffset, SeekFrom.Start);
+			abortSignal?.throwIfAborted();
+			lfh.fileName = fileName;
+			lfh.extractedOS = 0; // MS-DOS
+			lfh.extractedZipSpec = 0x2D; // 4.5
+			lfh.generalPurposeFlag |= 0b10000000000;
+			lfh.compressionMethod = compressionMethod ?? 0;
+			lfh.lastModificationDate = new Date();
 			lfh.crc = crc32(data);
 			if (data.byteLength < 0xFFFFFFFF) {
 				lfh.uncompressedLength = data.byteLength;
@@ -297,18 +304,19 @@ export class Zip {
 			} else {
 				lfh.uncompressedLength = 0xFFFFFFFF;
 				lfh.compressedLength = 0xFFFFFFFF;
-				const z64ei = new Zip64ExtendedInformation(20);
-				z64ei.originalUncompressedData = data.byteLength;
-				z64ei.sizeOfCompressedData = compressedData.byteLength;
-				lfh.extra = z64ei.arrayBuffer;
+				const edfs = cdfh.extensibleDataFields;
+				const z64df = new Zip64ExtensibleDataField(20);
+				z64df.originalUncompressedData = data.byteLength;
+				z64df.sizeOfCompressedData = compressedData.byteLength;
+				edfs.addExtensibleDataField(z64df);
+				lfh.extensibleDataFields = edfs;
 			}
 			let byteWritten = 0;
 			byteWritten += await this.#file.writeBuffer(lfh.arrayBuffer);
 			abortSignal?.throwIfAborted();
 			byteWritten += await this.#file.writeBuffer(compressedData);
 			abortSignal?.throwIfAborted();
-			const cdfh = new CentralDirectoryFileHeader();
-			cdfh.fileName = lfh.fileName;
+			cdfh.isDirty = true;
 			cdfh.extractedOS = 0; // MS-DOS
 			cdfh.extractedZipSpec = 0x2D; // 4.5
 			cdfh.extra = lfh.extra;
@@ -318,12 +326,25 @@ export class Zip {
 			cdfh.uncompressedLength = lfh.uncompressedLength;
 			cdfh.compressedLength = lfh.compressedLength;
 			cdfh.localFileOffset = localFileOffset;
+			// TODO only set zip64 when needed
+			cdfh.uncompressedLength = 0xFFFFFFFF;
+			cdfh.compressedLength = 0xFFFFFFFF;
+			cdfh.localFileOffset = 0xFFFFFFFF;
+			const edfs = cdfh.extensibleDataFields;
+			const z64df = new Zip64ExtensibleDataField(24);
+			z64df.offsetOfLocalHeaderRecord = localFileOffset;
+			z64df.originalUncompressedData = lfh.uncompressedLength;
+			z64df.sizeOfCompressedData = lfh.compressedLength;
+			edfs.addExtensibleDataField(z64df);
+			cdfh.hasVariableDataChanged = cdfh.fileName !== lfh.fileName || cdfh.extraLength !== edfs.arrayBuffer.byteLength;
+			cdfh.extensibleDataFields = edfs;
+			cdfh.fileName = lfh.fileName;
+
 			this.#centralDirectory.set(fileName, cdfh);
 			this.#writeCursor += byteWritten;
 			this.#isCentralDirectoryDirty = true;
 			return byteWritten;
-		}
-		finally {
+		} finally {
 			releaseLock();
 		}
 	}
@@ -344,7 +365,7 @@ export class Zip {
 			lfh.fileName = fileName;
 			lfh.extractedOS = 0; // MS-DOS
 			lfh.extractedZipSpec = 0x2D; // 4.5
-			lfh.generalPurposeFlag = 0b1000;
+			lfh.generalPurposeFlag = 0b10000001000;
 			lfh.compressionMethod = compressionMethod ?? 0;
 			lfh.lastModificationDate = new Date();
 			lfh.uncompressedLength = 0xFFFFFFFF;
@@ -399,9 +420,13 @@ export class Zip {
 					byteWritten += await this.#file!.writeBuffer(z64dd.arrayBuffer);
 
 					// Write CentralDirectoryFileHeader
-					const cdfh = new CentralDirectoryFileHeader();
-					cdfh.fileName = lfh.fileName;
-					cdfh.extra = lfh.extra;
+					let cdfh: CentralDirectoryFileHeader;
+					try {
+						cdfh = this.getCentralDirectoryFileHeader(fileName) as CentralDirectoryFileHeader;
+					} catch (_) {
+						cdfh = new CentralDirectoryFileHeader();
+					}
+					cdfh.isDirty = true;
 					cdfh.generalPurposeFlag = lfh.generalPurposeFlag;
 					cdfh.compressionMethod = lfh.compressionMethod;
 					cdfh.lastModificationDate = lfh.lastModificationDate;
@@ -413,11 +438,15 @@ export class Zip {
 					cdfh.uncompressedLength = 0xFFFFFFFF;
 					cdfh.compressedLength = 0xFFFFFFFF;
 					cdfh.localFileOffset = 0xFFFFFFFF;
-					const z64ei = new Zip64ExtendedInformation(24);
-					z64ei.offsetOfLocalHeaderRecord = localFileOffset;
-					z64ei.originalUncompressedData = z64dd.uncompressedLength;
-					z64ei.sizeOfCompressedData = z64dd.compressedLength;
-					cdfh.extra = z64ei.arrayBuffer;
+					const edf = cdfh.extensibleDataFields;
+					const z64df = new Zip64ExtensibleDataField(24);
+					z64df.offsetOfLocalHeaderRecord = localFileOffset;
+					z64df.originalUncompressedData = z64dd.uncompressedLength;
+					z64df.sizeOfCompressedData = z64dd.compressedLength;
+					edf.addExtensibleDataField(z64df);
+					cdfh.hasVariableDataChanged = cdfh.fileName !== lfh.fileName || cdfh.extraLength !== edf.arrayBuffer.byteLength;
+					cdfh.fileName = lfh.fileName;
+					cdfh.extensibleDataFields = edf;
 					this.#centralDirectory.set(fileName, cdfh);
 
 					this.#writeCursor += byteWritten;
@@ -447,14 +476,21 @@ export class Zip {
 		if (!this.#file || !this.#eocdr || !this.#isCentralDirectoryDirty) {
 			throw new ZipClosedError();
 		}
+		// this.#writeCursor += await this.#file.writeBuffer(new Uint8Array(100_000));
 		const startOfCentralDirectory = this.#writeCursor;
 		await this.#file.seek(startOfCentralDirectory, SeekFrom.Start);
 		abortSignal?.throwIfAborted();
 		let byteWritten = 0;
+		const stream = await this.#file.writeStream();
+		const writer = stream.getWriter();
 		for (const cdfh of this.#centralDirectory.values()) {
-			byteWritten += await this.#file.writeBuffer(cdfh.arrayBuffer);
+			await writer.write(cdfh.arrayBuffer);
+			byteWritten += cdfh.arrayBuffer.byteLength;
+			cdfh.isDirty = false;
+			cdfh.hasVariableDataChanged = false;
 			abortSignal?.throwIfAborted();
 		}
+		await writer.close();
 		const endOfCentralDirectory = startOfCentralDirectory + byteWritten;
 		// Setup EndOfCentralDirectoryRecord
 		const eocdr = new EndOfCentralDirectoryRecord();
