@@ -345,9 +345,9 @@ export class Zip {
 			cdfh.compressionMethod = lfh.compressionMethod;
 			cdfh.lastModificationDate = lfh.lastModificationDate;
 			cdfh.crc = lfh.crc;
-			cdfh.uncompressedLength = lfh.uncompressedLength;
-			cdfh.compressedLength = lfh.compressedLength;
-			cdfh.localFileOffset = localFileOffset;
+			cdfh.uncompressedLength = Math.min(0xFFFFFFFF, lfh.uncompressedLength);
+			cdfh.compressedLength = Math.min(0xFFFFFFFF, lfh.compressedLength);
+			cdfh.localFileOffset = Math.min(0xFFFFFFFF, localFileOffset);
 			// TODO only set zip64 when needed
 			cdfh.uncompressedLength = 0xFFFFFFFF;
 			cdfh.compressedLength = 0xFFFFFFFF;
@@ -358,7 +358,6 @@ export class Zip {
 			z64df.originalUncompressedData = lfh.uncompressedLength;
 			z64df.sizeOfCompressedData = lfh.compressedLength;
 			edfs.addExtensibleDataField(z64df);
-			cdfh.hasVariableDataChanged = cdfh.fileName !== lfh.fileName || cdfh.extraLength !== edfs.arrayBuffer.byteLength;
 			cdfh.extensibleDataFields = edfs;
 			cdfh.fileName = lfh.fileName;
 
@@ -466,7 +465,6 @@ export class Zip {
 					z64df.originalUncompressedData = z64dd.uncompressedLength;
 					z64df.sizeOfCompressedData = z64dd.compressedLength;
 					edf.addExtensibleDataField(z64df);
-					cdfh.hasVariableDataChanged = cdfh.fileName !== lfh.fileName || cdfh.extraLength !== edf.arrayBuffer.byteLength;
 					cdfh.fileName = lfh.fileName;
 					cdfh.extensibleDataFields = edf;
 					this.#centralDirectory.set(fileName, cdfh);
@@ -497,6 +495,23 @@ export class Zip {
 		}
 	}
 
+	async rename(fileName: string, rename: string): Promise<void> {
+		const releaseLock = await this.#lock.acquire();
+		try {
+			if (!this.#file) {
+				throw new ZipClosedError();
+			}
+			const cdfh = this.#centralDirectory.get(fileName);
+			if (cdfh) {
+				cdfh.fileName = rename;
+				cdfh.isUpdated = true;
+				this.#isCentralDirectoryDirty = true;
+			}
+		} finally {
+			releaseLock();
+		}
+	}
+
 	async #writeCentralDirectory(abortSignal?: AbortSignal) {
 		if (!this.#file || !this.#eocdr || !this.#isCentralDirectoryDirty) {
 			throw new ZipClosedError();
@@ -511,7 +526,7 @@ export class Zip {
 			if (this.#writeCursor >= offsetToPaddingEnd) {
 				if (this.#options.centralDirectoryPaddingSize) {
 					await this.#file.seek(this.#writeCursor, SeekFrom.Start);
-					this.#writeCursor += await this.#file.writeBuffer(new Uint8Array(this.#options.centralDirectoryPaddingSize).fill(0x42));
+					this.#writeCursor += await this.#file.writeBuffer(new Uint8Array(this.#options.centralDirectoryPaddingSize));
 					this.#pxh = new PxlrHeader();
 					this.#pxh.sizeOfPadding = this.#options.centralDirectoryPaddingSize;
 					this.#offsetToPxlrHeader = this.#writeCursor;
@@ -525,26 +540,41 @@ export class Zip {
 				await this.#file.writeBuffer(this.#pxh.arrayBuffer);
 			}
 		}
-		const centralDirectoryOverwritten = this.#writeCursor >= this.#offsetToCentralDirectory;
-		const startOfCentralDirectory = Math.max(this.#offsetToCentralDirectory, this.#writeCursor);
-		let nextOffset = startOfCentralDirectory;
-		await this.#file.seek(nextOffset, SeekFrom.Start);
-		abortSignal?.throwIfAborted();
-		for (const cdfh of this.#centralDirectory.values()) {
-			if (!cdfh.isDeleted) {
-				if (centralDirectoryOverwritten || (cdfh.isUpdated && nextOffset !== cdfh.centralDirectoryFileHeaderOffset)) {
-					await this.#file.writeBuffer(cdfh.arrayBuffer);
-					byteWritten += cdfh.arrayBuffer.byteLength;
-				} else {
-					await this.#file.seek(cdfh.arrayBuffer.byteLength, SeekFrom.Current);
+		let startOfCentralDirectory = Math.max(this.#offsetToCentralDirectory, this.#writeCursor);
+
+		let offset = startOfCentralDirectory;
+		let firstNonCorruptedCDFH = true;
+		for (const [key, cdfh] of this.#centralDirectory.entries()) {
+			if (cdfh.centralDirectoryFileHeaderOffset >= this.#writeCursor) {
+				if (!cdfh.isDeleted && (firstNonCorruptedCDFH || offset === cdfh.centralDirectoryFileHeaderOffset)) {
+					if (firstNonCorruptedCDFH) {
+						firstNonCorruptedCDFH = false;
+						offset = cdfh.centralDirectoryFileHeaderOffset;
+						startOfCentralDirectory = offset;
+						await this.#file.seek(offset, SeekFrom.Start);
+					}
+					if (cdfh.isUpdated) {
+						byteWritten += await this.#file.writeBuffer(cdfh.arrayBuffer);
+					} else {
+						await this.#file.seek(cdfh.arrayBuffer.byteLength, SeekFrom.Current);
+					}
+					offset += cdfh.arrayBuffer.byteLength;
+				} else if (!cdfh.isDeleted) {
+					byteWritten += await this.#file.writeBuffer(cdfh.arrayBuffer);
+					offset += cdfh.arrayBuffer.byteLength;
+				} else if (cdfh.isDeleted) {
+					this.#centralDirectory.delete(key);
 				}
-				cdfh.isUpdated = false;
-				cdfh.hasVariableDataChanged = false;
-				abortSignal?.throwIfAborted();
-				nextOffset += cdfh.arrayBuffer.byteLength;
 			}
 		}
-		const endOfCentralDirectory = startOfCentralDirectory + (nextOffset - this.#writeCursor);
+		await this.#file.seek(offset, SeekFrom.Start);
+		for (const cdfh of this.#centralDirectory.values()) {
+			if (cdfh.centralDirectoryFileHeaderOffset < this.#writeCursor) {
+				byteWritten += await this.#file.writeBuffer(cdfh.arrayBuffer);
+			}
+		}
+		const endOfCentralDirectory = await this.#file.seek(0, SeekFrom.Current);
+
 		// Setup EndOfCentralDirectoryRecord
 		const eocdr = new EndOfCentralDirectoryRecord();
 		eocdr.comment = this.#eocdr.comment ?? "";
@@ -590,6 +620,10 @@ export class Zip {
 		this.#eocdr = eocdr;
 		this.#offsetToCentralDirectory = this.#eocdr.offsetToCentralDirectory;
 		this.#isCentralDirectoryDirty = false;
+
+		const endOfFile = await this.#file.seek(0, SeekFrom.Current);
+		await this.#file.truncate(endOfFile);
+
 		return byteWritten;
 	}
 }

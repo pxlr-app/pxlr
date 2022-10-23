@@ -154,10 +154,7 @@ export class Zip64EndOfCentralDirectoryRecord {
 		return this.#arrayBuffer;
 	}
 	get sizeOfRecord() {
-		return Number(this.#dataView.getBigUint64(4, true));
-	}
-	set sizeOfRecord(value: number) {
-		this.#dataView.setBigUint64(4, BigInt(value), true);
+		return this.#arrayBuffer.byteLength - 12;
 	}
 	get createdZipSpec() {
 		return this.#dataView.getUint8(12);
@@ -264,7 +261,6 @@ export class CentralDirectoryFileHeader {
 	#dataView: DataView;
 	isUpdated = false;
 	isDeleted = false;
-	hasVariableDataChanged = false;
 	centralDirectoryFileHeaderOffset = 0;
 	constructor(length = 46) {
 		this.#arrayBuffer = new Uint8Array(length);

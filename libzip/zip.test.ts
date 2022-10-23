@@ -214,8 +214,7 @@ Deno.test("Zip", async (t) => {
 	});
 
 	await t.step("put padding", async () => {
-		//const tmpFile = await Deno.makeTempFile({ suffix: ".zip" });
-		const tmpFile = fromFileUrl(import.meta.resolve("../.testdata/libzip-pad.zip"));
+		const tmpFile = await Deno.makeTempFile({ suffix: ".zip" });
 		const centralDirectoryPaddingSize = 300;
 		{
 			const fsFile = await Deno.open(tmpFile, { create: true, read: true, write: true, truncate: true });
@@ -265,6 +264,66 @@ Deno.test("Zip", async (t) => {
 			assertEquals(barContent, "bar");
 			const bazContent = textDecoder.decode(await zip.get("baz.txt"));
 			assertEquals(bazContent, "baz");
+
+			assertEquals(await zip.close(), 0);
+			await denoFile.close();
+			fsFile.close();
+		}
+	});
+
+	await t.step("1k files", async () => {
+		const tmpFile = await Deno.makeTempFile({ suffix: ".zip" });
+		const centralDirectoryPaddingSize = 100_000;
+		{
+			const fsFile = await Deno.open(tmpFile, { create: true, read: true, write: true, truncate: true });
+			const denoFile = new DenoFile(fsFile);
+			const zip = new Zip(denoFile, { centralDirectoryPaddingSize });
+			await zip.open();
+
+			for (let i = 1000; --i >= 0;) {
+				await zip.put(`file${i}.txt`, textEncoder.encode(i.toString()));
+			}
+
+			await zip.close();
+			await denoFile.close();
+			fsFile.close();
+		}
+		{
+			const fsFile = await Deno.open(tmpFile, { read: true, write: true, truncate: false });
+			const denoFile = new DenoFile(fsFile);
+			const zip = new Zip(denoFile, { centralDirectoryPaddingSize });
+			await zip.open();
+
+			assertEquals(await zip.put(`bar.txt`, textEncoder.encode("bar")), 40);
+
+			assertEquals(await zip.close(), 103);
+			await denoFile.close();
+			fsFile.close();
+		}
+		{
+			const fsFile = await Deno.open(tmpFile, { read: true, write: true, truncate: false });
+			const denoFile = new DenoFile(fsFile);
+			const zip = new Zip(denoFile, { centralDirectoryPaddingSize });
+			await zip.open();
+
+			//await zip.put(`file10.txt`, textEncoder.encode("101010101010"));
+			//await zip.rename(`file4.txt`, `file4444.txt`);
+			await zip.remove(`file4.txt`);
+
+			assertEquals(await zip.put(`baz.txt`, textEncoder.encode("baz")), 40);
+
+			assertEquals(await zip.close(), 516);
+			await denoFile.close();
+			fsFile.close();
+		}
+		{
+			const fsFile = await Deno.open(tmpFile, { read: true, write: false, truncate: false });
+			const denoFile = new DenoFile(fsFile);
+			const zip = new Zip(denoFile, { centralDirectoryPaddingSize });
+			await zip.open();
+
+			const a = textDecoder.decode(await zip.get("file3.txt"));
+			assertEquals(a, "3");
 
 			assertEquals(await zip.close(), 0);
 			await denoFile.close();

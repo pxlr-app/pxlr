@@ -68,7 +68,6 @@ Deno.test("Zip64EndOfCentralDirectoryRecord", () => {
 	assertEquals(block2.comment, "Hello World");
 
 	const block3 = new Zip64EndOfCentralDirectoryRecord();
-	block3.sizeOfRecord = 1;
 	block3.createdZipSpec = 2;
 	block3.createdOS = 3;
 	block3.extractedZipSpec = 4;
@@ -79,7 +78,7 @@ Deno.test("Zip64EndOfCentralDirectoryRecord", () => {
 	block3.totalEntries = 9;
 	block3.sizeOfCentralDirectory = 10;
 	block3.offsetToCentralDirectory = 11;
-	assertEquals(block3.sizeOfRecord, 1);
+	assertEquals(block3.sizeOfRecord, 44);
 	assertEquals(block3.createdZipSpec, 2);
 	assertEquals(block3.createdOS, 3);
 	assertEquals(block3.extractedZipSpec, 4);

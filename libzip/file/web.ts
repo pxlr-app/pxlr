@@ -26,7 +26,19 @@ export class WebFile implements File {
 		return this.#offset;
 	}
 
+	async truncate(length?: number): Promise<void> {
+		if (!this.#fileHandle) {
+			throw new FileClosedError();
+		}
+		const writableStream = await this.#fileHandle.createWritable({ keepExistingData: true });
+		await writableStream.truncate(length);
+		await writableStream.close();
+	}
+
 	async readIntoBuffer(buffer: Uint8Array): Promise<number | null> {
+		if (!this.#fileHandle) {
+			throw new FileClosedError();
+		}
 		const len = buffer.byteLength;
 		const file = await this.#fileHandle.getFile();
 		const blob = file.slice(this.#offset, this.#offset + len);
@@ -58,6 +70,9 @@ export class WebFile implements File {
 	}
 
 	async writeBuffer(buffer: Uint8Array): Promise<number> {
+		if (!this.#fileHandle) {
+			throw new FileClosedError();
+		}
 		const writableStream = await this.#fileHandle.createWritable({ keepExistingData: true });
 		await writableStream.write({ type: "write", data: buffer, position: this.#offset, size: buffer.byteLength });
 		await writableStream.close();

@@ -19,12 +19,19 @@ export class DenoFile implements File {
 		return this.#file.seek(offset, seekMode);
 	}
 
+	truncate(length?: number): Promise<void> {
+		if (!this.#file) {
+			throw new FileClosedError();
+		}
+		return this.#file.truncate(length);
+	}
+
 	// deno-lint-ignore require-await
 	async readIntoBuffer(buffer: Uint8Array): Promise<number | null> {
-		if (this.#file) {
-			return this.#file.read(buffer);
+		if (!this.#file) {
+			throw new FileClosedError();
 		}
-		return 0;
+		return this.#file.read(buffer);
 	}
 
 	// deno-lint-ignore require-await
@@ -59,10 +66,10 @@ export class DenoFile implements File {
 
 	// deno-lint-ignore require-await
 	async writeBuffer(buffer: Uint8Array): Promise<number> {
-		if (this.#file) {
-			return this.#file.write(buffer);
+		if (!this.#file) {
+			throw new FileClosedError();
 		}
-		return 0;
+		return this.#file.write(buffer);
 	}
 
 	// deno-lint-ignore require-await

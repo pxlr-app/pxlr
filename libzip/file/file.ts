@@ -6,6 +6,7 @@ export enum SeekFrom {
 
 export interface File {
 	seek(offset: number, from: SeekFrom): Promise<number>;
+	truncate(length?: number): Promise<void>;
 	readIntoBuffer(buffer: Uint8Array): Promise<number | null>;
 	readStream(size: number): Promise<ReadableStream<Uint8Array>>;
 	writeBuffer(buffer: Uint8Array): Promise<number>;
