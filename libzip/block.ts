@@ -852,3 +852,34 @@ export class Zip64DataDescriptor {
 		};
 	}
 }
+
+export class PxlrHeader {
+	static SIGNATURE = 0x50584B50;
+	#arrayBuffer: Uint8Array;
+	#dataView: DataView;
+	constructor() {
+		this.#arrayBuffer = new Uint8Array(8);
+		this.#dataView = new DataView(this.#arrayBuffer.buffer);
+		this.#dataView.setUint32(0, PxlrHeader.SIGNATURE, true);
+	}
+	throwIfSignatureMismatch() {
+		const sig = this.#dataView.getUint32(0, true);
+		if (sig !== PxlrHeader.SIGNATURE) {
+			throw new SyntaxError(`Wrong signature for PxlrHeader, got ${sig.toString(16)}.`);
+		}
+	}
+	get arrayBuffer() {
+		return this.#arrayBuffer;
+	}
+	get sizeOfPadding() {
+		return this.#dataView.getUint32(4, true);
+	}
+	set sizeOfPadding(value: number) {
+		this.#dataView.setUint32(4, value, true);
+	}
+	toJSON() {
+		return {
+			sizeOfPadding: this.sizeOfPadding
+		};
+	}
+}

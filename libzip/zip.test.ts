@@ -213,6 +213,65 @@ Deno.test("Zip", async (t) => {
 		}
 	});
 
+	await t.step("put padding", async () => {
+		//const tmpFile = await Deno.makeTempFile({ suffix: ".zip" });
+		const tmpFile = fromFileUrl(import.meta.resolve("../.testdata/libzip-pad.zip"));
+		const centralDirectoryPaddingSize = 300;
+		{
+			const fsFile = await Deno.open(tmpFile, { create: true, read: true, write: true, truncate: true });
+			const denoFile = new DenoFile(fsFile);
+			const zip = new Zip(denoFile, { centralDirectoryPaddingSize });
+			await zip.open();
+
+			assertEquals(await zip.put(`foo.txt`, textEncoder.encode("foo")), 40);
+
+			await zip.close();
+			await denoFile.close();
+			fsFile.close();
+		}
+		{
+			const fsFile = await Deno.open(tmpFile, { read: true, write: true, truncate: false });
+			const denoFile = new DenoFile(fsFile);
+			const zip = new Zip(denoFile, { centralDirectoryPaddingSize });
+			await zip.open();
+
+			assertEquals(await zip.put(`bar.txt`, textEncoder.encode("bar")), 40);
+
+			await zip.close();
+			await denoFile.close();
+			fsFile.close();
+		}
+		{
+			const fsFile = await Deno.open(tmpFile, { read: true, write: true, truncate: false });
+			const denoFile = new DenoFile(fsFile);
+			const zip = new Zip(denoFile, { centralDirectoryPaddingSize });
+			await zip.open();
+
+			assertEquals(await zip.put(`baz.txt`, textEncoder.encode("baz")), 40);
+
+			await zip.close();
+			await denoFile.close();
+			fsFile.close();
+		}
+		{
+			const fsFile = await Deno.open(tmpFile, { read: true, write: false, truncate: false });
+			const denoFile = new DenoFile(fsFile);
+			const zip = new Zip(denoFile);
+			await zip.open();
+
+			const fooContent = textDecoder.decode(await zip.get("foo.txt"));
+			assertEquals(fooContent, "foo");
+			const barContent = textDecoder.decode(await zip.get("bar.txt"));
+			assertEquals(barContent, "bar");
+			const bazContent = textDecoder.decode(await zip.get("baz.txt"));
+			assertEquals(bazContent, "baz");
+
+			await zip.close();
+			await denoFile.close();
+			fsFile.close();
+		}
+	});
+
 	// await t.step("put", async () => {
 	// 	// const tmpFile = await Deno.makeTempFile({ suffix: '.zip' });
 	// 	// console.log(tmpFile);

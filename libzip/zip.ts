@@ -2,6 +2,7 @@ import {
 	CentralDirectoryFileHeader,
 	EndOfCentralDirectoryRecord,
 	LocalFileHeader,
+	PxlrHeader,
 	Zip64DataDescriptor,
 	Zip64EndOfCentralDirectoryLocator,
 	Zip64EndOfCentralDirectoryRecord,
@@ -19,9 +20,8 @@ export type OpenProgressHandlerState =
 	| { numberOfentries: number; currentEntryNumber: 0 }
 	| { numberOfentries: number; currentEntryNumber: number; entry: CentralDirectoryFileHeader };
 
-interface TaskController {
-	pause(): void;
-	resume(): void;
+export type ZipOptions = {
+	centralDirectoryPaddingSize?: number;
 }
 
 export class Zip {
@@ -29,16 +29,23 @@ export class Zip {
 	#eocdr: EndOfCentralDirectoryRecord | undefined;
 	#zeocdl: Zip64EndOfCentralDirectoryLocator | undefined;
 	#zeocdr: Zip64EndOfCentralDirectoryRecord | undefined;
+	#pxh: PxlrHeader | undefined;
 	#centralDirectory: Map<string, CentralDirectoryFileHeader>;
 	#isCentralDirectoryDirty: boolean;
+	#offsetToCentralDirectory: number;
+	#offsetToPxlrHeader: number;
 	#writeCursor: number;
 	#lock: Lock;
-	constructor(file: File) {
+	#options: ZipOptions;
+	constructor(file: File, options?: ZipOptions) {
 		this.#file = file;
 		this.#centralDirectory = new Map();
+		this.#offsetToCentralDirectory = 0;
+		this.#offsetToPxlrHeader = 0;
 		this.#writeCursor = 0;
 		this.#isCentralDirectoryDirty = false;
 		this.#lock = new Lock();
+		this.#options = options ?? {};
 	}
 
 	get isBusy() {
@@ -60,7 +67,7 @@ export class Zip {
 				await this.#file.readIntoBuffer(this.#eocdr.arrayBuffer);
 				this.#eocdr.throwIfSignatureMismatch();
 				abortSignal?.throwIfAborted();
-				this.#writeCursor = this.#eocdr.offsetToCentralDirectory;
+				this.#offsetToCentralDirectory = this.#eocdr.offsetToCentralDirectory;
 				if (
 					this.#eocdr.entriesInThisDisk === 0xFFFF ||
 					this.#eocdr.totalEntries === 0xFFFF ||
@@ -77,8 +84,21 @@ export class Zip {
 					await this.#file.readIntoBuffer(this.#zeocdr.arrayBuffer);
 					this.#zeocdr.throwIfSignatureMismatch();
 					abortSignal?.throwIfAborted();
-					this.#writeCursor = this.#zeocdl.offsetToCentralDirectory;
+					this.#offsetToCentralDirectory = this.#zeocdl.offsetToCentralDirectory;
 				}
+				try {
+					this.#pxh = new PxlrHeader();
+					this.#offsetToPxlrHeader = await this.#file.seek(this.#offsetToCentralDirectory - this.#pxh.arrayBuffer.byteLength, SeekFrom.Start);
+					await this.#file.readIntoBuffer(this.#pxh.arrayBuffer);
+					this.#pxh.throwIfSignatureMismatch();
+					abortSignal?.throwIfAborted();
+					this.#writeCursor = this.#offsetToPxlrHeader - this.#pxh.sizeOfPadding;
+				} catch {
+					this.#pxh = undefined;
+					this.#offsetToPxlrHeader = this.#offsetToCentralDirectory;
+					this.#writeCursor = this.#offsetToCentralDirectory;
+				}
+
 
 				const entriesInThisDisk = this.#zeocdr?.entriesInThisDisk ?? this.#eocdr.entriesInThisDisk;
 				const offsetToCentralDirectory = this.#zeocdr?.offsetToCentralDirectory ?? this.#eocdr.offsetToCentralDirectory;
@@ -476,7 +496,28 @@ export class Zip {
 		if (!this.#file || !this.#eocdr || !this.#isCentralDirectoryDirty) {
 			throw new ZipClosedError();
 		}
-		// this.#writeCursor += await this.#file.writeBuffer(new Uint8Array(100_000));
+		if (this.#pxh || this.#options.centralDirectoryPaddingSize && this.#options.centralDirectoryPaddingSize > 0) {
+			const sizeOfPadding = this.#pxh?.sizeOfPadding ?? 0;
+			const offsetToPaddingStart = this.#offsetToPxlrHeader - sizeOfPadding;
+			const currentPaddingSize = Math.max(0, this.#offsetToPxlrHeader - this.#writeCursor);
+			const offsetToPaddingEnd = offsetToPaddingStart + currentPaddingSize;
+			if (this.#writeCursor >= offsetToPaddingEnd) {
+				if (this.#options.centralDirectoryPaddingSize) {
+					await this.#file.seek(this.#writeCursor, SeekFrom.Start);
+					this.#writeCursor += await this.#file.writeBuffer(new Uint8Array(this.#options.centralDirectoryPaddingSize).fill(0x42));
+					this.#pxh = new PxlrHeader();
+					this.#pxh.sizeOfPadding = this.#options.centralDirectoryPaddingSize;
+					this.#offsetToPxlrHeader = this.#writeCursor;
+					this.#writeCursor += await this.#file.writeBuffer(this.#pxh.arrayBuffer);
+				}
+			} else {
+				await this.#file.seek(this.#offsetToPxlrHeader, SeekFrom.Start);
+				this.#pxh = new PxlrHeader();
+				this.#pxh.sizeOfPadding = currentPaddingSize;
+				await this.#file.writeBuffer(this.#pxh.arrayBuffer);
+				this.#writeCursor = this.#offsetToCentralDirectory;
+			}
+		}
 		const startOfCentralDirectory = this.#writeCursor;
 		await this.#file.seek(startOfCentralDirectory, SeekFrom.Start);
 		abortSignal?.throwIfAborted();
@@ -532,6 +573,7 @@ export class Zip {
 		byteWritten += await this.#file.writeBuffer(eocdr.arrayBuffer);
 		abortSignal?.throwIfAborted();
 		this.#eocdr = eocdr;
+		this.#offsetToCentralDirectory = this.#eocdr.offsetToCentralDirectory;
 		this.#writeCursor = this.#eocdr.offsetToCentralDirectory;
 
 		this.#isCentralDirectoryDirty = false;
