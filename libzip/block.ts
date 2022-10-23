@@ -262,7 +262,8 @@ export class CentralDirectoryFileHeader {
 	static SIGNATURE = 0x02014B50;
 	#arrayBuffer: Uint8Array;
 	#dataView: DataView;
-	isDirty = true;
+	isUpdated = false;
+	isDeleted = false;
 	hasVariableDataChanged = false;
 	centralDirectoryFileHeaderOffset = 0;
 	constructor(length = 46) {
@@ -879,7 +880,7 @@ export class PxlrHeader {
 	}
 	toJSON() {
 		return {
-			sizeOfPadding: this.sizeOfPadding
+			sizeOfPadding: this.sizeOfPadding,
 		};
 	}
 }

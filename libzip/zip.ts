@@ -22,7 +22,7 @@ export type OpenProgressHandlerState =
 
 export type ZipOptions = {
 	centralDirectoryPaddingSize?: number;
-}
+};
 
 export class Zip {
 	#file: File | undefined;
@@ -99,7 +99,6 @@ export class Zip {
 					this.#writeCursor = this.#offsetToCentralDirectory;
 				}
 
-
 				const entriesInThisDisk = this.#zeocdr?.entriesInThisDisk ?? this.#eocdr.entriesInThisDisk;
 				const offsetToCentralDirectory = this.#zeocdr?.offsetToCentralDirectory ?? this.#eocdr.offsetToCentralDirectory;
 				const sizeOfCentralDirectory = this.#zeocdr?.sizeOfCentralDirectory ?? this.#eocdr.sizeOfCentralDirectory;
@@ -113,7 +112,6 @@ export class Zip {
 					const variableData = new Uint8Array(cdfhFixed.fileNameLength + cdfhFixed.extraLength + cdfhFixed.commentLength);
 					await this.#file.readIntoBuffer(variableData);
 					const cdfh = new CentralDirectoryFileHeader(46 + variableData.byteLength);
-					cdfh.isDirty = false;
 					cdfh.centralDirectoryFileHeaderOffset = offsetToCentralDirectory + j;
 					cdfh.arrayBuffer.set(cdfhFixed.arrayBuffer, 0);
 					cdfh.arrayBuffer.set(variableData, 46);
@@ -184,14 +182,18 @@ export class Zip {
 
 	getCentralDirectoryFileHeader(fileName: string): Readonly<CentralDirectoryFileHeader> {
 		const cdfh = this.#centralDirectory.get(fileName);
-		if (!cdfh) {
+		if (!cdfh || cdfh.isDeleted) {
 			throw new FileNameNotExistsError(fileName);
 		}
 		return cdfh;
 	}
 
 	*iterCentralDirectoryFileHeader(): IterableIterator<Readonly<CentralDirectoryFileHeader>> {
-		yield* this.#centralDirectory.values();
+		for (const cdfh of this.#centralDirectory.values()) {
+			if (!cdfh.isDeleted) {
+				yield cdfh;
+			}
+		}
 	}
 
 	async #getLocalFileHeader(fileName: string, abortSignal?: AbortSignal): Promise<LocalFileHeader> {
@@ -336,7 +338,7 @@ export class Zip {
 			abortSignal?.throwIfAborted();
 			byteWritten += await this.#file.writeBuffer(compressedData);
 			abortSignal?.throwIfAborted();
-			cdfh.isDirty = true;
+			cdfh.isUpdated = true;
 			cdfh.extractedOS = 0; // MS-DOS
 			cdfh.extractedZipSpec = 0x2D; // 4.5
 			cdfh.extra = lfh.extra;
@@ -446,7 +448,7 @@ export class Zip {
 					} catch (_) {
 						cdfh = new CentralDirectoryFileHeader();
 					}
-					cdfh.isDirty = true;
+					cdfh.isUpdated = true;
 					cdfh.generalPurposeFlag = lfh.generalPurposeFlag;
 					cdfh.compressionMethod = lfh.compressionMethod;
 					cdfh.lastModificationDate = lfh.lastModificationDate;
@@ -485,8 +487,11 @@ export class Zip {
 			if (!this.#file) {
 				throw new ZipClosedError();
 			}
-			this.#centralDirectory.delete(fileName);
-			this.#isCentralDirectoryDirty = true;
+			const cdfh = this.#centralDirectory.get(fileName);
+			if (cdfh) {
+				cdfh.isDeleted = true;
+				this.#isCentralDirectoryDirty = true;
+			}
 		} finally {
 			releaseLock();
 		}
@@ -496,6 +501,8 @@ export class Zip {
 		if (!this.#file || !this.#eocdr || !this.#isCentralDirectoryDirty) {
 			throw new ZipClosedError();
 		}
+		let byteWritten = 0;
+		// Handle central directory padding or maintain it
 		if (this.#pxh || this.#options.centralDirectoryPaddingSize && this.#options.centralDirectoryPaddingSize > 0) {
 			const sizeOfPadding = this.#pxh?.sizeOfPadding ?? 0;
 			const offsetToPaddingStart = this.#offsetToPxlrHeader - sizeOfPadding;
@@ -509,30 +516,35 @@ export class Zip {
 					this.#pxh.sizeOfPadding = this.#options.centralDirectoryPaddingSize;
 					this.#offsetToPxlrHeader = this.#writeCursor;
 					this.#writeCursor += await this.#file.writeBuffer(this.#pxh.arrayBuffer);
+					byteWritten += this.#options.centralDirectoryPaddingSize + this.#pxh.arrayBuffer.byteLength;
 				}
 			} else {
 				await this.#file.seek(this.#offsetToPxlrHeader, SeekFrom.Start);
 				this.#pxh = new PxlrHeader();
 				this.#pxh.sizeOfPadding = currentPaddingSize;
 				await this.#file.writeBuffer(this.#pxh.arrayBuffer);
-				this.#writeCursor = this.#offsetToCentralDirectory;
 			}
 		}
-		const startOfCentralDirectory = this.#writeCursor;
-		await this.#file.seek(startOfCentralDirectory, SeekFrom.Start);
+		const centralDirectoryOverwritten = this.#writeCursor >= this.#offsetToCentralDirectory;
+		const startOfCentralDirectory = Math.max(this.#offsetToCentralDirectory, this.#writeCursor);
+		let nextOffset = startOfCentralDirectory;
+		await this.#file.seek(nextOffset, SeekFrom.Start);
 		abortSignal?.throwIfAborted();
-		let byteWritten = 0;
-		const stream = await this.#file.writeStream();
-		const writer = stream.getWriter();
 		for (const cdfh of this.#centralDirectory.values()) {
-			await writer.write(cdfh.arrayBuffer);
-			byteWritten += cdfh.arrayBuffer.byteLength;
-			cdfh.isDirty = false;
-			cdfh.hasVariableDataChanged = false;
-			abortSignal?.throwIfAborted();
+			if (!cdfh.isDeleted) {
+				if (centralDirectoryOverwritten || (cdfh.isUpdated && nextOffset !== cdfh.centralDirectoryFileHeaderOffset)) {
+					await this.#file.writeBuffer(cdfh.arrayBuffer);
+					byteWritten += cdfh.arrayBuffer.byteLength;
+				} else {
+					await this.#file.seek(cdfh.arrayBuffer.byteLength, SeekFrom.Current);
+				}
+				cdfh.isUpdated = false;
+				cdfh.hasVariableDataChanged = false;
+				abortSignal?.throwIfAborted();
+				nextOffset += cdfh.arrayBuffer.byteLength;
+			}
 		}
-		await writer.close();
-		const endOfCentralDirectory = startOfCentralDirectory + byteWritten;
+		const endOfCentralDirectory = startOfCentralDirectory + (nextOffset - this.#writeCursor);
 		// Setup EndOfCentralDirectoryRecord
 		const eocdr = new EndOfCentralDirectoryRecord();
 		eocdr.comment = this.#eocdr.comment ?? "";
@@ -558,24 +570,25 @@ export class Zip {
 			zeocdr.createdZipSpec = 0x2D; // 4.5
 			zeocdr.extractedOS = 0; // MS-DOS
 			zeocdr.extractedZipSpec = 0x2D; // 4.5
-			byteWritten += await this.#file.writeBuffer(zeocdr.arrayBuffer);
+			await this.#file.writeBuffer(zeocdr.arrayBuffer);
+			byteWritten += zeocdr.arrayBuffer.byteLength;
 			abortSignal?.throwIfAborted();
 			this.#zeocdr = zeocdr;
 			// Write Zip64EndOfCentralDirectoryLocator
 			const zeocdl = new Zip64EndOfCentralDirectoryLocator();
 			zeocdl.offsetToCentralDirectory = endOfCentralDirectory;
 			zeocdl.totalNumberOfDisk = 1;
-			byteWritten += await this.#file.writeBuffer(zeocdl.arrayBuffer);
+			await this.#file.writeBuffer(zeocdl.arrayBuffer);
+			byteWritten += zeocdl.arrayBuffer.byteLength;
 			abortSignal?.throwIfAborted();
 			this.#zeocdl = zeocdl;
 		}
 		// Write EndOfCentralDirectoryRecord
-		byteWritten += await this.#file.writeBuffer(eocdr.arrayBuffer);
+		await this.#file.writeBuffer(eocdr.arrayBuffer);
+		byteWritten += eocdr.arrayBuffer.byteLength;
 		abortSignal?.throwIfAborted();
 		this.#eocdr = eocdr;
 		this.#offsetToCentralDirectory = this.#eocdr.offsetToCentralDirectory;
-		this.#writeCursor = this.#eocdr.offsetToCentralDirectory;
-
 		this.#isCentralDirectoryDirty = false;
 		return byteWritten;
 	}

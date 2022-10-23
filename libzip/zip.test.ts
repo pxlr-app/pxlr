@@ -225,7 +225,7 @@ Deno.test("Zip", async (t) => {
 
 			assertEquals(await zip.put(`foo.txt`, textEncoder.encode("foo")), 40);
 
-			await zip.close();
+			assertEquals(await zip.close(), 411);
 			await denoFile.close();
 			fsFile.close();
 		}
@@ -237,7 +237,7 @@ Deno.test("Zip", async (t) => {
 
 			assertEquals(await zip.put(`bar.txt`, textEncoder.encode("bar")), 40);
 
-			await zip.close();
+			assertEquals(await zip.close(), 103);
 			await denoFile.close();
 			fsFile.close();
 		}
@@ -249,14 +249,14 @@ Deno.test("Zip", async (t) => {
 
 			assertEquals(await zip.put(`baz.txt`, textEncoder.encode("baz")), 40);
 
-			await zip.close();
+			assertEquals(await zip.close(), 103);
 			await denoFile.close();
 			fsFile.close();
 		}
 		{
 			const fsFile = await Deno.open(tmpFile, { read: true, write: false, truncate: false });
 			const denoFile = new DenoFile(fsFile);
-			const zip = new Zip(denoFile);
+			const zip = new Zip(denoFile, { centralDirectoryPaddingSize });
 			await zip.open();
 
 			const fooContent = textDecoder.decode(await zip.get("foo.txt"));
@@ -266,7 +266,7 @@ Deno.test("Zip", async (t) => {
 			const bazContent = textDecoder.decode(await zip.get("baz.txt"));
 			assertEquals(bazContent, "baz");
 
-			await zip.close();
+			assertEquals(await zip.close(), 0);
 			await denoFile.close();
 			fsFile.close();
 		}
