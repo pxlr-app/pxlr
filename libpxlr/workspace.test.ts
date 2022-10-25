@@ -27,19 +27,18 @@ Deno.test("Workspace", async (t) => {
 		assertEquals((await branches.next()).done, true);
 	});
 
-	// await t.step("getBranch", async () => {
-	// 	const fs = new MemoryFilesystem();
-	// 	const repository = new BufferedRepository(fs);
-	// 	const root = new Tree(autoid(), autoid(), "group", "", []);
-	// 	const commit = new Commit(autoid(), autoid(), "", root.id, "Test <test@test.local>", new Date(), "");
-	// 	await repository.writeTree(root);
-	// 	await repository.writeCommit(commit);
-	// 	await repository.writeReference("refs/heads/main", commit.id);
-	// 	const workspace = new Workspace({ repository, nodeRegistry });
-	// 	const branchMain = await workspace.getBranch("main");
-	// 	assertEquals(branchMain.name, "main");
-	// 	assertEquals(branchMain.isDetached, false);
-	// });
+	await t.step("getBranch", async () => {
+		const fs = new MemoryFilesystem();
+		const repository = new BufferedRepository(fs);
+		const root = new Tree(autoid(), autoid(), "group", "", []);
+		const commit = new Commit(autoid(), autoid(), root.id, "Test <test@test.local>", new Date(), "");
+		await repository.writeTree(root);
+		await repository.writeCommit(commit);
+		await repository.writeReference(new Reference("refs/heads/main", commit.hash));
+		const workspace = new Workspace({ repository, nodeRegistry });
+		const branchMain = await workspace.getBranch("main");
+		assertEquals(branchMain.name, "main");
+	});
 
 	// await t.step("getDetachedBranch", async () => {
 	// 	const fs = new MemoryFilesystem();

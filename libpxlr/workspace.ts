@@ -1,8 +1,7 @@
 import { assertAutoId, AutoId } from "./autoid.ts";
-import { Command, GroupNode } from "./nodes/mod.ts";
 import { Node, NodeNotFoundError, UnloadedNode } from "./nodes/node.ts";
 import { NodeDeserializer, NodeRegistry } from "./nodes/registry.ts";
-import { Commit, Tree } from "./repository/mod.ts";
+import { Commit, Reference, Tree } from "./repository/mod.ts";
 import { Repository } from "./repository/repository.ts";
 
 export class Workspace {
@@ -19,11 +18,11 @@ export class Workspace {
 		this.#nodeCache = new Map<AutoId, WeakRef<Node>>();
 	}
 
-	get repository() {
+	get repository(): Readonly<Repository> {
 		return this.#repository;
 	}
 
-	get nodeRegistry() {
+	get nodeRegistry(): Readonly<NodeRegistry> {
 		return this.#nodeRegistry;
 	}
 
@@ -42,7 +41,12 @@ export class Workspace {
 		}
 	}
 
-	async getNodeById(id: AutoId, shallow = true, abortSignal?: AbortSignal): Promise<Node> {
+	async getBranch(name: string, abortSignal?: AbortSignal): Promise<Branch> {
+		const reference = await this.repository.getReference(`refs/heads/${name}`, abortSignal);
+		return new Branch(this, reference);
+	}
+
+	async getNodeByHash(id: AutoId, shallow = true, abortSignal?: AbortSignal): Promise<Node> {
 		assertAutoId(id);
 		const cachedNode = this.#nodeCache.get(id);
 		if (cachedNode) {
@@ -59,7 +63,7 @@ export class Workspace {
 		} else {
 			nodeConstructor = this.#nodeRegistry.getNodeConstructor(object.kind);
 		}
-		const node = await nodeConstructor({ object, workspace: this, shallow, abortSignal });
+		const node = await nodeConstructor({ object, getNodeByHash: this.getNodeByHash.bind(this), shallow, abortSignal });
 		if (node) {
 			this.#nodeCache.set(id, new WeakRef(node));
 			return node;
@@ -69,5 +73,27 @@ export class Workspace {
 }
 
 export class Branch {
+	#workspace: Workspace;
+	#reference: Reference;
+	constructor(workspace: Workspace, reference: Reference) {
+		this.#workspace = workspace;
+		this.#reference = reference;
+	}
 
+	get workspace(): Readonly<Workspace> {
+		return this.#workspace;
+	}
+
+	get name() {
+		return this.#reference.ref.split("/").at(-1)!;
+	}
+
+	get message() {
+		return this.#reference.message;
+	}
+
+	iterHistory(options?: { fromHash?: AutoId; abortSignal?: AbortSignal }): AsyncIterableIterator<Commit> {
+		const fromHash = options?.fromHash ?? this.#reference.commit;
+		return this.workspace.repository.iterHistory(fromHash);
+	}
 }
