@@ -1,31 +1,31 @@
-// import { assertEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
-// import { BufferedRepository, Commit, MemoryFilesystem, Tree } from "./repository/mod.ts";
-// import { GroupNodeRegistryEntry, NodeRegistry, NoteNodeRegistryEntry } from "./nodes/mod.ts";
-// import { Workspace } from "./workspace.ts";
-// import { autoid } from "./autoid.ts";
+import { assertEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
+import { BufferedRepository, Commit, MemoryFilesystem, Reference, Tree } from "./repository/mod.ts";
+import { GroupNodeRegistryEntry, NodeRegistry, NoteNodeRegistryEntry } from "./nodes/mod.ts";
+import { Workspace } from "./workspace.ts";
+import { autoid } from "./autoid.ts";
 
-// const nodeRegistry = new NodeRegistry();
-// nodeRegistry.registerNodeConstructor(NoteNodeRegistryEntry);
-// nodeRegistry.registerTreeConstructor(GroupNodeRegistryEntry);
+const nodeRegistry = new NodeRegistry();
+nodeRegistry.registerNodeConstructor(NoteNodeRegistryEntry);
+nodeRegistry.registerTreeConstructor(GroupNodeRegistryEntry);
 
-Deno.test("Workspace", async (_t) => {
-	// await t.step("init", () => {
-	// 	const fs = new MemoryFilesystem();
-	// 	const repository = new BufferedRepository(fs);
-	// 	const _workspace = new Workspace({ repository, nodeRegistry });
-	// });
+Deno.test("Workspace", async (t) => {
+	await t.step("init", () => {
+		const fs = new MemoryFilesystem();
+		const repository = new BufferedRepository(fs);
+		const _workspace = new Workspace({ repository, nodeRegistry });
+	});
 
-	// await t.step("listBranches", async () => {
-	// 	const fs = new MemoryFilesystem();
-	// 	const repository = new BufferedRepository(fs);
-	// 	await repository.writeReference("refs/heads/main", autoid());
-	// 	await repository.writeReference("refs/heads/fix%2Fhero", autoid());
-	// 	const workspace = new Workspace({ repository, nodeRegistry });
-	// 	const branches = workspace.listBranches();
-	// 	assertEquals((await branches.next()).value, "fix/hero");
-	// 	assertEquals((await branches.next()).value, "main");
-	// 	assertEquals((await branches.next()).done, true);
-	// });
+	await t.step("listBranches", async () => {
+		const fs = new MemoryFilesystem();
+		const repository = new BufferedRepository(fs);
+		await repository.writeReference(new Reference("refs/heads/main", autoid()));
+		await repository.writeReference(new Reference("refs/heads/fix%2Fhero", autoid()));
+		const workspace = new Workspace({ repository, nodeRegistry });
+		const branches = workspace.listBranches();
+		assertEquals((await branches.next()).value, "fix/hero");
+		assertEquals((await branches.next()).value, "main");
+		assertEquals((await branches.next()).done, true);
+	});
 
 	// await t.step("getBranch", async () => {
 	// 	const fs = new MemoryFilesystem();

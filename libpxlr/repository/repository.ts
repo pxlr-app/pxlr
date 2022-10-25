@@ -2,7 +2,7 @@ import { Filesystem, IOError } from "./filesystem/filesystem.ts";
 import { Commit } from "./commit.ts";
 import { Object } from "./object.ts";
 import { Tree } from "./tree.ts";
-import { assertReference, Reference } from "./reference.ts";
+import { assertReferencePath, Reference, ReferencePath } from "./reference.ts";
 import { assertAutoId, AutoId } from "../autoid.ts";
 
 async function readAsText(rs: ReadableStream) {
@@ -24,33 +24,28 @@ export class Repository {
 		return this.#fs;
 	}
 
-	async getReference(reference: Reference, abortSignal?: AbortSignal): Promise<AutoId> {
-		assertReference(reference);
+	async getReference(ref: ReferencePath, abortSignal?: AbortSignal): Promise<Reference> {
+		assertReferencePath(ref);
 		try {
-			const refReadableStream = await this.fs.read(`/${reference}`, abortSignal);
-			const commitId = await readAsText(refReadableStream);
-			assertAutoId(commitId);
-			return commitId;
+			const refReadableStream = await this.fs.read(`/${ref}`, abortSignal);
+			const reference = await Reference.deserialize(refReadableStream);
+			return reference;
 		} catch (error) {
 			throw new IOError(error);
 		}
 	}
 
-	async writeReference(reference: Reference, commitId: AutoId, abortSignal?: AbortSignal): Promise<void> {
-		assertReference(reference);
-		assertAutoId(commitId);
+	async writeReference(reference: Reference, abortSignal?: AbortSignal): Promise<void> {
 		try {
-			const refWritableStream = await this.fs.write(`/${reference}`, abortSignal);
-			const refWriter = refWritableStream.getWriter();
-			await refWriter.write(textEncoder.encode(commitId));
-			await refWriter.close();
+			const refWritableStream = await this.fs.write(`/${reference.ref}`, abortSignal);
+			await reference.serialize(refWritableStream);
 		} catch (error) {
 			throw new IOError(error);
 		}
 	}
 
-	async *listReference(prefix: Reference, abortSignal?: AbortSignal): AsyncIterableIterator<Reference> {
-		assertReference(prefix);
+	async *listReferencePath(prefix: ReferencePath, abortSignal?: AbortSignal): AsyncIterableIterator<ReferencePath> {
+		assertReferencePath(prefix);
 		for await (const entry of this.fs.list(`/${prefix}`, abortSignal)) {
 			yield `${prefix}/${entry}`;
 		}

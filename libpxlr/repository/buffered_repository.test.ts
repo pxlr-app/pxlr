@@ -1,16 +1,16 @@
 import { assert, assertEquals, assertFalse } from "https://deno.land/std@0.158.0/testing/asserts.ts";
-import { BufferedRepository, MemoryFilesystem, Object } from "./mod.ts";
+import { BufferedRepository, MemoryFilesystem, Object, Reference } from "./mod.ts";
 import { autoid } from "../autoid.ts";
 
 Deno.test("Repository", async (t) => {
 	await t.step("set/get reference", async () => {
 		const fs = new MemoryFilesystem();
 		const repo = new BufferedRepository(fs);
-		const commitId1 = autoid();
-		await repo.writeReference("refs/heads/main", commitId1);
+		const ref1 = new Reference("refs/heads/main", autoid());
+		await repo.writeReference(ref1);
 		assertFalse(fs.entries.has("/refs/heads/main"));
-		const commitId2 = await repo.getReference("refs/heads/main");
-		assertEquals(commitId1, commitId2);
+		const ref2 = await repo.getReference("refs/heads/main");
+		assertEquals(ref1, ref2);
 		await repo.flushToFilesystem();
 		assert(fs.entries.has("/refs/heads/main"));
 	});
@@ -18,21 +18,21 @@ Deno.test("Repository", async (t) => {
 	await t.step("list reference", async () => {
 		const fs = new MemoryFilesystem();
 		const repo = new BufferedRepository(fs);
-		await repo.writeReference("refs/heads/main", autoid());
+		await repo.writeReference(new Reference("refs/heads/main", autoid()));
 
-		const iterReference1 = repo.listReference("refs/heads");
+		const iterReference1 = repo.listReferencePath("refs/heads");
 		assertEquals((await iterReference1.next()).value, "refs/heads/main");
 		assertEquals((await iterReference1.next()).done, true);
 
 		await repo.flushToFilesystem();
 
-		const iterReference2 = repo.listReference("refs/heads");
+		const iterReference2 = repo.listReferencePath("refs/heads");
 		assertEquals((await iterReference2.next()).value, "refs/heads/main");
 		assertEquals((await iterReference2.next()).done, true);
 
-		await repo.writeReference("refs/heads/fix-hero", autoid());
+		await repo.writeReference(new Reference("refs/heads/fix-hero", autoid()));
 
-		const iterReference3 = repo.listReference("refs/heads");
+		const iterReference3 = repo.listReferencePath("refs/heads");
 		assertEquals((await iterReference3.next()).value, "refs/heads/fix-hero");
 		assertEquals((await iterReference3.next()).value, "refs/heads/main");
 		assertEquals((await iterReference3.next()).done, true);

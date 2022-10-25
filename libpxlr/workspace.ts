@@ -37,20 +37,9 @@ export class Workspace {
 	}
 
 	async *listBranches(abortSignal?: AbortSignal): AsyncIterableIterator<string> {
-		for await (const ref of this.#repository.listReference(`refs/heads`, abortSignal)) {
+		for await (const ref of this.#repository.listReferencePath(`refs/heads`, abortSignal)) {
 			yield decodeURIComponent(ref.split("/").slice(2).join("/"));
 		}
-	}
-
-	async getBranch(name: string, abortSignal?: AbortSignal): Promise<Branch> {
-		const headId = await this.#repository.getReference(`refs/heads/${encodeURIComponent(name)}`, abortSignal);
-		const headCommit = await this.#repository.getCommit(headId, abortSignal);
-		return new Branch(this, name, headCommit);
-	}
-
-	async getDetachedBranch(id: AutoId, abortSignal?: AbortSignal): Promise<Branch> {
-		const commit = await this.#repository.getCommit(id, abortSignal);
-		return new Branch(this, undefined, commit);
 	}
 
 	async getNodeById(id: AutoId, shallow = true, abortSignal?: AbortSignal): Promise<Node> {
@@ -79,137 +68,6 @@ export class Workspace {
 	}
 }
 
-export class BranchNotFoundError extends Error {
-	public name = "BranchNotFoundError";
-	public constructor(branch: string) {
-		super(`Branch "${branch}" not found.`);
-	}
-}
-
 export class Branch {
-	#workspace: Workspace;
-	#name: string | undefined;
-	#headCommit: Commit;
-	#history: Commit[];
-	constructor(workspace: Workspace, name: string | undefined, headCommit: Commit) {
-		this.#workspace = workspace;
-		this.#name = name;
-		this.#headCommit = headCommit;
-		this.#history = [headCommit];
-	}
 
-	get workspace() {
-		return this.#workspace;
-	}
-
-	get name() {
-		return this.#name;
-	}
-
-	get isDetached() {
-		return this.#name === undefined;
-	}
-
-	async *walkHistory(abortSignal?: AbortSignal): AsyncIterableIterator<Commit> {
-		let lastCommitId: AutoId = "";
-		for (const commit of this.#history) {
-			yield commit;
-			lastCommitId = commit.parent;
-		}
-		if (lastCommitId) {
-			for await (const commit of this.#workspace.repository.iterHistory(lastCommitId, abortSignal)) {
-				yield commit;
-				this.#history.push(commit);
-			}
-		}
-	}
-
-	async checkoutDocument(abortSignal?: AbortSignal): Promise<Document> {
-		const rootNode = await this.#workspace.getNodeById(this.#headCommit.tree, true, abortSignal);
-		return new Document(this, this.#headCommit, rootNode);
-	}
-}
-
-export class Document {
-	#branch: Branch;
-	#commit: Commit;
-	#rootNode: Node;
-	constructor(branch: Branch, commit: Commit, rootNode: Node) {
-		this.#branch = branch;
-		this.#commit = commit;
-		this.#rootNode = rootNode;
-	}
-
-	get branch() {
-		return this.#branch;
-	}
-
-	get commit() {
-		return this.#commit;
-	}
-
-	get rootNode() {
-		return this.#rootNode;
-	}
-
-	getNodeByHash(hash: AutoId): Node | undefined {
-		assertAutoId(hash);
-		if (this.#rootNode) {
-			for (const node of this.#rootNode) {
-				if (node.hash === hash) {
-					return node;
-				}
-			}
-		}
-	}
-
-	getNodeById(id: AutoId): Node | undefined {
-		assertAutoId(id);
-		if (this.#rootNode) {
-			for (const node of this.#rootNode) {
-				if (node.id === id) {
-					return node;
-				}
-			}
-		}
-	}
-
-	getNodeAtIdPath(path: string[]): Node | undefined {
-		if (this.#rootNode && this.#rootNode instanceof GroupNode) {
-			return this.#rootNode.getChildAtIdPath(path);
-		}
-	}
-
-	getNodeAtNamePath(path: string[]): Node | undefined {
-		if (this.#rootNode && this.#rootNode instanceof GroupNode) {
-			return this.#rootNode.getChildAtNamePath(path);
-		}
-	}
-
-	// deno-lint-ignore require-await
-	async executeCommand(command: Command): Promise<Document> {
-		const rootNode = this.#rootNode.executeCommand(command);
-		if (rootNode && rootNode !== this.#rootNode) {
-			let changed = false;
-			const oldNodeSet = new Set();
-			for (const node of this.#rootNode) {
-				oldNodeSet.add(node.id);
-			}
-			for (const node of rootNode) {
-				if (!oldNodeSet.has(node.id)) {
-					changed = true;
-					// await this.#repository.setObject(node.toObject());
-				}
-			}
-			if (changed) {
-				// const commit = new Commit(autoid(), this.#commit!.id, rootNode.id, "Bob <bob@test.local>", new Date(), "...");
-				// await this.#repository.setCommit(commit);
-				// await this.#repository.setReference(this.#reference, commit.id);
-				// this.#commit = commit;
-				// TODO onChange callback
-			}
-			this.#rootNode = rootNode;
-		}
-		return this;
-	}
 }

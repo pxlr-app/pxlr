@@ -2,32 +2,33 @@ import { assert, assertEquals } from "https://deno.land/std@0.158.0/testing/asse
 import { autoid } from "../autoid.ts";
 import { Commit } from "./commit.ts";
 import { MemoryFilesystem, Object, Repository } from "./mod.ts";
+import { Reference } from "./reference.ts";
 import { Tree } from "./tree.ts";
 
 Deno.test("Repository", async (t) => {
 	await t.step("set/get reference", async () => {
 		const fs = new MemoryFilesystem();
 		const repo = new Repository(fs);
-		const commitId1 = autoid();
-		await repo.writeReference("refs/heads/main", commitId1);
+		const ref1 = new Reference("refs/heads/main", autoid());
+		await repo.writeReference(ref1);
 		assert(fs.entries.has("/refs/heads/main"));
-		const commitId2 = await repo.getReference("refs/heads/main");
-		assertEquals(commitId1, commitId2);
+		const ref2 = await repo.getReference("refs/heads/main");
+		assertEquals(ref1, ref2);
 		assert(fs.entries.has("/refs/heads/main"));
 	});
 
 	await t.step("list reference", async () => {
 		const fs = new MemoryFilesystem();
 		const repo = new Repository(fs);
-		await repo.writeReference("refs/heads/main", autoid());
+		await repo.writeReference(new Reference("refs/heads/main", autoid()));
 
-		const iterReference1 = repo.listReference("refs/heads");
+		const iterReference1 = repo.listReferencePath("refs/heads");
 		assertEquals((await iterReference1.next()).value, "refs/heads/main");
 		assertEquals((await iterReference1.next()).done, true);
 
-		await repo.writeReference("refs/heads/fix-hero", autoid());
+		await repo.writeReference(new Reference("refs/heads/fix-hero", autoid()));
 
-		const iterReference3 = repo.listReference("refs/heads");
+		const iterReference3 = repo.listReferencePath("refs/heads");
 		assertEquals((await iterReference3.next()).value, "refs/heads/fix-hero");
 		assertEquals((await iterReference3.next()).value, "refs/heads/main");
 		assertEquals((await iterReference3.next()).done, true);

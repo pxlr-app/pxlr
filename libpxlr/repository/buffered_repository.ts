@@ -1,11 +1,11 @@
 import { assertAutoId, AutoId } from "../autoid.ts";
 import { Filesystem } from "./filesystem/filesystem.ts";
-import { assertReference, Reference } from "./reference.ts";
+import { assertReferencePath, Reference, ReferencePath } from "./reference.ts";
 import { Repository } from "./repository.ts";
 import { Object } from "./object.ts";
 
 export class BufferedRepository extends Repository {
-	#referenceCache: Map<Reference, AutoId>;
+	#referenceCache: Map<ReferencePath, Reference>;
 	#objectCache: Map<AutoId, Object>;
 	constructor(
 		fs: Filesystem,
@@ -15,26 +15,24 @@ export class BufferedRepository extends Repository {
 		this.#objectCache = new Map();
 	}
 
-	async getReference(reference: Reference, abortSignal?: AbortSignal): Promise<AutoId> {
-		assertReference(reference);
-		if (this.#referenceCache.has(reference)) {
-			return this.#referenceCache.get(reference)!;
+	async getReference(ref: ReferencePath, abortSignal?: AbortSignal): Promise<Reference> {
+		assertReferencePath(ref);
+		if (this.#referenceCache.has(ref)) {
+			return this.#referenceCache.get(ref)!;
 		}
-		const id = await super.getReference(reference, abortSignal);
-		this.#referenceCache.set(reference, id);
-		return id;
+		const reference = await super.getReference(ref, abortSignal);
+		this.#referenceCache.set(ref, reference);
+		return reference;
 	}
 
 	// deno-lint-ignore require-await
-	async writeReference(reference: Reference, commitId: AutoId, _abortSignal?: AbortSignal): Promise<void> {
-		assertReference(reference);
-		assertAutoId(commitId);
-		this.#referenceCache.set(reference, commitId);
+	async writeReference(reference: Reference, _abortSignal?: AbortSignal): Promise<void> {
+		this.#referenceCache.set(reference.ref, reference);
 	}
 
-	async *listReference(prefix: Reference, abortSignal?: AbortSignal): AsyncIterableIterator<Reference> {
-		assertReference(prefix);
-		const references: Reference[] = [];
+	async *listReferencePath(prefix: ReferencePath, abortSignal?: AbortSignal): AsyncIterableIterator<ReferencePath> {
+		assertReferencePath(prefix);
+		const references: ReferencePath[] = [];
 		for await (const entry of this.fs.list(`/${prefix}`, abortSignal)) {
 			references.push(`${prefix}/${entry}`);
 		}
@@ -69,10 +67,10 @@ export class BufferedRepository extends Repository {
 
 	async flushToFilesystem(abortSignal?: AbortSignal): Promise<void> {
 		const referenceCache = Array.from(this.#referenceCache.entries());
-		for await (const [reference, commitId] of referenceCache) {
+		for await (const [ref, reference] of referenceCache) {
 			abortSignal?.throwIfAborted();
-			await super.writeReference(reference, commitId, abortSignal);
-			this.#referenceCache.delete(reference);
+			await super.writeReference(reference, abortSignal);
+			this.#referenceCache.delete(ref);
 		}
 
 		const objectCache = Array.from(this.#objectCache.values());
