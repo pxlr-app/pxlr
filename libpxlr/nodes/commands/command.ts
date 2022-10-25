@@ -2,8 +2,8 @@ import { assertAutoId, AutoId } from "../../autoid.ts";
 
 export abstract class Command {
 	public constructor(
-		public target: AutoId,
+		public targetHash: AutoId,
 	) {
-		target && assertAutoId(target);
+		targetHash && assertAutoId(targetHash);
 	}
 }

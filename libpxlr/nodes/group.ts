@@ -51,7 +51,7 @@ export class GroupNode extends Node {
 	}
 
 	executeCommand(command: Command): Node {
-		if (command.target === this.id) {
+		if (command.targetHash === this.hash) {
 			if (command instanceof RenameCommand) {
 				return new GroupNode(autoid(), this.id, command.renameTo, this.children);
 			} else if (command instanceof AddChildCommand) {
@@ -62,7 +62,7 @@ export class GroupNode extends Node {
 				const children = Array.from(new Set(this.children.concat(command.childNode)));
 				return new GroupNode(autoid(), this.id, this.name, children);
 			} else if (command instanceof RemoveChildCommand) {
-				const childIndex = this.children.findIndex((node) => node.id === command.childId);
+				const childIndex = this.children.findIndex((node) => node.id === command.childHash);
 				if (childIndex > -1) {
 					const children = [
 						...this.children.slice(0, childIndex),
@@ -72,7 +72,7 @@ export class GroupNode extends Node {
 				}
 				return this;
 			} else if (command instanceof MoveChildCommand) {
-				const childIndex = this.children.findIndex((node) => node.id === command.childId);
+				const childIndex = this.children.findIndex((node) => node.id === command.childHash);
 				if (childIndex > -1) {
 					const children = Array.from(this.children);
 					const child = children.splice(childIndex, 1)[0];
@@ -89,7 +89,7 @@ export class GroupNode extends Node {
 			}
 			return this;
 		}
-		if (command instanceof RenameCommand && this.children.find((child) => child.id === command.target)) {
+		if (command instanceof RenameCommand && this.children.find((child) => child.hash === command.targetHash)) {
 			const name = command.renameTo;
 			if (this.children.find((child) => child.name === name)) {
 				throw new ChildWithNameExistsError(name);
@@ -114,15 +114,15 @@ export class GroupNode extends Node {
 	}
 
 	addChild(childNode: Node): AddChildCommand {
-		return new AddChildCommand(this.id, childNode);
+		return new AddChildCommand(this.hash, childNode);
 	}
 
-	moveChild(childId: AutoId, position: number): MoveChildCommand {
-		return new MoveChildCommand(this.id, childId, position);
+	moveChild(childHash: AutoId, position: number): MoveChildCommand {
+		return new MoveChildCommand(this.hash, childHash, position);
 	}
 
-	removeChild(childId: AutoId): RemoveChildCommand {
-		return new RemoveChildCommand(this.id, childId);
+	removeChild(childHash: AutoId): RemoveChildCommand {
+		return new RemoveChildCommand(this.hash, childHash);
 	}
 
 	getChildByHash(hash: AutoId): Node | undefined {

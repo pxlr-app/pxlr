@@ -2,8 +2,8 @@ import { assertAutoId, AutoId } from "../../autoid.ts";
 import { Command } from "./command.ts";
 
 export class MoveChildCommand extends Command {
-	public constructor(target: AutoId, public childId: AutoId, public position: number) {
-		super(target);
-		assertAutoId(childId);
+	public constructor(targetHash: AutoId, public childHash: AutoId, public position: number) {
+		super(targetHash);
+		assertAutoId(childHash);
 	}
 }

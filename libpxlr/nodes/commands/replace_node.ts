@@ -3,6 +3,6 @@ import { Command } from "./command.ts";
 
 export class ReplaceNodeCommand extends Command {
 	public constructor(public node: Node) {
-		super(node.id);
+		super(node.hash);
 	}
 }

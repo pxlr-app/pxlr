@@ -29,7 +29,7 @@ export class NoteNode extends Node {
 	}
 
 	executeCommand(command: Command): Node {
-		if (command.target === this.id) {
+		if (command.targetHash === this.hash) {
 			if (command instanceof RenameCommand) {
 				return new NoteNode(autoid(), this.id, command.renameTo, this.content);
 			} else if (command instanceof SetContentCommand) {
@@ -46,6 +46,6 @@ export class NoteNode extends Node {
 	}
 
 	setContent(newContent: string): SetContentCommand {
-		return new SetContentCommand(this.id, newContent);
+		return new SetContentCommand(this.hash, newContent);
 	}
 }

@@ -47,7 +47,7 @@ export abstract class Node {
 	abstract toObject(): Object;
 
 	rename(renameTo: string): RenameCommand {
-		return new RenameCommand(this.id, renameTo);
+		return new RenameCommand(this.hash, renameTo);
 	}
 }
 
@@ -66,7 +66,7 @@ export class UnloadedNode extends Node {
 	}
 
 	executeCommand(command: Command): Node {
-		if (command.target === this.id) {
+		if (command.targetHash === this.hash) {
 			if (command instanceof RenameCommand) {
 				return new UnloadedNode(autoid(), this.id, this.kind, command.renameTo);
 			} else if (command instanceof ReplaceNodeCommand) {
