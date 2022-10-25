@@ -18,8 +18,8 @@ export class Branch {
 		return this.#reference.ref.split("/").at(-1)!;
 	}
 
-	get message() {
-		return this.#reference.message;
+	get reference() {
+		return this.#reference;
 	}
 
 	iterHistory(options?: { fromHash?: AutoId; abortSignal?: AbortSignal }): AsyncIterableIterator<Commit> {

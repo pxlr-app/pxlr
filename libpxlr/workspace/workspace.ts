@@ -2,6 +2,7 @@ import { assertAutoId, AutoId } from "../autoid.ts";
 import { Node, NodeDeserializer, NodeNotFoundError, NodeRegistry, UnloadedNode } from "../nodes/mod.ts";
 import { Repository, Tree } from "../repository/mod.ts";
 import { Branch } from "./branch.ts";
+import { Document } from "./document.ts";
 
 export class Workspace {
 	#nodeCache: Map<AutoId, WeakRef<Node>>;
@@ -68,5 +69,11 @@ export class Workspace {
 			return node;
 		}
 		throw new NodeNotFoundError(hash);
+	}
+
+	async checkoutDocument(hash: AutoId, abortSignal?: AbortSignal): Promise<Document> {
+		const commit = await this.repository.getCommit(hash, abortSignal);
+		const rootNode = await this.getNodeByHash(commit.tree, true, abortSignal);
+		return new Document(this, commit, rootNode);
 	}
 }
