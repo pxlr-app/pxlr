@@ -1,8 +1,7 @@
-import { assertAutoId, AutoId } from "./autoid.ts";
-import { Node, NodeNotFoundError, UnloadedNode } from "./nodes/node.ts";
-import { NodeDeserializer, NodeRegistry } from "./nodes/registry.ts";
-import { Commit, Reference, Tree } from "./repository/mod.ts";
-import { Repository } from "./repository/repository.ts";
+import { assertAutoId, AutoId } from "../autoid.ts";
+import { Node, NodeDeserializer, NodeNotFoundError, NodeRegistry, UnloadedNode } from "../nodes/mod.ts";
+import { Repository, Tree } from "../repository/mod.ts";
+import { Branch } from "./branch.ts";
 
 export class Workspace {
 	#nodeCache: Map<AutoId, WeakRef<Node>>;
@@ -46,9 +45,9 @@ export class Workspace {
 		return new Branch(this, reference);
 	}
 
-	async getNodeByHash(id: AutoId, shallow = true, abortSignal?: AbortSignal): Promise<Node> {
-		assertAutoId(id);
-		const cachedNode = this.#nodeCache.get(id);
+	async getNodeByHash(hash: AutoId, shallow = true, abortSignal?: AbortSignal): Promise<Node> {
+		assertAutoId(hash);
+		const cachedNode = this.#nodeCache.get(hash);
 		if (cachedNode) {
 			const node = cachedNode.deref();
 			if (node && !(node instanceof UnloadedNode)) {
@@ -56,7 +55,7 @@ export class Workspace {
 			}
 		}
 		let nodeConstructor: NodeDeserializer;
-		const object = await this.#repository.getObject(id, abortSignal);
+		const object = await this.#repository.getObject(hash, abortSignal);
 		if (object.kind === "tree") {
 			const tree = await Tree.fromObject(object);
 			nodeConstructor = this.#nodeRegistry.getTreeConstructor(tree.subKind);
@@ -65,35 +64,9 @@ export class Workspace {
 		}
 		const node = await nodeConstructor({ object, getNodeByHash: this.getNodeByHash.bind(this), shallow, abortSignal });
 		if (node) {
-			this.#nodeCache.set(id, new WeakRef(node));
+			this.#nodeCache.set(hash, new WeakRef(node));
 			return node;
 		}
-		throw new NodeNotFoundError(id);
-	}
-}
-
-export class Branch {
-	#workspace: Workspace;
-	#reference: Reference;
-	constructor(workspace: Workspace, reference: Reference) {
-		this.#workspace = workspace;
-		this.#reference = reference;
-	}
-
-	get workspace(): Readonly<Workspace> {
-		return this.#workspace;
-	}
-
-	get name() {
-		return this.#reference.ref.split("/").at(-1)!;
-	}
-
-	get message() {
-		return this.#reference.message;
-	}
-
-	iterHistory(options?: { fromHash?: AutoId; abortSignal?: AbortSignal }): AsyncIterableIterator<Commit> {
-		const fromHash = options?.fromHash ?? this.#reference.commit;
-		return this.workspace.repository.iterHistory(fromHash);
+		throw new NodeNotFoundError(hash);
 	}
 }

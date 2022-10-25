@@ -1,7 +1,6 @@
 import { assertAutoId, AutoId, autoid } from "../autoid.ts";
 import { Object } from "../repository/object.ts";
 import { Command, RenameCommand, ReplaceNodeCommand } from "./commands/mod.ts";
-import { Workspace } from "../workspace.ts";
 import { NodeConstructorOptions } from "./registry.ts";
 
 export abstract class Node {
@@ -85,11 +84,6 @@ export class UnloadedNode extends Node {
 	static async fromObject({ object }: NodeConstructorOptions): Promise<Node> {
 		return new UnloadedNode(object.id, object.headers.get("id") ?? "", object.kind, object.headers.get("name") ?? "_");
 	}
-
-	async load(workspace: Workspace): Promise<ReplaceNodeCommand> {
-		const node = await workspace.getNodeByHash(this.hash);
-		return new ReplaceNodeCommand(node);
-	}
 }
 
 export class UnloadedNodeMethodError extends Error {
@@ -98,7 +92,7 @@ export class UnloadedNodeMethodError extends Error {
 
 export class NodeNotFoundError extends Error {
 	public name = "NodeNotFoundError";
-	public constructor(id: string) {
-		super(`Could not find node ${id}.`);
+	public constructor(hash: string) {
+		super(`Could not find node ${hash}.`);
 	}
 }
