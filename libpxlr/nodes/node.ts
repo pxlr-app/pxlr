@@ -87,7 +87,7 @@ export class UnloadedNode extends Node {
 	}
 
 	async load(workspace: Workspace): Promise<ReplaceNodeCommand> {
-		const node = await workspace.getNodeById(this.id);
+		const node = await workspace.getNodeByHash(this.hash);
 		return new ReplaceNodeCommand(node);
 	}
 }

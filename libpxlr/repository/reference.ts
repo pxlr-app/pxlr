@@ -1,5 +1,5 @@
 import { assertAutoId, AutoId } from "../autoid.ts";
-import { deserializeObjectLike, Object } from "./object.ts";
+import { deserializeObjectLike } from "./object.ts";
 
 export type ReferencePath = string;
 

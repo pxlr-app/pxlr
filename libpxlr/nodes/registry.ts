@@ -1,10 +1,10 @@
 import { Node } from "./node.ts";
-import { Workspace } from "../workspace.ts";
 import { Object } from "../repository/object.ts";
+import { AutoId } from "../autoid.ts";
 
 export interface NodeConstructorOptions {
 	object: Object;
-	workspace: Workspace;
+	getNodeByHash: (hash: AutoId, shallow: boolean, abortSignal?: AbortSignal) => Promise<Node>;
 	shallow: boolean;
 	abortSignal?: AbortSignal;
 }

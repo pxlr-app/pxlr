@@ -5,13 +5,6 @@ import { Tree } from "./tree.ts";
 import { assertReferencePath, Reference, ReferencePath } from "./reference.ts";
 import { assertAutoId, AutoId } from "../autoid.ts";
 
-async function readAsText(rs: ReadableStream) {
-	return await new Response(rs).text();
-}
-
-const textEncoder = new TextEncoder();
-//const textDecoder = new TextDecoder("utf-8");
-
 export class Repository {
 	#fs: Filesystem;
 	constructor(

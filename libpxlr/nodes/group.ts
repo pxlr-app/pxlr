@@ -6,17 +6,17 @@ import { Node } from "./node.ts";
 import { NodeRegistryEntry } from "./registry.ts";
 import { UnloadedNode } from "./mod.ts";
 
-export const GroupNodeRegistryEntry = new NodeRegistryEntry("group", async ({ object, workspace, shallow }) => {
+export const GroupNodeRegistryEntry = new NodeRegistryEntry("group", async ({ object, getNodeByHash, shallow, abortSignal }) => {
 	const tree = await Tree.fromObject(object);
 	const children: Node[] = [];
 	for (const item of tree.items) {
 		let node: Node;
 		if (item.kind === "tree") {
-			node = await workspace.getNodeById(item.id, shallow);
+			node = await getNodeByHash(item.hash, shallow, abortSignal);
 		} else if (shallow) {
 			node = new UnloadedNode(item.hash, item.id, item.kind, item.name);
 		} else {
-			node = await workspace.getNodeById(item.id);
+			node = await getNodeByHash(item.hash, false, abortSignal);
 		}
 		children.push(node);
 	}
