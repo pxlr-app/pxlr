@@ -1,21 +1,26 @@
-import { assertAutoId, AutoId } from "../autoid.ts";
+import { assertAutoId, AutoId, autoid } from "../autoid.ts";
 import { Command, GroupNode, Node } from "../nodes/mod.ts";
-import { Commit } from "../repository/mod.ts";
-import { Branch } from "./branch.ts";
+import { Commit, Reference } from "../repository/mod.ts";
 import { Workspace } from "./workspace.ts";
 
 export class Document {
 	#workspace: Workspace;
+	#reference: Reference | undefined;
 	#commit: Commit;
 	#rootNode: Node;
-	constructor(workspace: Workspace, commit: Commit, rootNode: Node) {
+	constructor(workspace: Workspace, reference: Reference | undefined, commit: Commit, rootNode: Node) {
 		this.#workspace = workspace;
+		this.#reference = reference;
 		this.#commit = commit;
 		this.#rootNode = rootNode;
 	}
 
 	get workspace() {
 		return this.#workspace;
+	}
+
+	get reference() {
+		return this.#reference;
 	}
 
 	get commit() {
@@ -48,38 +53,34 @@ export class Document {
 		}
 	}
 
-	getNodeAtIdPath(path: string[]): Node | undefined {
-		if (this.#rootNode && this.#rootNode instanceof GroupNode) {
-			return this.#rootNode.getChildAtIdPath(path);
-		}
-	}
-
 	getNodeAtNamePath(path: string[]): Node | undefined {
 		if (this.#rootNode && this.#rootNode instanceof GroupNode) {
 			return this.#rootNode.getChildAtNamePath(path);
 		}
 	}
 
-	// deno-lint-ignore require-await
-	async executeCommand(command: Command): Promise<Document> {
+	async executeCommand(command: Command, author: string, message: string): Promise<Document> {
 		const rootNode = this.#rootNode.executeCommand(command);
 		if (rootNode && rootNode !== this.#rootNode) {
 			let changed = false;
 			const oldNodeSet = new Set();
 			for (const node of this.#rootNode) {
-				oldNodeSet.add(node.id);
+				oldNodeSet.add(node.hash);
 			}
 			for (const node of rootNode) {
-				if (!oldNodeSet.has(node.id)) {
+				if (!oldNodeSet.has(node.hash)) {
 					changed = true;
-					// await this.#repository.setObject(node.toObject());
+					await this.workspace.repository.writeObject(node.toObject());
 				}
 			}
 			if (changed) {
-				// const commit = new Commit(autoid(), this.#commit!.id, rootNode.id, "Bob <bob@test.local>", new Date(), "...");
-				// await this.#repository.setCommit(commit);
-				// await this.#repository.setReference(this.#reference, commit.id);
-				// this.#commit = commit;
+				const commit = new Commit(autoid(), this.#commit!.hash, rootNode.hash, author, new Date(), message);
+				await this.workspace.repository.writeCommit(commit);
+				if (this.reference) {
+					const reference = new Reference(this.reference.ref, commit.hash);
+					await this.workspace.repository.writeReference(reference);
+				}
+				this.#commit = commit;
 				// TODO onChange callback
 			}
 			this.#rootNode = rootNode;

@@ -42,27 +42,27 @@ export class BufferedRepository extends Repository {
 		yield* new Set(references);
 	}
 
-	async getObject(id: AutoId, abortSignal?: AbortSignal): Promise<Object> {
-		assertAutoId(id);
-		if (this.#objectCache.has(id)) {
-			return this.#objectCache.get(id)!;
+	async getObject(hash: AutoId, abortSignal?: AbortSignal): Promise<Object> {
+		assertAutoId(hash);
+		if (this.#objectCache.has(hash)) {
+			return this.#objectCache.get(hash)!;
 		}
-		const object = await super.getObject(id, abortSignal);
-		this.#objectCache.set(id, object);
+		const object = await super.getObject(hash, abortSignal);
+		this.#objectCache.set(hash, object);
 		return object;
 	}
 
 	// deno-lint-ignore require-await
 	async writeObject(object: Object, _abortSignal?: AbortSignal): Promise<void> {
-		this.#objectCache.set(object.id, object);
+		this.#objectCache.set(object.hash, object);
 	}
 
-	async objectExists(id: AutoId, abortSignal?: AbortSignal): Promise<boolean> {
-		assertAutoId(id);
-		if (this.#objectCache.has(id)) {
+	async objectExists(hash: AutoId, abortSignal?: AbortSignal): Promise<boolean> {
+		assertAutoId(hash);
+		if (this.#objectCache.has(hash)) {
 			return true;
 		}
-		return await super.objectExists(id, abortSignal);
+		return await super.objectExists(hash, abortSignal);
 	}
 
 	async flushToFilesystem(abortSignal?: AbortSignal): Promise<void> {

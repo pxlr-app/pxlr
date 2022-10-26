@@ -1,6 +1,6 @@
 import { assertAutoId, AutoId } from "../autoid.ts";
 import { Node, NodeDeserializer, NodeNotFoundError, NodeRegistry, UnloadedNode } from "../nodes/mod.ts";
-import { Repository, Tree } from "../repository/mod.ts";
+import { ReferencePath, Repository, Tree } from "../repository/mod.ts";
 import { Branch } from "./branch.ts";
 import { Document } from "./document.ts";
 
@@ -37,7 +37,7 @@ export class Workspace {
 
 	async *listBranches(abortSignal?: AbortSignal): AsyncIterableIterator<string> {
 		for await (const ref of this.#repository.listReferencePath(`refs/heads`, abortSignal)) {
-			yield decodeURIComponent(ref.split("/").slice(2).join("/"));
+			yield ref.split("/").slice(2).join("/");
 		}
 	}
 
@@ -71,9 +71,23 @@ export class Workspace {
 		throw new NodeNotFoundError(hash);
 	}
 
-	async checkoutDocument(hash: AutoId, abortSignal?: AbortSignal): Promise<Document> {
-		const commit = await this.repository.getCommit(hash, abortSignal);
-		const rootNode = await this.getNodeByHash(commit.tree, true, abortSignal);
-		return new Document(this, commit, rootNode);
+	async checkoutDocumentAtBranch(branch: string, options?: { shallow?: boolean; abortSignal?: AbortSignal }): Promise<Document> {
+		const reference = await this.repository.getReference(`refs/heads/${branch}`, options?.abortSignal);
+		const commit = await this.repository.getCommit(reference.commit, options?.abortSignal);
+		const rootNode = await this.getNodeByHash(commit.tree, options?.shallow ?? true, options?.abortSignal);
+		return new Document(this, reference, commit, rootNode);
+	}
+
+	async checkoutDocumentAtReference(ref: ReferencePath, options?: { shallow?: boolean; abortSignal?: AbortSignal }): Promise<Document> {
+		const reference = await this.repository.getReference(ref, options?.abortSignal);
+		const commit = await this.repository.getCommit(reference.commit, options?.abortSignal);
+		const rootNode = await this.getNodeByHash(commit.tree, options?.shallow ?? true, options?.abortSignal);
+		return new Document(this, reference, commit, rootNode);
+	}
+
+	async checkoutDocumentAtCommit(commitHash: AutoId, options?: { shallow?: boolean; abortSignal?: AbortSignal }): Promise<Document> {
+		const commit = await this.repository.getCommit(commitHash, options?.abortSignal);
+		const rootNode = await this.getNodeByHash(commit.tree, options?.shallow ?? true, options?.abortSignal);
+		return new Document(this, undefined, commit, rootNode);
 	}
 }

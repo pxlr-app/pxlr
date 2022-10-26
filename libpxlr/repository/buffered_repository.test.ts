@@ -43,10 +43,10 @@ Deno.test("Repository", async (t) => {
 		const repo = new BufferedRepository(fs);
 		const object1 = new Object(autoid(), autoid(), "note", { name: "README" }, "# Hello World");
 		await repo.writeObject(object1);
-		assertFalse(fs.entries.has(`/objects/${object1.id[0]}/${object1.id[1]}/${object1}`));
-		const object2 = await repo.getObject(object1.id);
+		assertFalse(fs.entries.has(`/objects/${object1.hash[0]}/${object1.hash[1]}/${object1.hash}`));
+		const object2 = await repo.getObject(object1.hash);
 		assertEquals(object1, object2);
 		await repo.flushToFilesystem();
-		assertFalse(fs.entries.has(`/objects/${object1.id[0]}/${object1.id[1]}/${object1}`));
+		assert(fs.entries.has(`/objects/${object1.hash[0]}/${object1.hash[1]}/${object1.hash}`));
 	});
 });

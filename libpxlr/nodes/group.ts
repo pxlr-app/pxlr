@@ -139,30 +139,6 @@ export class GroupNode extends Node {
 		return this.children.find((child) => child.name === name);
 	}
 
-	getChildAtHashPath(path: string[]): Node | undefined {
-		const hash = path.shift();
-		if (hash) {
-			const next = this.getChildByHash(hash);
-			if (path.length === 0) {
-				return next;
-			} else if (next && next instanceof GroupNode) {
-				return next.getChildAtHashPath(path);
-			}
-		}
-	}
-
-	getChildAtIdPath(path: string[]): Node | undefined {
-		const id = path.shift();
-		if (id) {
-			const next = this.getChildById(id);
-			if (path.length === 0) {
-				return next;
-			} else if (next && next instanceof GroupNode) {
-				return next.getChildAtIdPath(path);
-			}
-		}
-	}
-
 	getChildAtNamePath(path: string[]): Node | undefined {
 		const name = path.shift();
 		if (name) {

@@ -5,7 +5,7 @@ import { Node } from "./node.ts";
 import { NodeRegistryEntry } from "./registry.ts";
 
 export const NoteNodeRegistryEntry = new NodeRegistryEntry("note", async ({ object }) => {
-	return new NoteNode(object.id, object.id, object.headers.get("name") ?? "", await object.text());
+	return new NoteNode(object.hash, object.id, object.headers.get("name") ?? "", await object.text());
 });
 
 export class NoteNode extends Node {
