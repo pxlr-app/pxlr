@@ -20,7 +20,7 @@ export class Repository {
 	async getReference(ref: ReferencePath, abortSignal?: AbortSignal): Promise<Reference> {
 		assertReferencePath(ref);
 		try {
-			const refReadableStream = await this.fs.read(`/${ref}`, abortSignal);
+			const refReadableStream = await this.fs.read(ref, abortSignal);
 			const reference = await Reference.deserialize(refReadableStream);
 			return reference;
 		} catch (error) {
@@ -30,7 +30,7 @@ export class Repository {
 
 	async writeReference(reference: Reference, abortSignal?: AbortSignal): Promise<void> {
 		try {
-			const refWritableStream = await this.fs.write(`/${reference.ref}`, abortSignal);
+			const refWritableStream = await this.fs.write(reference.ref, abortSignal);
 			await reference.serialize(refWritableStream);
 		} catch (error) {
 			throw new IOError(error);
@@ -39,7 +39,7 @@ export class Repository {
 
 	async *listReferencePath(prefix: ReferencePath, abortSignal?: AbortSignal): AsyncIterableIterator<ReferencePath> {
 		assertReferencePath(prefix);
-		for await (const entry of this.fs.list(`/${prefix}`, abortSignal)) {
+		for await (const entry of this.fs.list(prefix, abortSignal)) {
 			yield `${prefix}/${entry}`;
 		}
 	}
@@ -48,7 +48,7 @@ export class Repository {
 		assertAutoId(hash);
 		let objectReadableStream;
 		try {
-			objectReadableStream = await this.fs.read(`/objects/${hash[0]}/${hash[1]}/${hash}`, abortSignal);
+			objectReadableStream = await this.fs.read(`objects/${hash[0]}/${hash[1]}/${hash}`, abortSignal);
 		} catch (error) {
 			throw new IOError(error);
 		}
@@ -57,7 +57,7 @@ export class Repository {
 
 	async writeObject(object: Object, abortSignal?: AbortSignal): Promise<void> {
 		try {
-			const objectWritableStream = await this.fs.write(`/objects/${object.hash[0]}/${object.hash[1]}/${object.hash}`, abortSignal);
+			const objectWritableStream = await this.fs.write(`objects/${object.hash[0]}/${object.hash[1]}/${object.hash}`, abortSignal);
 			await object.serialize(objectWritableStream);
 		} catch (error) {
 			throw new IOError(error);
@@ -67,7 +67,7 @@ export class Repository {
 	async objectExists(hash: AutoId, abortSignal?: AbortSignal): Promise<boolean> {
 		assertAutoId(hash);
 		try {
-			return await this.fs.exists(`/objects/${hash[0]}/${hash[1]}/${hash}`, abortSignal);
+			return await this.fs.exists(`objects/${hash[0]}/${hash[1]}/${hash}`, abortSignal);
 		} catch (_error) {
 			return false;
 		}

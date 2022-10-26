@@ -3,6 +3,8 @@ import { BufferedRepository, Commit, MemoryFilesystem, Reference, Tree } from ".
 import { GroupNode, GroupNodeRegistryEntry, NodeRegistry, NoteNode, NoteNodeRegistryEntry } from "../nodes/mod.ts";
 import { Workspace } from "./workspace.ts";
 import { autoid } from "../autoid.ts";
+import { ZipFilesystem } from "../repository/filesystem/zip.ts";
+import { DenoFile, Zip } from "../../libzip/mod.ts";
 
 const nodeRegistry = new NodeRegistry();
 nodeRegistry.registerNodeConstructor(NoteNodeRegistryEntry);
@@ -10,6 +12,13 @@ nodeRegistry.registerTreeConstructor(GroupNodeRegistryEntry);
 
 Deno.test("Document", async (t) => {
 	await t.step("executeCommand", async () => {
+		// const tmpFile = await Deno.makeTempFile({ suffix: ".zip" });
+		// console.log(tmpFile);
+		// const fsFile = await Deno.open(tmpFile, { create: true, read: true, write: true, truncate: true });
+		// const denoFile = new DenoFile(fsFile);
+		// const zip = new Zip(denoFile);
+		// await zip.open();
+		// const fs = new ZipFilesystem(zip);
 		const fs = new MemoryFilesystem();
 		const repository = new BufferedRepository(fs);
 		const note1 = new NoteNode(autoid(), autoid(), "My Note", "...");
@@ -22,13 +31,26 @@ Deno.test("Document", async (t) => {
 		await repository.writeTree(tree);
 		await repository.writeCommit(commit);
 		await repository.writeReference(reference);
-		const workspace = new Workspace({ repository, nodeRegistry });
-		const document1 = await workspace.checkoutDocumentAtBranch("main", { shallow: false });
+		const workspace1 = new Workspace({ repository, nodeRegistry });
+		const document1 = await workspace1.checkoutDocumentAtBranch("main", { shallow: false });
 		await document1.executeCommand(note1.rename("Your note"), "Test <test@test.local>", "Rename My Note");
-		const branch = await workspace.getBranch("main");
+		const branch = await workspace1.getBranch("main");
 		const iterHistory = branch.iterHistory();
 		assertEquals((await iterHistory.next()).value.message, "Rename My Note");
 		assertEquals((await iterHistory.next()).value.message, "init");
 		assertEquals((await iterHistory.next()).done, true);
+
+		await repository.flushToFilesystem();
+
+		assertEquals(fs.entries.size, 8);
+
+		const workspace2 = new Workspace({ repository, nodeRegistry });
+		const document2 = await workspace2.checkoutDocumentAtBranch("main", { shallow: false });
+		const note2 = document2.getNodeById(note1.id);
+		assertEquals(note2?.name, "Your note");
+
+		// await zip.close();
+		// await denoFile.close();
+		// fsFile.close();
 	});
 });
