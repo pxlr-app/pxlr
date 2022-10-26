@@ -33,7 +33,7 @@ export class BufferedRepository extends Repository {
 	async *listReferencePath(prefix: ReferencePath, abortSignal?: AbortSignal): AsyncIterableIterator<ReferencePath> {
 		assertReferencePath(prefix);
 		const references: ReferencePath[] = [];
-		for await (const entry of this.fs.list(`/${prefix}`, abortSignal)) {
+		for await (const entry of this.fs.list(`${prefix}`, abortSignal)) {
 			references.push(`${prefix}/${entry}`);
 		}
 		references.push(...this.#referenceCache.keys());

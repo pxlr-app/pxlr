@@ -11,10 +11,10 @@ Deno.test("Repository", async (t) => {
 		const repo = new Repository(fs);
 		const ref1 = new Reference("refs/heads/main", autoid());
 		await repo.writeReference(ref1);
-		assert(fs.entries.has("/refs/heads/main"));
+		assert(fs.entries.has("refs/heads/main"));
 		const ref2 = await repo.getReference("refs/heads/main");
 		assertEquals(ref1, ref2);
-		assert(fs.entries.has("/refs/heads/main"));
+		assert(fs.entries.has("refs/heads/main"));
 	});
 
 	await t.step("list reference", async () => {

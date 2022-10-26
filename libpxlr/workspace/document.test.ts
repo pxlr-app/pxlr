@@ -3,8 +3,6 @@ import { BufferedRepository, Commit, MemoryFilesystem, Reference, Tree } from ".
 import { GroupNode, GroupNodeRegistryEntry, NodeRegistry, NoteNode, NoteNodeRegistryEntry } from "../nodes/mod.ts";
 import { Workspace } from "./workspace.ts";
 import { autoid } from "../autoid.ts";
-import { ZipFilesystem } from "../repository/filesystem/zip.ts";
-import { DenoFile, Zip } from "../../libzip/mod.ts";
 
 const nodeRegistry = new NodeRegistry();
 nodeRegistry.registerNodeConstructor(NoteNodeRegistryEntry);
