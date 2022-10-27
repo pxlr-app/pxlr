@@ -67,13 +67,13 @@ export class Tree<T extends Record<string, string> = Record<never, never>> {
 					return other;
 				}, [] as string[]);
 				return `${encodeURIComponent(kind)} ${hash} ${id} ${encodeURIComponent(name)} ${other.join(" ")}`;
-			}).join(`\r\n`),
+			}).join(`\n`),
 		);
 	}
 
 	static async fromObject<T extends Record<string, string> = Record<never, never>>(object: Object, otherFieldOrder: (keyof T)[] = []): Promise<Tree<T>> {
 		const itemLines = await object.text();
-		const items = itemLines.split(`\r\n`).filter((l) => l.length).map((line) => {
+		const items = itemLines.split(`\n`).filter((l) => l.length).map((line) => {
 			const [kind, hash, id, name, ...rest] = line.split(" ");
 			assertAutoId(hash);
 			assertAutoId(id);

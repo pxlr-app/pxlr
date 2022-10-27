@@ -51,9 +51,9 @@ export class Reference {
 	async serialize(stream: WritableStream<Uint8Array>) {
 		const encoder = new TextEncoder();
 		const writer = stream.getWriter();
-		await writer.write(encoder.encode(`ref ${this.ref}\r\n`));
-		await writer.write(encoder.encode(`commit ${this.commit}\r\n`));
-		await writer.write(encoder.encode(`\r\n`));
+		await writer.write(encoder.encode(`ref ${this.ref}\n`));
+		await writer.write(encoder.encode(`commit ${this.commit}\n`));
+		await writer.write(encoder.encode(`\n`));
 		await writer.write(encoder.encode(this.message));
 		await writer.close();
 	}

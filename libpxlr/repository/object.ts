@@ -49,13 +49,13 @@ export class Object {
 	async serialize(stream: WritableStream<Uint8Array>) {
 		const encoder = new TextEncoder();
 		const writer = stream.getWriter();
-		await writer.write(encoder.encode(`hash ${this.hash}\r\n`));
-		await writer.write(encoder.encode(`id ${this.id}\r\n`));
-		await writer.write(encoder.encode(`kind ${this.kind}\r\n`));
+		await writer.write(encoder.encode(`hash ${this.hash}\n`));
+		await writer.write(encoder.encode(`id ${this.id}\n`));
+		await writer.write(encoder.encode(`kind ${this.kind}\n`));
 		for (const [key, value] of this.headers) {
-			await writer.write(encoder.encode(`${encodeURIComponent(key)} ${encodeURIComponent(value)}\r\n`));
+			await writer.write(encoder.encode(`${encodeURIComponent(key)} ${encodeURIComponent(value)}\n`));
 		}
-		await writer.write(encoder.encode(`\r\n`));
+		await writer.write(encoder.encode(`\n`));
 		if (this.body instanceof ReadableStream) {
 			await this.body.pipeTo(stream);
 		} else if (this.body instanceof ArrayBuffer) {
@@ -126,17 +126,16 @@ export async function deserializeObjectLike(stream: ReadableStream<Uint8Array>) 
 				tmp = "";
 				inKey = false;
 				inValue = true;
-			} else if (chunk.at(i) === `\r` && chunk.at(i + 1) === `\n`) {
+			} else if (chunk.at(i) === `\n`) {
 				if (inValue) {
 					headers.set(decodeURIComponent(key), decodeURIComponent(tmp));
 					tmp = "";
 					inKey = true;
 					inValue = false;
-					++i;
 				} else if (inKey) {
 					body = new ReadableStream({
 						start(controller) {
-							controller.enqueue(value.slice(i + 2));
+							controller.enqueue(value.slice(i + 1));
 						},
 						async pull(controller) {
 							const { done, value } = await reader.read();
