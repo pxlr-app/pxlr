@@ -1,10 +1,8 @@
-import { assert, assertEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
+import { assertEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
 import { BufferedRepository, Commit, MemoryFilesystem, Reference, Tree } from "../repository/mod.ts";
 import { GroupNode, GroupNodeRegistryEntry, NodeRegistry, NoteNode, NoteNodeRegistryEntry } from "../nodes/mod.ts";
 import { Workspace } from "./workspace.ts";
 import { autoid } from "../autoid.ts";
-import { ZipFilesystem } from "../repository/mod.ts";
-import { DenoFile, Zip } from "../../libzip/mod.ts";
 
 const nodeRegistry = new NodeRegistry();
 nodeRegistry.registerNodeConstructor(NoteNodeRegistryEntry);
@@ -12,13 +10,6 @@ nodeRegistry.registerTreeConstructor(GroupNodeRegistryEntry);
 
 Deno.test("Document", async (t) => {
 	await t.step("executeCommand", async () => {
-		// const tmpFile = await Deno.makeTempFile({ suffix: ".zip" });
-		// console.log(tmpFile);
-		// const fsFile = await Deno.open(tmpFile, { create: true, read: true, write: true, truncate: true });
-		// const denoFile = new DenoFile(fsFile);
-		// const zip = new Zip(denoFile);
-		// await zip.open();
-		// const fs = new ZipFilesystem(zip);
 		const fs = new MemoryFilesystem();
 		const repository = new BufferedRepository(fs);
 		const note1 = new NoteNode(autoid(), autoid(), "My Note", "...");
@@ -59,16 +50,9 @@ Deno.test("Document", async (t) => {
 
 		await repository.flushToFilesystem();
 
-		// assertEquals(fs.entries.size, 35);
-		// console.log(new TextDecoder().decode(await zip.get("refs/heads/main")));
-
 		const workspace2 = new Workspace({ repository, nodeRegistry });
 		const document2 = await workspace2.checkoutDocumentAtBranch("main", { shallow: false });
 		const note2 = document2.getNodeById(note1.id);
 		assertEquals(note2?.name, "My Note 0");
-
-		// await zip.close();
-		// await denoFile.close();
-		// fsFile.close();
 	});
 });
