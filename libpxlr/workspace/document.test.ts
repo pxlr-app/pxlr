@@ -4,7 +4,7 @@ import { GroupNode, GroupNodeRegistryEntry, NodeRegistry, NoteNode, NoteNodeRegi
 import { Workspace } from "./workspace.ts";
 import { autoid } from "../autoid.ts";
 import { ZipFilesystem } from "../repository/mod.ts";
-import { DenoFile, Zip } from "../../libzip/mod.ts"
+import { DenoFile, Zip } from "../../libzip/mod.ts";
 
 const nodeRegistry = new NodeRegistry();
 nodeRegistry.registerNodeConstructor(NoteNodeRegistryEntry);
