@@ -44,22 +44,30 @@ export class Document {
 	getNodeByHash(hash: AutoId): Node | undefined {
 		assertAutoId(hash);
 		if (this.rootNode) {
-			for (const node of this.rootNode) {
+			let result: Node | undefined;
+			visit(this.rootNode, { enter(node) {
 				if (node.hash === hash) {
-					return node;
+					result = node;
+					return VisitorResult.Break;
 				}
-			}
+				return VisitorResult.Continue;
+			}});
+			return result;
 		}
 	}
 
 	getNodeById(id: AutoId): Node | undefined {
 		assertAutoId(id);
 		if (this.rootNode) {
-			for (const node of this.rootNode) {
+			let result: Node | undefined;
+			visit(this.rootNode, { enter(node) {
 				if (node.id === id) {
-					return node;
+					result = node;
+					return VisitorResult.Break;
 				}
-			}
+				return VisitorResult.Continue;
+			}});
+			return result;
 		}
 	}
 
@@ -86,22 +94,22 @@ export class Document {
 			throw new NothingToCommitError();
 		}
 
-		const oldNodeSet = new Set();
+		const oldNodeSet = new Set<Node>();
 		visit(oldRoot, {
 			enter: (node) => {
-				oldNodeSet.add(node.hash);
+				oldNodeSet.add(node);
 				return VisitorResult.Continue;
 			},
 		});
 		const writeObjectPromises: Promise<void>[] = [];
 		visit(newRoot, {
 			enter: (node) => {
-				if (oldNodeSet.has(node.hash)) {
+				if (oldNodeSet.has(node)) {
 					return VisitorResult.Skip;
 				}
 				writeObjectPromises.push(this.workspace.repository.writeObject(node.toObject()));
 				return VisitorResult.Continue;
-			},
+			}
 		});
 		await Promise.allSettled(writeObjectPromises);
 		const commit = new Commit(autoid(), this.#commit!.hash, newRoot.hash, author, new Date(), message);
