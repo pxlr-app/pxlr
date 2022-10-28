@@ -62,31 +62,38 @@ export class GroupNode extends Node {
 				if (this.children.find((child) => child.name === name)) {
 					throw new ChildWithNameExistsError(name);
 				}
+				const id = command.childNode.id;
+				if (this.children.find((child) => child.id === id)) {
+					throw new ChildWithIdExistsError(id);
+				}
+				if (this.children.find((child) => child === command.childNode)) {
+					return this;
+				}
 				const children = Array.from(new Set(this.children.concat(command.childNode)));
 				return new GroupNode(autoid(command.target + this.hash), this.id, this.name, children);
 			} else if (command instanceof RemoveChildCommand) {
 				const childIndex = this.children.findIndex((node) => node.id === command.childHash);
-				if (childIndex > -1) {
-					const children = [
-						...this.children.slice(0, childIndex),
-						...this.children.slice(childIndex + 1),
-					];
-					return new GroupNode(autoid(command.target + this.hash), this.id, this.name, children);
+				if (childIndex === -1) {
+					return this;
 				}
-				return this;
+				const children = [
+					...this.children.slice(0, childIndex),
+					...this.children.slice(childIndex + 1),
+				];
+				return new GroupNode(autoid(command.target + this.hash), this.id, this.name, children);
 			} else if (command instanceof MoveChildCommand) {
 				const childIndex = this.children.findIndex((node) => node.id === command.childHash);
-				if (childIndex > -1) {
-					const children = Array.from(this.children);
-					const child = children.splice(childIndex, 1)[0];
-					if (command.position > children.length) {
-						children.push(child);
-					} else {
-						children.splice(command.position, 0, child);
-					}
-					return new GroupNode(autoid(command.target + this.hash), this.id, this.name, children);
+				if (childIndex === -1) {
+					return this;
 				}
-				return this;
+				const children = Array.from(this.children);
+				const child = children.splice(childIndex, 1)[0];
+				if (command.position > children.length) {
+					children.push(child);
+				} else {
+					children.splice(command.position, 0, child);
+				}
+				return new GroupNode(autoid(command.target + this.hash), this.id, this.name, children);
 			} else if (command instanceof ReplaceNodeCommand) {
 				return command.node;
 			}
@@ -159,5 +166,12 @@ export class ChildWithNameExistsError extends Error {
 	public name = "ChildWithNameExistsError";
 	public constructor(name: string) {
 		super(`Child with name "${name}" already exists.`);
+	}
+}
+
+export class ChildWithIdExistsError extends Error {
+	public name = "ChildWithIdExistsError";
+	public constructor(id: AutoId) {
+		super(`Child with Id "${id}" already exists.`);
 	}
 }
