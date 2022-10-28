@@ -24,10 +24,10 @@ Deno.test("Document", async (t) => {
 		await repository.writeReference(reference);
 		const workspace1 = new Workspace({ repository, nodeRegistry });
 		const document1 = await workspace1.checkoutDocumentAtBranch("main", { shallow: false });
-		for (let i = 100_000; --i >= 0;) {
+		for (let i = 1_000; --i >= 0;) {
 			const note = document1.getNodeById(note1.id)!;
 			document1.executeCommand(note.rename(`My Note ${i}`));
-			if (i % 10_000 === 0) {
+			if (i % 100 === 0) {
 				await document1.commitChanges("Test <test@test.local>", `Rename My Note ${i}`);
 			}
 		}
@@ -39,10 +39,10 @@ Deno.test("Document", async (t) => {
 
 		//await document1.commitChanges("Test <test@test.local>", `Rename My Note`);
 
-		const branch = await workspace1.getBranch("main");
-		for await (const commit of branch.iterHistory()) {
-			console.log(commit.message);
-		}
+		// const branch = await workspace1.getBranch("main");
+		// for await (const commit of branch.iterHistory()) {
+		// 	console.log(commit.message);
+		// }
 		// const iterHistory = branch.iterHistory();
 		// assertEquals((await iterHistory.next()).value.message, "Rename My Note");
 		// assertEquals((await iterHistory.next()).value.message, "init");

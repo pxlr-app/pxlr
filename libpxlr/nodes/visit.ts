@@ -7,12 +7,12 @@ export enum VisitorResult {
 	Skip = "skip",
 }
 
-export async function visit(node: Node, { enter, leave }: { enter: (node: Node) => VisitorResult | Promise<VisitorResult>; leave?: (node: Node) => void }): Promise<VisitorResult> {
-	const result = await enter(node);
+export function visit(node: Node, { enter, leave }: { enter: (node: Node) => VisitorResult; leave?: (node: Node) => void }): VisitorResult {
+	const result = enter(node);
 	if (result === VisitorResult.Continue) {
 		if (node instanceof GroupNode) {
 			for (const child of node) {
-				if (await visit(child, { enter, leave }) === VisitorResult.Break) {
+				if (visit(child, { enter, leave }) === VisitorResult.Break) {
 					break;
 				}
 			}

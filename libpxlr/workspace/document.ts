@@ -87,21 +87,23 @@ export class Document {
 		}
 
 		const oldNodeSet = new Set();
-		await visit(oldRoot, {
+		visit(oldRoot, {
 			enter: (node) => {
 				oldNodeSet.add(node.hash);
 				return VisitorResult.Continue;
 			},
 		});
-		await visit(newRoot, {
-			enter: async (node) => {
+		const writeObjectPromises: Promise<void>[] = [];
+		visit(newRoot, {
+			enter: (node) => {
 				if (oldNodeSet.has(node.hash)) {
 					return VisitorResult.Skip;
 				}
-				await this.workspace.repository.writeObject(node.toObject());
+				writeObjectPromises.push(this.workspace.repository.writeObject(node.toObject()));
 				return VisitorResult.Continue;
 			},
 		});
+		await Promise.allSettled(writeObjectPromises);
 		const commit = new Commit(autoid(), this.#commit!.hash, newRoot.hash, author, new Date(), message);
 		await this.workspace.repository.writeCommit(commit);
 		if (this.reference) {
