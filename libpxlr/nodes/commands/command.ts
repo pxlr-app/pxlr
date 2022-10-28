@@ -1,9 +1,23 @@
 import { assertAutoId, AutoId } from "../../autoid.ts";
 
 export abstract class Command {
+	#hash: AutoId;
+	#target: AutoId;
 	public constructor(
-		public targetHash: AutoId,
+		hash: AutoId,
+		target: AutoId,
 	) {
-		targetHash && assertAutoId(targetHash);
+		assertAutoId(hash);
+		assertAutoId(target);
+		this.#hash = hash;
+		this.#target = target;
+	}
+
+	get hash() {
+		return this.#hash;
+	}
+
+	get target() {
+		return this.#target;
 	}
 }

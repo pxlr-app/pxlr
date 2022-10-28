@@ -1,6 +1,6 @@
 import { assertAutoId, AutoId, autoid } from "../autoid.ts";
 import { Object } from "../repository/object.ts";
-import { Command, RenameCommand, ReplaceNodeCommand } from "./commands/mod.ts";
+import { Command, RenameCommand } from "./commands/mod.ts";
 import { NodeConstructorOptions } from "./registry.ts";
 
 export abstract class Node {
@@ -36,17 +36,24 @@ export abstract class Node {
 		return this.#name;
 	}
 
+	equals(other: unknown): boolean {
+		return !!other && other instanceof Node && other.hash === this.hash;
+	}
+
 	*iter(): IterableIterator<Node> {
 		yield this;
 	}
+
 	[Symbol.iterator](): Iterator<Node> {
 		return this.iter();
 	}
+
 	abstract executeCommand(command: Command): Node;
+
 	abstract toObject(): Object;
 
 	rename(renameTo: string): RenameCommand {
-		return new RenameCommand(this.hash, renameTo);
+		return new RenameCommand(autoid(), this.hash, renameTo);
 	}
 }
 
@@ -64,16 +71,8 @@ export class UnloadedNode extends Node {
 		return new UnloadedNode(autoid(), autoid(), kind, name);
 	}
 
-	executeCommand(command: Command): Node {
-		if (command.targetHash === this.hash) {
-			if (command instanceof RenameCommand) {
-				return new UnloadedNode(autoid(), this.id, this.kind, command.renameTo);
-			} else if (command instanceof ReplaceNodeCommand) {
-				return command.node;
-			}
-			throw new UnloadedNodeMethodError();
-		}
-		return this;
+	executeCommand(_command: Command): Node {
+		throw new UnloadedNodeMethodError();
 	}
 
 	toObject(): Object {
@@ -82,7 +81,7 @@ export class UnloadedNode extends Node {
 
 	// deno-lint-ignore require-await
 	static async fromObject({ object }: NodeConstructorOptions): Promise<Node> {
-		return new UnloadedNode(object.id, object.headers.get("id") ?? "", object.kind, object.headers.get("name") ?? "_");
+		return new UnloadedNode(object.hash, object.id, object.kind, object.headers.get("name") ?? "(unnamed)");
 	}
 }
 

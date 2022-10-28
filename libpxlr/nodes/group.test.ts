@@ -83,7 +83,7 @@ Deno.test("GroupNode", async (t) => {
 		assertEquals(child1p.id, child1.id);
 		assertEquals(child1p.name, "NewChild");
 		assert(child2p === child2);
-		const root1pp = root1.executeCommand(new RenameCommand(autoid(), "Foo"));
+		const root1pp = root1.executeCommand(new RenameCommand(autoid(), autoid(), "Foo"));
 		assert(root1pp === root1);
 	});
 

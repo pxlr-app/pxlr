@@ -10,21 +10,20 @@ const AutoIdRegExp = new RegExp(`^[${AutoIdChars}]{${AutoIdSize}}$`);
  * @param seed The seed for the AutoId
  * @returns An AutoId
  */
-export function autoid(seed?: AutoId): AutoId {
+export function autoid(seed?: string): AutoId {
 	let result = "";
+	const buffer = new Uint8Array(AutoIdSize);
 	if (typeof seed === "string") {
-		assertAutoId(seed);
 		const hash = cyrb128(seed);
 		const rand = sfc32(hash[0], hash[1], hash[2], hash[3]);
 		for (let i = 0; i < AutoIdSize; ++i) {
-			result += AutoIdChars.charAt(rand() * AutoIdCharsLength);
+			buffer[i] = rand();
 		}
 	} else {
-		const buffer = new Uint8Array(AutoIdSize);
 		crypto.getRandomValues(buffer);
-		for (let i = 0; i < AutoIdSize; ++i) {
-			result += AutoIdChars.charAt(buffer[i] % AutoIdCharsLength);
-		}
+	}
+	for (let i = 0; i < AutoIdSize; ++i) {
+		result += AutoIdChars.charAt(buffer[i] % AutoIdCharsLength);
 	}
 	return result;
 }
@@ -36,7 +35,7 @@ export function autoid(seed?: AutoId): AutoId {
  */
 function cyrb128(str: string): [number, number, number, number] {
 	let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
-	for (let i = 0, k; i < str.length; i++) {
+	for (let i = 0, j = str.length, k; i < j; i++) {
 		k = str.charCodeAt(i);
 		h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
 		h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
@@ -71,7 +70,7 @@ function sfc32(a: number, b: number, c: number, d: number) {
 		d = d + 1 | 0;
 		t = t + d | 0;
 		c = c + t | 0;
-		return (t >>> 0) / 4294967296;
+		return (t >>> 0);
 	};
 }
 

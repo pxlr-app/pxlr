@@ -51,16 +51,19 @@ export class GroupNode extends Node {
 	}
 
 	executeCommand(command: Command): Node {
-		if (command.targetHash === this.hash) {
+		if (command.target === this.hash) {
 			if (command instanceof RenameCommand) {
-				return new GroupNode(autoid(), this.id, command.renameTo, this.children);
+				if (command.renameTo === this.name) {
+					return this;
+				}
+				return new GroupNode(autoid(command.target + this.hash), this.id, command.renameTo, this.children);
 			} else if (command instanceof AddChildCommand) {
 				const name = command.childNode.name;
 				if (this.children.find((child) => child.name === name)) {
 					throw new ChildWithNameExistsError(name);
 				}
 				const children = Array.from(new Set(this.children.concat(command.childNode)));
-				return new GroupNode(autoid(), this.id, this.name, children);
+				return new GroupNode(autoid(command.target + this.hash), this.id, this.name, children);
 			} else if (command instanceof RemoveChildCommand) {
 				const childIndex = this.children.findIndex((node) => node.id === command.childHash);
 				if (childIndex > -1) {
@@ -68,7 +71,7 @@ export class GroupNode extends Node {
 						...this.children.slice(0, childIndex),
 						...this.children.slice(childIndex + 1),
 					];
-					return new GroupNode(autoid(), this.id, this.name, children);
+					return new GroupNode(autoid(command.target + this.hash), this.id, this.name, children);
 				}
 				return this;
 			} else if (command instanceof MoveChildCommand) {
@@ -81,7 +84,7 @@ export class GroupNode extends Node {
 					} else {
 						children.splice(command.position, 0, child);
 					}
-					return new GroupNode(autoid(), this.id, this.name, children);
+					return new GroupNode(autoid(command.target + this.hash), this.id, this.name, children);
 				}
 				return this;
 			} else if (command instanceof ReplaceNodeCommand) {
@@ -89,7 +92,7 @@ export class GroupNode extends Node {
 			}
 			return this;
 		}
-		if (command instanceof RenameCommand && this.children.find((child) => child.hash === command.targetHash)) {
+		if (command instanceof RenameCommand && this.children.find((child) => child.hash === command.target)) {
 			const name = command.renameTo;
 			if (this.children.find((child) => child.name === name)) {
 				throw new ChildWithNameExistsError(name);
@@ -104,7 +107,7 @@ export class GroupNode extends Node {
 			return newNode;
 		});
 		if (mutated) {
-			return new GroupNode(command instanceof ReplaceNodeCommand ? this.hash : autoid(), this.id, this.name, children);
+			return new GroupNode(command instanceof ReplaceNodeCommand ? this.hash : autoid(command.target + this.hash), this.id, this.name, children);
 		}
 		return this;
 	}
@@ -114,15 +117,15 @@ export class GroupNode extends Node {
 	}
 
 	addChild(childNode: Node): AddChildCommand {
-		return new AddChildCommand(this.hash, childNode);
+		return new AddChildCommand(autoid(), this.hash, childNode);
 	}
 
 	moveChild(childHash: AutoId, position: number): MoveChildCommand {
-		return new MoveChildCommand(this.hash, childHash, position);
+		return new MoveChildCommand(autoid(), this.hash, childHash, position);
 	}
 
 	removeChild(childHash: AutoId): RemoveChildCommand {
-		return new RemoveChildCommand(this.hash, childHash);
+		return new RemoveChildCommand(autoid(), this.hash, childHash);
 	}
 
 	getChildByHash(hash: AutoId): Node | undefined {

@@ -2,7 +2,13 @@ import { AutoId } from "../../autoid.ts";
 import { Command } from "./command.ts";
 
 export class RenameCommand extends Command {
-	public constructor(targetHash: AutoId, public renameTo: string) {
-		super(targetHash);
+	#renameTo: string;
+	public constructor(hash: AutoId, target: AutoId, renameTo: string) {
+		super(hash, target);
+		this.#renameTo = renameTo;
+	}
+
+	get renameTo() {
+		return this.#renameTo;
 	}
 }

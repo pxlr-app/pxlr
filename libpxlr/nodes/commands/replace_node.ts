@@ -1,8 +1,15 @@
+import { AutoId } from "../../autoid.ts";
 import { Node } from "../mod.ts";
 import { Command } from "./command.ts";
 
 export class ReplaceNodeCommand extends Command {
-	public constructor(public node: Node) {
-		super(node.hash);
+	#node: Node;
+	public constructor(hash: AutoId, node: Node) {
+		super(hash, node.hash);
+		this.#node = node;
+	}
+
+	get node() {
+		return this.#node;
 	}
 }

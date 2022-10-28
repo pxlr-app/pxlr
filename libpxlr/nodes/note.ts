@@ -29,11 +29,14 @@ export class NoteNode extends Node {
 	}
 
 	executeCommand(command: Command): Node {
-		if (command.targetHash === this.hash) {
+		if (command.target === this.hash) {
 			if (command instanceof RenameCommand) {
-				return new NoteNode(autoid(), this.id, command.renameTo, this.content);
+				if (command.renameTo === this.name) {
+					return this;
+				}
+				return new NoteNode(autoid(command.target + this.hash), this.id, command.renameTo, this.content);
 			} else if (command instanceof SetContentCommand) {
-				return new NoteNode(autoid(), this.id, this.name, command.newContent);
+				return new NoteNode(autoid(command.target + this.hash), this.id, this.name, command.newContent);
 			} else if (command instanceof ReplaceNodeCommand) {
 				return command.node;
 			}
@@ -46,6 +49,6 @@ export class NoteNode extends Node {
 	}
 
 	setContent(newContent: string): SetContentCommand {
-		return new SetContentCommand(this.hash, newContent);
+		return new SetContentCommand(autoid(), this.hash, newContent);
 	}
 }
