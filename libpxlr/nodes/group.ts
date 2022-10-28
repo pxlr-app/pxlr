@@ -43,11 +43,8 @@ export class GroupNode extends Node {
 		return new GroupNode(autoid(), autoid(), name, children);
 	}
 
-	*iter(): IterableIterator<Node> {
-		yield this;
-		for (const child of this.children) {
-			yield* child.iter();
-		}
+	*iter(): Iterator<Node> {
+		yield* this.children;
 	}
 
 	executeCommand(command: Command): Node {

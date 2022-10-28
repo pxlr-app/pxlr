@@ -1,5 +1,5 @@
 import { assertAutoId, AutoId, autoid } from "../autoid.ts";
-import { Command, GroupNode, Node } from "../nodes/mod.ts";
+import { Command, GroupNode, Node, visit, VisitorResult } from "../nodes/mod.ts";
 import { Commit, Reference } from "../repository/mod.ts";
 import { Workspace } from "./workspace.ts";
 
@@ -87,14 +87,21 @@ export class Document {
 		}
 
 		const oldNodeSet = new Set();
-		for (const node of oldRoot) {
-			oldNodeSet.add(node.hash);
-		}
-		for (const node of newRoot) {
-			if (!oldNodeSet.has(node.hash)) {
+		await visit(oldRoot, {
+			enter: (node) => {
+				oldNodeSet.add(node.hash);
+				return VisitorResult.Continue;
+			},
+		});
+		await visit(newRoot, {
+			enter: async (node) => {
+				if (oldNodeSet.has(node.hash)) {
+					return VisitorResult.Skip;
+				}
 				await this.workspace.repository.writeObject(node.toObject());
-			}
-		}
+				return VisitorResult.Continue;
+			},
+		});
 		const commit = new Commit(autoid(), this.#commit!.hash, newRoot.hash, author, new Date(), message);
 		await this.workspace.repository.writeCommit(commit);
 		if (this.reference) {

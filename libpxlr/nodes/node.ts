@@ -3,6 +3,11 @@ import { Object } from "../repository/object.ts";
 import { Command, RenameCommand } from "./commands/mod.ts";
 import { NodeConstructorOptions } from "./registry.ts";
 
+export enum NodeIter {
+	Break = "break",
+	Continue = "continue",
+}
+
 export abstract class Node {
 	#hash: AutoId;
 	#id: AutoId;
@@ -40,8 +45,7 @@ export abstract class Node {
 		return !!other && other instanceof Node && other.hash === this.hash;
 	}
 
-	*iter(): IterableIterator<Node> {
-		yield this;
+	*iter(): Iterator<Node> {
 	}
 
 	[Symbol.iterator](): Iterator<Node> {
