@@ -1,0 +1,1 @@
+export { SubdividableSurface } from './SubdividableSurface';

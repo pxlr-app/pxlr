@@ -1,0 +1,51 @@
+.subdividablesurface {
+	@apply relative flex flex-1 w-full h-full;
+	/* --ss-edge-size: 10px;
+	--ss-subdivide-size: 10px; */
+	--ss-border-size: 10px;
+}
+
+.subdividablesurface__surface {
+	@apply absolute z-0 overflow-hidden;
+	--ss-top-neighbor: 0;
+	--ss-right-neighbor: 0;
+	--ss-bottom-neighbor: 0;
+	--ss-left-neighbor: 0;
+}
+
+.subdividablesurface__edge {
+	@apply absolute z-10 select-none;
+}
+
+.subdividablesurface__edge--horizontal {
+	cursor: ns-resize;
+	height: var(--ss-border-size);
+	transform: translateY(calc(var(--ss-border-size) / -2));
+}
+
+.subdividablesurface__edge--vertical {
+	cursor: ew-resize;
+	width: var(--ss-border-size);
+	transform: translateX(calc(var(--ss-border-size) / -2));
+}
+
+.subdividablesurface__cross {
+	@apply absolute z-20 select-none;
+	cursor: crosshair;
+	width: var(--ss-border-size);
+	height: var(--ss-border-size);
+	transform: translateX(calc(var(--ss-border-size) / -2)) translateY(calc(var(--ss-border-size) / -2));
+}
+
+.subdividablesurface__content {
+	@apply absolute flex inset-0 overflow-hidden box-border border-solid border-black;
+	box-shadow: 0 0 0 6px #000;
+	border-top-width: calc(var(--ss-top-neighbor) * 1px);
+	border-right-width: calc(var(--ss-right-neighbor) * 1px);
+	border-bottom-width: calc(var(--ss-bottom-neighbor) * 1px);
+	border-left-width: calc(var(--ss-left-neighbor) * 1px);
+	border-top-left-radius: calc(max(var(--ss-top-neighbor), var(--ss-left-neighbor)) * 5px);
+	border-top-right-radius: calc(max(var(--ss-top-neighbor), var(--ss-right-neighbor)) * 5px);
+	border-bottom-left-radius: calc(max(var(--ss-bottom-neighbor), var(--ss-left-neighbor)) * 5px);
+	border-bottom-right-radius: calc(max(var(--ss-bottom-neighbor), var(--ss-right-neighbor)) * 5px);
+}

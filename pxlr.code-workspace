@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "libpxlr"
+		},
+		{
+			"path": "editor"
 		}
 	],
 	"settings": {}
