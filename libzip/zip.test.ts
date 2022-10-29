@@ -8,7 +8,7 @@ Deno.test("Zip", async (t) => {
 	const textDecoder = new TextDecoder();
 
 	await t.step("open", async () => {
-		const fsFile = await Deno.open(fromFileUrl(import.meta.resolve("../.testdata/libzip-store.zip")), { read: true, write: false, truncate: false });
+		const fsFile = await Deno.open(fromFileUrl(import.meta.resolve("./.testdata/libzip-store.zip")), { read: true, write: false, truncate: false });
 		const denoFile = new DenoFile(fsFile);
 		const zip = new Zip(denoFile);
 		await zip.open();
@@ -22,7 +22,7 @@ Deno.test("Zip", async (t) => {
 	});
 
 	await t.step("open zip64", async () => {
-		const fsFile = await Deno.open(fromFileUrl(import.meta.resolve("../.testdata/libzip-store64.zip")), { read: true, write: false, truncate: false });
+		const fsFile = await Deno.open(fromFileUrl(import.meta.resolve("./.testdata/libzip-store64.zip")), { read: true, write: false, truncate: false });
 		const denoFile = new DenoFile(fsFile);
 		const zip = new Zip(denoFile);
 		await zip.open();
@@ -36,7 +36,7 @@ Deno.test("Zip", async (t) => {
 	});
 
 	await t.step("get", async () => {
-		const fsFile = await Deno.open(fromFileUrl(import.meta.resolve("../.testdata/libzip-store64.zip")), { read: true, write: false, truncate: false });
+		const fsFile = await Deno.open(fromFileUrl(import.meta.resolve("./.testdata/libzip-store64.zip")), { read: true, write: false, truncate: false });
 		const denoFile = new DenoFile(fsFile);
 		const zip = new Zip(denoFile);
 		await zip.open();
@@ -50,7 +50,7 @@ Deno.test("Zip", async (t) => {
 	});
 
 	await t.step("getStream", async () => {
-		const fsFile = await Deno.open(fromFileUrl(import.meta.resolve("../.testdata/libzip-store64.zip")), { read: true, write: false, truncate: false });
+		const fsFile = await Deno.open(fromFileUrl(import.meta.resolve("./.testdata/libzip-store64.zip")), { read: true, write: false, truncate: false });
 		const denoFile = new DenoFile(fsFile);
 		const zip = new Zip(denoFile);
 		await zip.open();
@@ -335,7 +335,7 @@ Deno.test("Zip", async (t) => {
 	// 	// const tmpFile = await Deno.makeTempFile({ suffix: '.zip' });
 	// 	// console.log(tmpFile);
 	// 	// const fsFile = await Deno.open(tmpFile, { read: true, write: true, truncate: true });
-	// 	const fsFile = await Deno.open(fromFileUrl(import.meta.resolve("../.testdata/libzip-put.zip")), { create: true, read: true, write: true, truncate: true });
+	// 	const fsFile = await Deno.open(fromFileUrl(import.meta.resolve("./.testdata/libzip-put.zip")), { create: true, read: true, write: true, truncate: true });
 	// 	const denoFile = new DenoFile(fsFile);
 	// 	const zip = new Zip(denoFile);
 	// 	await zip.open();
@@ -358,7 +358,7 @@ Deno.test("Zip", async (t) => {
 	// });
 
 	// await t.step("open64 put", async () => {
-	// 	const fsFile = await Deno.open(fromFileUrl(import.meta.resolve("../.testdata/libzip-put.zip")), { read: true, write: false, truncate: false });
+	// 	const fsFile = await Deno.open(fromFileUrl(import.meta.resolve("./.testdata/libzip-put.zip")), { read: true, write: false, truncate: false });
 	// 	const denoFile = new DenoFile(fsFile);
 	// 	const zip = new Zip(denoFile);
 	// 	await zip.open();
@@ -379,7 +379,7 @@ Deno.test("Zip", async (t) => {
 	// 	// const tmpFile = await Deno.makeTempFile({ suffix: '.zip' });
 	// 	// console.log(tmpFile);
 	// 	// const fsFile = await Deno.open(tmpFile, { read: true, write: true, truncate: true });
-	// 	const fsFile = await Deno.open(fromFileUrl(import.meta.resolve("../.testdata/ctf.zip")), { create: true, read: true, write: true, truncate: true });
+	// 	const fsFile = await Deno.open(fromFileUrl(import.meta.resolve("./.testdata/ctf.zip")), { create: true, read: true, write: true, truncate: true });
 	// 	const denoFile = new DenoFile(fsFile);
 	// 	const zip = new Zip(denoFile);
 	// 	await zip.open();

@@ -1,0 +1,16 @@
+{
+	"compilerOptions": {
+		"lib": [
+			"deno.ns",
+			"deno.window",
+			"deno.url",
+			"deno.web"
+		]
+	},
+	"fmt": {
+		"options": {
+			"useTabs": true,
+			"lineWidth": 180
+		}
+	}
+}
