@@ -1,5 +1,5 @@
 .menubar {
-	@apply pointer-events-auto cursor-default inline-flex p-0 m-0 border border-transparent outline-none overflow-visible bg-gray-900 text-gray-200 text-xs select-none focus:border-blue-500;
+	@apply pointer-events-auto cursor-default flex p-0 m-0 border border-transparent outline-none overflow-visible bg-slate-800 text-gray-200 text-xs select-none focus:border-blue-500;
 }
 
 .menubar__list {
@@ -7,11 +7,11 @@
 }
 
 .menubar-item {
-	@apply pointer-events-auto relative outline-none focus:bg-gray-700 focus-within:bg-gray-700;
+	@apply pointer-events-auto relative outline-none focus:bg-slate-700 focus-within:bg-slate-700;
 }
 
 .menubar-item--selected {
-	@apply bg-gray-700;
+	@apply bg-slate-700;
 }
 
 .menubar-item__label {

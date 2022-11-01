@@ -24,7 +24,7 @@
 }
 
 .menu-item__icon {
-	@apply w-4 text-center;
+	@apply w-4 flex items-center;
 	font-size: 0.625rem;
 }
 

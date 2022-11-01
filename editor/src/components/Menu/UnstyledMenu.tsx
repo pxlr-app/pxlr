@@ -225,7 +225,8 @@ export const UnstyledMenu = (props: UnstyledMenuProps) => {
 					// Forward
 					else if (
 						(props.orientation === "vertical" && e.code === "ArrowRight") ||
-						(props.orientation === "horizontal" && e.code === "ArrowDown")
+						(props.orientation === "horizontal" && e.code === "ArrowDown") ||
+						e.code === "Enter"
 					) {
 						const selectedItem = items[selectedIdx];
 						if (selectedItem.action) {

@@ -1,12 +1,6 @@
 import type { Component } from 'solid-js';
-import { createEffect, createSignal, onCleanup } from "solid-js";
-import { SubdividableSurface } from "./components/SubdividableSurface";
 import { Menu, MenuItem, Separator, Menubar, MenubarItem } from "./components/Menu";
-
-const Dummy = (props: { display: string }) => {
-	console.log(`Dummy (${props.display})`);
-	return <>{props.display}</>;
-};
+import { WebFile, Zip } from "libzip";
 
 // const App: Component = () => {
 //   const [state, setState] = createSignal([
@@ -42,72 +36,47 @@ const Dummy = (props: { display: string }) => {
 // 	);
 // };
 const App: Component = () => {
+
+  const openFile = async () => {
+    // console.log("click openfile");
+    const [fileHandle] = await window.showOpenFilePicker({
+      multiple: false,
+      excludeAcceptAllOption: true,
+      types: [{
+        description: 'Pxlr Workspace',
+        accept: {
+          "*/*": ['.pxlr']
+        }
+      }]
+    });
+    const file = new WebFile(fileHandle);
+    const zip = new Zip(file);
+		await zip.open();
+    for (const entry of zip.iterCentralDirectoryFileHeader()) {
+      console.log(entry.fileName);
+    }
+    await zip.close();
+  }
+
 	return (
+    <>
 		<Menubar>
       <MenubarItem id="file" label="File" accessKey="F">
         <Menu>
-          <MenuItem
-            id="newfile"
-            label="New File"
-            accessKey="N"
-            keybind="Ctrl+N"
-            action={() => console.log("click newfile")}
-          />
-          <MenuItem
-            id="newwindow"
-            label="New Window"
-            accessKey="W"
-            keybind="Ctrl+Shift+N"
-            action={() => console.log("click newwindow")}
-          />
-          <Separator />
           <MenuItem
             id="openfile"
             label="Open File…"
             accessKey="O"
             keybind="Ctrl+O"
-            action={() => console.log("click openfile")}
+            action={openFile}
           />
-          <MenuItem id="openrecent" label="Open Recent" accessKey="R" keybind="Ctrl+Shift+O">
-            <Menu>
-              <MenuItem
-                id="reopen"
-                label="Reopen Closed File"
-                accessKey="R"
-                keybind="Ctrl+Shift+T"
-                action={() => console.log("click reopen")}
-              />
-              <MenuItem id="recentfiles" label="Recent Files" accessKey="F">
-                <Menu>
-                  <MenuItem
-                    id="filea"
-                    label="File A"
-                    accessKey="A"
-                    action={() => console.log("click filea")}
-                  />
-                  <MenuItem
-                    id="fileb"
-                    label="File B"
-                    accessKey="B"
-                    action={() => console.log("click fileb")}
-                  />
-                  <MenuItem
-                    id="filec"
-                    label="File C"
-                    accessKey="C"
-                    action={() => console.log("click filec")}
-                  />
-                </Menu>
-              </MenuItem>
-
-              <MenuItem
-                id="clearrecent"
-                label="Clear Recent Files"
-                accessKey="C"
-                action={() => console.log("click clearrecent")}
-              />
-            </Menu>
-          </MenuItem>
+          <MenuItem
+            id="openfolder"
+            label="Open Folder…"
+            accessKey="F"
+            keybind="Ctrl+Shift+O"
+            action={() => console.log("click openfolder")}
+          />
           <Separator />
           <MenuItem
             id="save"
@@ -115,13 +84,6 @@ const App: Component = () => {
             accessKey="S"
             keybind="Ctrl+S"
             action={() => console.log("click save")}
-          />
-          <MenuItem
-            id="saveas"
-            label="Save As…"
-            accessKey="A"
-            keybind="Ctrl+Shift+S"
-            action={() => console.log("click saveas")}
           />
           <MenuItem
             id="autosave"
@@ -161,6 +123,7 @@ const App: Component = () => {
       <MenubarItem id="view" label="View" accessKey="V" />
       <MenubarItem id="help" label="Help" accessKey="H" />
     </Menubar>
+    </>
 	);
 };
 
