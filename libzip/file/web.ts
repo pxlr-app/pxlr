@@ -19,7 +19,7 @@ export class WebFile implements File {
 			this.#offset += offset;
 		} else if (from === SeekFrom.End) {
 			const file = await this.#fileHandle.getFile();
-			this.#offset = file.size - offset;
+			this.#offset = file.size + offset;
 		} else {
 			this.#offset = offset;
 		}
@@ -44,6 +44,7 @@ export class WebFile implements File {
 		const blob = file.slice(this.#offset, this.#offset + len);
 		const arrayBuffer = new Uint8Array(await blob.arrayBuffer());
 		buffer.set(arrayBuffer, 0);
+		this.#offset += len;
 		return arrayBuffer.byteLength;
 	}
 
@@ -76,6 +77,7 @@ export class WebFile implements File {
 		const writableStream = await this.#fileHandle.createWritable({ keepExistingData: true });
 		await writableStream.write({ type: "write", data: buffer, position: this.#offset, size: buffer.byteLength });
 		await writableStream.close();
+		this.#offset += buffer.byteLength;
 		return buffer.byteLength;
 	}
 
@@ -84,7 +86,17 @@ export class WebFile implements File {
 			throw new FileClosedError();
 		}
 		const writableStream = await this.#fileHandle.createWritable({ keepExistingData: true });
-		return writableStream;
+		//return writableStream;
+		let byteWritten = 0;
+		return new WritableStream({
+			write: async (chunk) => {
+				await writableStream.write(chunk);
+				byteWritten += chunk.byteLength;
+			},
+			close: () => {
+				this.#offset += byteWritten;
+			}
+		});
 	}
 
 	// deno-lint-ignore require-await
