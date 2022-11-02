@@ -1,0 +1,12 @@
+{
+	"deno.enable": true,
+	"deno.config": "./deno.json",
+	"deno.unstable": true,
+	"explorer.fileNesting.enabled": true,
+	"explorer.fileNesting.expand": false,
+	"explorer.fileNesting.patterns": {
+		"*.html": "$(capture).tsx, $(capture).css, $(capture).js",
+		"*.tsx": "$(capture).css, $(capture).js",
+		"deno.json": "build.ts"
+	}
+}

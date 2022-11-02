@@ -1,0 +1,22 @@
+{
+	"compilerOptions": {
+		"lib": [
+			"deno.ns",
+			"deno.window",
+			"deno.url",
+			"deno.web"
+		],
+		"jsxFactory": "h",
+		"jsxFragmentFactory": "Fragment"
+	},
+	"fmt": {
+		"options": {
+			"useTabs": true,
+			"lineWidth": 180
+		}
+	},
+	"tasks": {
+		"dev": "deno run -A --unstable build.ts dev",
+		"build": "deno run -A --unstable build.ts build",
+	}
+}

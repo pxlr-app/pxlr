@@ -10,5 +10,8 @@
 			"path": "editor"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"deno.unstable": true,
+		"deno.enable": true
+	}
 }
