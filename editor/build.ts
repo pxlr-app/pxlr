@@ -1,10 +1,8 @@
-import { join, extname, isAbsolute, resolve, dirname, fromFileUrl } from "https://deno.land/std@0.155.0/path/mod.ts";
+import { extname, fromFileUrl, isAbsolute, join, relative } from "https://deno.land/std@0.155.0/path/mod.ts";
 import { mime } from "https://deno.land/x/mimetypes@v1.0.0/mod.ts";
 import { Command } from "https://deno.land/x/cliffy@v0.25.1/mod.ts";
 import * as esbuild from "https://deno.land/x/esbuild@v0.15.8/mod.js";
 
-let importMapBase = "";
-let importMap: { imports: Record<string, string> } | undefined;
 const inputMain = fromFileUrl(import.meta.resolve("./index.tsx"));
 const outputDir = fromFileUrl(import.meta.resolve("./dist"));
 
@@ -19,118 +17,123 @@ const BundleHttpModule: esbuild.Plugin = {
 			path: new URL(args.path, args.importer).toString(),
 			namespace: "bundle-http",
 		}));
-		build.onLoad({ filter: /.*/, namespace: 'bundle-http' }, async (args) => {
-			for (const [url, map] of Object.entries(importMap?.imports ?? {})) {
-				if (args.path.substring(0, url.length) === url) {
-					args.path = join(importMapBase, map, args.path.substring(url.length));
-					break;
-				}
-			}
+		build.onLoad({ filter: /.*/, namespace: "bundle-http" }, async (args) => {
 			if (isAbsolute(args.path)) {
 				const contents = await Deno.readTextFile(args.path);
 				const ext = extname(args.path);
-				return { contents, loader: ext.includes('js') ? 'jsx' : 'tsx' };
+				return { contents, loader: ext.includes("js") ? "jsx" : "tsx" };
 			} else {
-				const response = await fetch(args.path)
+				const response = await fetch(args.path);
 				const contents = await response.text();
-				const contentType = response.headers.get('Content-Type') ?? 'text/javascript; charset=utf-8';
-				return { contents, loader: contentType.includes('javascript') ? 'jsx' : 'tsx' };
+				const contentType = response.headers.get("Content-Type") ?? "text/javascript; charset=utf-8";
+				return { contents, loader: contentType.includes("javascript") ? "jsx" : "tsx" };
 			}
 		});
 	},
 };
 
+const baseBuildOptions: esbuild.BuildOptions = {
+	entryPoints: [inputMain],
+	outdir: outputDir,
+	bundle: true,
+	minify: true,
+	metafile: false,
+	target: "esnext",
+	format: "esm",
+	platform: "browser",
+	plugins: [BundleHttpModule],
+	jsxFactory: "h",
+	jsxFragment: "Fragment",
+};
+
 const build = new Command()
 	.name("build")
 	.action(async () => {
-		console.log('build...');
-
-		await Deno.remove("dist", { recursive: true }).catch(_ => {});
-
-		await esbuild.build({
-			entryPoints: [inputMain],
-			outdir: outputDir,
-			bundle: true,
-			minify: true,
-			metafile: false,
-			target: "esnext",
-			format: "esm",
-			platform: "browser",
-			plugins: [BundleHttpModule],
-			jsxFactory: "h",
-			jsxFragment: "Fragment",
-		});
-
-		await Deno.copyFile("index.html", "dist/index.html");
+		await Deno.remove(fromFileUrl(import.meta.resolve("./dist")), { recursive: true }).catch((_) => {});
+		await esbuild.build(baseBuildOptions);
+		await Deno.copyFile(fromFileUrl(import.meta.resolve("./index.html")), fromFileUrl(import.meta.resolve("./dist/index.html")));
 
 		Deno.exit(0);
-	})
+	});
 
 const dev = new Command()
 	.name("dev")
 	.action(async () => {
-		console.log('Dev...');
 		await esbuild.initialize({});
-		const cache = await caches.open('build');
-		let result = await esbuild.build({
-			entryPoints: [inputMain],
-			outdir: outputDir,
-			write: false,
-			bundle: true,
+		const cache = await caches.open(`pxlr`);
+		let result: esbuild.BuildResult = await esbuild.build({
+			...baseBuildOptions,
 			minify: false,
-			metafile: true,
-			target: "esnext",
-			format: "esm",
-			platform: "browser",
-			plugins: [BundleHttpModule],
-			jsxFactory: "h",
-			jsxFragment: "Fragment",
+			write: false,
+			watch: {
+				onRebuild(error, newResult) {
+					if (error) {
+						console.error(error);
+					}
+					if (newResult) {
+						// TODO trigger HMR
+						for (const outputFile of (result.outputFiles ?? [])) {
+							const url = new URL(`http://127.0.0.1:9000/${relative(outputDir, outputFile.path)}`);
+							cache.delete(url);
+						}
+						result = newResult;
+					}
+				},
+			},
 		});
-		const inputPaths = Object.keys(result.metafile!.inputs).filter(path => path.substring(0, 12) !== 'bundle-http:').map(path => fromFileUrl(import.meta.resolve("../"+path)));
-		const watcher = Deno.watchFs(inputPaths);
-		(async () => {
-			for await (const event of watcher) {
-				if (event.kind === "modify") {
-					// TODO debounce
-					// TODO esbuild
-					// TODO clear cache
-					// TODO rewatch?
-				}
-			}
-		})();
+		for (const outputFile of (result.outputFiles ?? [])) {
+			const url = new URL(`http://127.0.0.1:9000/${relative(outputDir, outputFile.path)}`);
+			cache.delete(url);
+		}
+		cache.delete(new URL(`http://127.0.0.1:9000/`));
+		cache.delete(new URL(`http://127.0.0.1:9000/index.html`));
 		Deno.serve({
 			async handler(req: Request) {
 				const url = new URL(req.url);
-				console.log(`- [${new Date().toISOString()}] ${req.method} ${url.pathname}`);
-				const cached = await cache.match(url);
-				if (cached) {
-					return cached;
-				}
-				let response: Response;
-				if (['/', '/index.html'].includes(url.pathname)) {
-					const file = await Deno.open(fromFileUrl(import.meta.resolve('./index.html')), { read: true })
-					response = new Response(file.readable, { headers: { 'Content-Type': 'text/html' } });
-				}
-				else {
-					const outputFilePath = join(outputDir, url.pathname);
-					const outputFile = result.outputFiles.find(f => f.path === outputFilePath);
-					if (!outputFile) {
-						response = new Response(null, { status: 404 });
-					} else {
-						response = new Response(outputFile.contents, { headers: { 'Content-Type': mime.getType(extname(outputFilePath) ?? '.txt')! } })
+				const start = performance.now();
+				let res = new Response(null, { status: 404 });
+				try {
+					const cached = await cache.match(url);
+					if (cached) {
+						res = cached;
+					} else if (["/", "/index.html"].includes(url.pathname)) {
+						const file = await Deno.open(fromFileUrl(import.meta.resolve("./index.html")), { read: true });
+						res = new Response(file.readable.pipeThrough(new CompressionStream("gzip")), {
+							headers: {
+								"Content-Encoding": "gzip",
+								"Content-Type": "text/html",
+							},
+						});
+						cache.put(url, res.clone());
+					} else if (result.outputFiles) {
+						const outputFilePath = join(outputDir, url.pathname);
+						const outputFile = result.outputFiles.find((f) => f.path === outputFilePath);
+						if (outputFile) {
+							const gzip = new CompressionStream("gzip");
+							const w = gzip.writable.getWriter();
+							w.write(outputFile.contents);
+							w.close();
+							res = new Response(gzip.readable, {
+								headers: {
+									"Content-Encoding": "gzip",
+									"Content-Type": mime.getType(extname(outputFilePath) ?? ".txt")!,
+								},
+							});
+							cache.put(url, res.clone());
+						}
 					}
+					return res;
+				} finally {
+					console.log(`-.-.-.- [${new Date().toISOString()}] ${(performance.now() - start).toFixed(2)}ms ${req.method} ${url.pathname} ${res.status}`);
 				}
-				cache.put(url, response.clone());
-				return response;
-			}
-		})
-	})
+			},
+		});
+	});
 
 const main = new Command()
 	.name("Pxlr Editor Builder")
 	.command("build", build)
 	.command("dev", dev);
-
 
 try {
 	await main.parse(Deno.args);
