@@ -10,7 +10,19 @@
 		"jsxFactory": "h",
 		"jsxFragmentFactory": "Fragment"
 	},
+	"lint": {
+		"files": {
+			"exclude": [
+				"editor/dist"
+			]
+		}
+	},
 	"fmt": {
+		"files": {
+			"exclude": [
+				"editor/dist"
+			]
+		},
 		"options": {
 			"useTabs": true,
 			"lineWidth": 180

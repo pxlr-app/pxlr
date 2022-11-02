@@ -95,7 +95,7 @@ export class WebFile implements File {
 			},
 			close: () => {
 				this.#offset += byteWritten;
-			}
+			},
 		});
 	}
 

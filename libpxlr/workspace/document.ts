@@ -45,13 +45,15 @@ export class Document {
 		assertAutoId(hash);
 		if (this.rootNode) {
 			let result: Node | undefined;
-			visit(this.rootNode, { enter(node) {
-				if (node.hash === hash) {
-					result = node;
-					return VisitorResult.Break;
-				}
-				return VisitorResult.Continue;
-			}});
+			visit(this.rootNode, {
+				enter(node) {
+					if (node.hash === hash) {
+						result = node;
+						return VisitorResult.Break;
+					}
+					return VisitorResult.Continue;
+				},
+			});
 			return result;
 		}
 	}
@@ -60,13 +62,15 @@ export class Document {
 		assertAutoId(id);
 		if (this.rootNode) {
 			let result: Node | undefined;
-			visit(this.rootNode, { enter(node) {
-				if (node.id === id) {
-					result = node;
-					return VisitorResult.Break;
-				}
-				return VisitorResult.Continue;
-			}});
+			visit(this.rootNode, {
+				enter(node) {
+					if (node.id === id) {
+						result = node;
+						return VisitorResult.Break;
+					}
+					return VisitorResult.Continue;
+				},
+			});
 			return result;
 		}
 	}
@@ -109,7 +113,7 @@ export class Document {
 				}
 				writeObjectPromises.push(this.workspace.repository.writeObject(node.toObject()));
 				return VisitorResult.Continue;
-			}
+			},
 		});
 		await Promise.allSettled(writeObjectPromises);
 		const commit = new Commit(autoid(), this.#commit!.hash, newRoot.hash, author, new Date(), message);
