@@ -6,7 +6,8 @@
 	"explorer.fileNesting.expand": false,
 	"explorer.fileNesting.patterns": {
 		"*.html": "$(capture).tsx, $(capture).css, $(capture).js",
-		"*.tsx": "$(capture).css, $(capture).js",
+		"*.tsx": "$(capture).css, $(capture).js, $(capture).test.tsx",
+		"*.ts": "$(capture).css, $(capture).js, $(capture).test.ts",
 		"deno.json": "build.ts"
 	}
 }

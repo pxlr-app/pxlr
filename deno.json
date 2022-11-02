@@ -4,7 +4,8 @@
 			"deno.ns",
 			"deno.window",
 			"deno.url",
-			"deno.web"
+			"deno.web",
+			"deno.unstable"
 		],
 		"jsxFactory": "h",
 		"jsxFragmentFactory": "Fragment"
@@ -16,7 +17,7 @@
 		}
 	},
 	"tasks": {
-		"dev": "deno run -A --unstable build.ts dev",
-		"build": "deno run -A --unstable build.ts build",
+		"dev": "deno run -A --unstable editor/build.ts dev",
+		"build": "deno run -A --unstable editor/build.ts build"
 	}
 }

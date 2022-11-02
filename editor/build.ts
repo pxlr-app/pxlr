@@ -5,8 +5,8 @@ import * as esbuild from "https://deno.land/x/esbuild@v0.15.8/mod.js";
 
 let importMapBase = "";
 let importMap: { imports: Record<string, string> } | undefined;
-const inputMain = join(Deno.cwd(), "index.tsx");
-const outputDir = join(Deno.cwd(), "dist");
+const inputMain = fromFileUrl(import.meta.resolve("./index.tsx"));
+const outputDir = fromFileUrl(import.meta.resolve("./dist"));
 
 const BundleHttpModule: esbuild.Plugin = {
 	name: "BundleHttpModule",
@@ -86,7 +86,18 @@ const dev = new Command()
 			jsxFactory: "h",
 			jsxFragment: "Fragment",
 		});
-		// TODO watch changes on result.metafile.inputs and refresh result & cache
+		const inputPaths = Object.keys(result.metafile!.inputs).filter(path => path.substring(0, 12) !== 'bundle-http:').map(path => fromFileUrl(import.meta.resolve("../"+path)));
+		const watcher = Deno.watchFs(inputPaths);
+		(async () => {
+			for await (const event of watcher) {
+				if (event.kind === "modify") {
+					// TODO debounce
+					// TODO esbuild
+					// TODO clear cache
+					// TODO rewatch?
+				}
+			}
+		})();
 		Deno.serve({
 			async handler(req: Request) {
 				const url = new URL(req.url);
