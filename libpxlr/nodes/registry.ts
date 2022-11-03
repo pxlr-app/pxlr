@@ -4,12 +4,18 @@ import { AutoId } from "../autoid.ts";
 
 export interface NodeConstructorOptions {
 	object: Object;
-	getNodeByHash: (hash: AutoId, shallow: boolean, abortSignal?: AbortSignal) => Promise<Node>;
+	getNodeByHash: (
+		hash: AutoId,
+		shallow: boolean,
+		abortSignal?: AbortSignal,
+	) => Promise<Node>;
 	shallow: boolean;
 	abortSignal?: AbortSignal;
 }
 
-export type NodeDeserializer = (options: NodeConstructorOptions) => Promise<Node>;
+export type NodeDeserializer = (
+	options: NodeConstructorOptions,
+) => Promise<Node>;
 
 export class NodeRegistryEntry {
 	#kind: string;

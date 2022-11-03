@@ -7,8 +7,9 @@
     "esModuleInterop": true,
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
-    "types": ["vite/client"],
+    "types": ["vite/client", "@types/wicg-file-system-access"],
     "noEmit": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "strictNullChecks": true
   }
 }

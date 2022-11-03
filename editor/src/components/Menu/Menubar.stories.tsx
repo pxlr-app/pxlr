@@ -7,7 +7,11 @@ export default {
 
 export const Default = () => (
 	<Menubar>
-		<MenubarItem id="file" label="File" accessKey="F">
+		<MenubarItem
+			id="file"
+			label="File"
+			accessKey="F"
+		>
 			<Menu>
 				<MenuItem
 					id="newfile"
@@ -31,7 +35,12 @@ export const Default = () => (
 					keybind="Ctrl+O"
 					action={() => console.log("click openfile")}
 				/>
-				<MenuItem id="openrecent" label="Open Recent" accessKey="R" keybind="Ctrl+Shift+O">
+				<MenuItem
+					id="openrecent"
+					label="Open Recent"
+					accessKey="R"
+					keybind="Ctrl+Shift+O"
+				>
 					<Menu>
 						<MenuItem
 							id="reopen"
@@ -40,7 +49,11 @@ export const Default = () => (
 							keybind="Ctrl+Shift+T"
 							action={() => console.log("click reopen")}
 						/>
-						<MenuItem id="recentfiles" label="Recent Files" accessKey="F">
+						<MenuItem
+							id="recentfiles"
+							label="Recent Files"
+							accessKey="F"
+						>
 							<Menu>
 								<MenuItem
 									id="filea"
@@ -94,7 +107,11 @@ export const Default = () => (
 					action={() => console.log("click autosave")}
 				/>
 				<Separator />
-				<MenuItem id="preferences" label="Preferences" accessKey="P">
+				<MenuItem
+					id="preferences"
+					label="Preferences"
+					accessKey="P"
+				>
 					<Menu>
 						<MenuItem
 							id="settings"
@@ -119,9 +136,25 @@ export const Default = () => (
 				/>
 			</Menu>
 		</MenubarItem>
-		<MenubarItem id="edit" label="Edit" accessKey="E" />
-		<MenubarItem id="selection" label="Selection" accessKey="S" />
-		<MenubarItem id="view" label="View" accessKey="V" />
-		<MenubarItem id="help" label="Help" accessKey="H" />
+		<MenubarItem
+			id="edit"
+			label="Edit"
+			accessKey="E"
+		/>
+		<MenubarItem
+			id="selection"
+			label="Selection"
+			accessKey="S"
+		/>
+		<MenubarItem
+			id="view"
+			label="View"
+			accessKey="V"
+		/>
+		<MenubarItem
+			id="help"
+			label="Help"
+			accessKey="H"
+		/>
 	</Menubar>
 );

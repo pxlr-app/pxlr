@@ -71,7 +71,9 @@ export class Tree<T extends Record<string, string> = Record<never, never>> {
 		);
 	}
 
-	static async fromObject<T extends Record<string, string> = Record<never, never>>(object: Object, otherFieldOrder: (keyof T)[] = []): Promise<Tree<T>> {
+	static async fromObject<
+		T extends Record<string, string> = Record<never, never>,
+	>(object: Object, otherFieldOrder: (keyof T)[] = []): Promise<Tree<T>> {
 		const itemLines = await object.text();
 		const items = itemLines.split(`\n`).filter((l) => l.length).map((line) => {
 			const [kind, hash, id, name, ...rest] = line.split(" ");
@@ -81,7 +83,13 @@ export class Tree<T extends Record<string, string> = Record<never, never>> {
 				other[name] = decodeURIComponent(rest[i] ?? "") as T[keyof T];
 				return other;
 			}, {} as T);
-			return { kind: decodeURIComponent(kind), hash, id, name: decodeURIComponent(name), ...other };
+			return {
+				kind: decodeURIComponent(kind),
+				hash,
+				id,
+				name: decodeURIComponent(name),
+				...other,
+			};
 		});
 		return new Tree(
 			object.hash,

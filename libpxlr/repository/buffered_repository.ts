@@ -15,7 +15,10 @@ export class BufferedRepository extends Repository {
 		this.#objectCache = new Map();
 	}
 
-	async getReference(ref: ReferencePath, abortSignal?: AbortSignal): Promise<Reference> {
+	async getReference(
+		ref: ReferencePath,
+		abortSignal?: AbortSignal,
+	): Promise<Reference> {
 		assertReferencePath(ref);
 		if (this.#referenceCache.has(ref)) {
 			return this.#referenceCache.get(ref)!;
@@ -26,11 +29,17 @@ export class BufferedRepository extends Repository {
 	}
 
 	// deno-lint-ignore require-await
-	async writeReference(reference: Reference, _abortSignal?: AbortSignal): Promise<void> {
+	async writeReference(
+		reference: Reference,
+		_abortSignal?: AbortSignal,
+	): Promise<void> {
 		this.#referenceCache.set(reference.ref, reference);
 	}
 
-	async *listReferencePath(prefix: ReferencePath, abortSignal?: AbortSignal): AsyncIterableIterator<ReferencePath> {
+	async *listReferencePath(
+		prefix: ReferencePath,
+		abortSignal?: AbortSignal,
+	): AsyncIterableIterator<ReferencePath> {
 		assertReferencePath(prefix);
 		const references: ReferencePath[] = [];
 		for await (const entry of this.fs.list(`${prefix}`, abortSignal)) {
@@ -57,7 +66,10 @@ export class BufferedRepository extends Repository {
 		this.#objectCache.set(object.hash, object);
 	}
 
-	async objectExists(hash: AutoId, abortSignal?: AbortSignal): Promise<boolean> {
+	async objectExists(
+		hash: AutoId,
+		abortSignal?: AbortSignal,
+	): Promise<boolean> {
 		assertAutoId(hash);
 		if (this.#objectCache.has(hash)) {
 			return true;

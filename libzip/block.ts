@@ -13,7 +13,9 @@ export class EndOfCentralDirectoryRecord {
 	throwIfSignatureMismatch() {
 		const sig = this.#dataView.getUint32(0, true);
 		if (sig !== EndOfCentralDirectoryRecord.SIGNATURE) {
-			throw new SyntaxError(`Wrong signature for EndOfCentralDirectoryRecord, got ${sig.toString(16)}.`);
+			throw new SyntaxError(
+				`Wrong signature for EndOfCentralDirectoryRecord, got ${sig.toString(16)}.`,
+			);
 		}
 	}
 	get arrayBuffer() {
@@ -59,7 +61,9 @@ export class EndOfCentralDirectoryRecord {
 		return this.#dataView.getUint16(20, true);
 	}
 	get comment() {
-		return textDecoder.decode(this.#arrayBuffer.slice(22, 22 + this.commentLength));
+		return textDecoder.decode(
+			this.#arrayBuffer.slice(22, 22 + this.commentLength),
+		);
 	}
 	set comment(value: string) {
 		const data = textEncoder.encode(value);
@@ -96,12 +100,18 @@ export class Zip64EndOfCentralDirectoryLocator {
 	constructor(length = 20) {
 		this.#arrayBuffer = new Uint8Array(length);
 		this.#dataView = new DataView(this.#arrayBuffer.buffer);
-		this.#dataView.setUint32(0, Zip64EndOfCentralDirectoryLocator.SIGNATURE, true);
+		this.#dataView.setUint32(
+			0,
+			Zip64EndOfCentralDirectoryLocator.SIGNATURE,
+			true,
+		);
 	}
 	throwIfSignatureMismatch() {
 		const sig = this.#dataView.getUint32(0, true);
 		if (sig !== Zip64EndOfCentralDirectoryLocator.SIGNATURE) {
-			throw new SyntaxError(`Wrong signature for Zip64EndOfCentralDirectoryLocator, got ${sig.toString(16)}.`);
+			throw new SyntaxError(
+				`Wrong signature for Zip64EndOfCentralDirectoryLocator, got ${sig.toString(16)}.`,
+			);
 		}
 	}
 	get arrayBuffer() {
@@ -141,13 +151,19 @@ export class Zip64EndOfCentralDirectoryRecord {
 	constructor(length = 56) {
 		this.#arrayBuffer = new Uint8Array(length);
 		this.#dataView = new DataView(this.#arrayBuffer.buffer);
-		this.#dataView.setUint32(0, Zip64EndOfCentralDirectoryRecord.SIGNATURE, true);
+		this.#dataView.setUint32(
+			0,
+			Zip64EndOfCentralDirectoryRecord.SIGNATURE,
+			true,
+		);
 		this.#dataView.setBigUint64(4, BigInt(56 - 12), true);
 	}
 	throwIfSignatureMismatch() {
 		const sig = this.#dataView.getUint32(0, true);
 		if (sig !== Zip64EndOfCentralDirectoryRecord.SIGNATURE) {
-			throw new SyntaxError(`Wrong signature for Zip64EndOfCentralDirectoryRecord, got ${sig.toString(16)}.`);
+			throw new SyntaxError(
+				`Wrong signature for Zip64EndOfCentralDirectoryRecord, got ${sig.toString(16)}.`,
+			);
 		}
 	}
 	get arrayBuffer() {
@@ -220,7 +236,9 @@ export class Zip64EndOfCentralDirectoryRecord {
 		return this.sizeOfRecord - (56 - 12);
 	}
 	get comment() {
-		return textDecoder.decode(this.#arrayBuffer.slice(56, 56 + this.commentLength));
+		return textDecoder.decode(
+			this.#arrayBuffer.slice(56, 56 + this.commentLength),
+		);
 	}
 	set comment(value: string) {
 		const data = textEncoder.encode(value);
@@ -270,7 +288,9 @@ export class CentralDirectoryFileHeader {
 	throwIfSignatureMismatch() {
 		const sig = this.#dataView.getUint32(0, true);
 		if (sig !== CentralDirectoryFileHeader.SIGNATURE) {
-			throw new SyntaxError(`Wrong signature for CentralDirectoryFileHeader, got ${sig.toString(16)}.`);
+			throw new SyntaxError(
+				`Wrong signature for CentralDirectoryFileHeader, got ${sig.toString(16)}.`,
+			);
 		}
 	}
 	get arrayBuffer() {
@@ -324,8 +344,11 @@ export class CentralDirectoryFileHeader {
 		return new Date(year, month - 1, day, hours, minutes, seconds);
 	}
 	set lastModificationDate(value: Date) {
-		const time = ((value.getHours() & 0b11111) << 11) | ((value.getMinutes() & 0b111111) << 5) | ((value.getSeconds() >> 1) & 0b11111);
-		const date = (((value.getFullYear() - 1980) & 0b1111111) << 9) | (((value.getMonth() + 1) & 0b1111) << 5) | (value.getDate() & 0b11111);
+		const time = ((value.getHours() & 0b11111) << 11) |
+			((value.getMinutes() & 0b111111) << 5) |
+			((value.getSeconds() >> 1) & 0b11111);
+		const date = (((value.getFullYear() - 1980) & 0b1111111) << 9) |
+			(((value.getMonth() + 1) & 0b1111) << 5) | (value.getDate() & 0b11111);
 		this.#dataView.setUint16(12, time, true);
 		this.#dataView.setUint16(14, date, true);
 	}
@@ -351,14 +374,18 @@ export class CentralDirectoryFileHeader {
 		return this.#dataView.getUint16(28, true);
 	}
 	get fileName() {
-		return textDecoder.decode(this.#arrayBuffer.slice(46, 46 + this.fileNameLength));
+		return textDecoder.decode(
+			this.#arrayBuffer.slice(46, 46 + this.fileNameLength),
+		);
 	}
 	set fileName(value: string) {
 		const data = textEncoder.encode(value);
 		if (data.byteLength === this.fileNameLength) {
 			this.#arrayBuffer.set(data, 46);
 		} else {
-			const arrayBuffer = new Uint8Array(46 + data.byteLength + this.extraLength + this.commentLength);
+			const arrayBuffer = new Uint8Array(
+				46 + data.byteLength + this.extraLength + this.commentLength,
+			);
 			const dataView = new DataView(arrayBuffer.buffer);
 			arrayBuffer.set(this.#arrayBuffer, 0);
 			dataView.setUint16(28, data.byteLength, true);
@@ -374,13 +401,18 @@ export class CentralDirectoryFileHeader {
 		return this.#dataView.getUint16(30, true);
 	}
 	get extra() {
-		return this.#arrayBuffer.slice(46 + this.fileNameLength, 46 + this.fileNameLength + this.extraLength);
+		return this.#arrayBuffer.slice(
+			46 + this.fileNameLength,
+			46 + this.fileNameLength + this.extraLength,
+		);
 	}
 	set extra(value: Uint8Array) {
 		if (value.byteLength === this.extraLength) {
 			this.#arrayBuffer.set(value, 46 + this.fileNameLength);
 		} else {
-			const arrayBuffer = new Uint8Array(46 + this.fileNameLength + value.byteLength + this.commentLength);
+			const arrayBuffer = new Uint8Array(
+				46 + this.fileNameLength + value.byteLength + this.commentLength,
+			);
 			const dataView = new DataView(arrayBuffer.buffer);
 			arrayBuffer.set(this.#arrayBuffer.slice(0, 46 + this.fileNameLength), 0);
 			dataView.setUint16(30, value.byteLength, true);
@@ -409,14 +441,21 @@ export class CentralDirectoryFileHeader {
 		return this.#dataView.getUint16(32, true);
 	}
 	get comment() {
-		return textDecoder.decode(this.#arrayBuffer.slice(46 + this.fileNameLength + this.extraLength, 46 + this.fileNameLength + this.extraLength + this.commentLength));
+		return textDecoder.decode(
+			this.#arrayBuffer.slice(
+				46 + this.fileNameLength + this.extraLength,
+				46 + this.fileNameLength + this.extraLength + this.commentLength,
+			),
+		);
 	}
 	set comment(value: string) {
 		const data = textEncoder.encode(value);
 		if (data.byteLength === this.commentLength) {
 			this.#arrayBuffer.set(data, 46 + this.fileNameLength + this.extraLength);
 		} else {
-			const arrayBuffer = new Uint8Array(46 + this.fileNameLength + this.extraLength + data.byteLength);
+			const arrayBuffer = new Uint8Array(
+				46 + this.fileNameLength + this.extraLength + data.byteLength,
+			);
 			const dataView = new DataView(arrayBuffer.buffer);
 			arrayBuffer.set(this.#arrayBuffer.slice(0, 46 + this.fileNameLength), 0);
 			dataView.setUint16(32, data.byteLength, true);
@@ -487,7 +526,9 @@ export class LocalFileHeader {
 	throwIfSignatureMismatch() {
 		const sig = this.#dataView.getUint32(0, true);
 		if (sig !== LocalFileHeader.SIGNATURE) {
-			throw new SyntaxError(`Wrong signature for LocalFileHeader, got ${sig.toString(16)}.`);
+			throw new SyntaxError(
+				`Wrong signature for LocalFileHeader, got ${sig.toString(16)}.`,
+			);
 		}
 	}
 	get arrayBuffer() {
@@ -529,8 +570,11 @@ export class LocalFileHeader {
 		return new Date(year, month - 1, day, hours, minutes, seconds);
 	}
 	set lastModificationDate(value: Date) {
-		const time = ((value.getHours() & 0b11111) << 11) | ((value.getMinutes() & 0b111111) << 5) | ((value.getSeconds() >> 1) & 0b11111);
-		const date = (((value.getFullYear() - 1980) & 0b1111111) << 9) | (((value.getMonth() + 1) & 0b1111) << 5) | (value.getDate() & 0b11111);
+		const time = ((value.getHours() & 0b11111) << 11) |
+			((value.getMinutes() & 0b111111) << 5) |
+			((value.getSeconds() >> 1) & 0b11111);
+		const date = (((value.getFullYear() - 1980) & 0b1111111) << 9) |
+			(((value.getMonth() + 1) & 0b1111) << 5) | (value.getDate() & 0b11111);
 		this.#dataView.setUint16(10, time, true);
 		this.#dataView.setUint16(12, date, true);
 	}
@@ -556,14 +600,18 @@ export class LocalFileHeader {
 		return this.#dataView.getUint16(26, true);
 	}
 	get fileName() {
-		return textDecoder.decode(this.#arrayBuffer.slice(30, 30 + this.fileNameLength));
+		return textDecoder.decode(
+			this.#arrayBuffer.slice(30, 30 + this.fileNameLength),
+		);
 	}
 	set fileName(value: string) {
 		const data = textEncoder.encode(value);
 		if (data.byteLength === this.fileNameLength) {
 			this.#arrayBuffer.set(data, 30);
 		} else {
-			const arrayBuffer = new Uint8Array(30 + data.byteLength + this.extraLength);
+			const arrayBuffer = new Uint8Array(
+				30 + data.byteLength + this.extraLength,
+			);
 			const dataView = new DataView(arrayBuffer.buffer);
 			arrayBuffer.set(this.#arrayBuffer.slice(0, 30), 0);
 			dataView.setUint16(26, data.byteLength, true);
@@ -577,13 +625,20 @@ export class LocalFileHeader {
 		return this.#dataView.getUint16(28, true);
 	}
 	get extra() {
-		return new Uint8Array(this.#arrayBuffer.slice(30 + this.fileNameLength, 30 + this.fileNameLength + this.extraLength));
+		return new Uint8Array(
+			this.#arrayBuffer.slice(
+				30 + this.fileNameLength,
+				30 + this.fileNameLength + this.extraLength,
+			),
+		);
 	}
 	set extra(value: Uint8Array) {
 		if (value.byteLength === this.extraLength) {
 			this.#arrayBuffer.set(value, 30 + this.fileNameLength);
 		} else {
-			const arrayBuffer = new Uint8Array(30 + this.fileNameLength + value.byteLength);
+			const arrayBuffer = new Uint8Array(
+				30 + this.fileNameLength + value.byteLength,
+			);
 			const dataView = new DataView(arrayBuffer.buffer);
 			arrayBuffer.set(this.#arrayBuffer.slice(0, 30 + this.fileNameLength), 0);
 			dataView.setUint16(28, value.byteLength, true);
@@ -664,7 +719,9 @@ export class ExtensibleDataFields {
 				length += df.arrayBuffer.byteLength;
 			}
 		}
-		const arrayBuffer = new Uint8Array(length + extensibleDataField.arrayBuffer.byteLength);
+		const arrayBuffer = new Uint8Array(
+			length + extensibleDataField.arrayBuffer.byteLength,
+		);
 		let offset = 0;
 		for (const df of this) {
 			if (df.headerId !== extensibleDataField.headerId) {
@@ -862,7 +919,9 @@ export class PxlrHeader {
 	throwIfSignatureMismatch() {
 		const sig = this.#dataView.getUint32(0, true);
 		if (sig !== PxlrHeader.SIGNATURE) {
-			throw new SyntaxError(`Wrong signature for PxlrHeader, got ${sig.toString(16)}.`);
+			throw new SyntaxError(
+				`Wrong signature for PxlrHeader, got ${sig.toString(16)}.`,
+			);
 		}
 	}
 	get arrayBuffer() {

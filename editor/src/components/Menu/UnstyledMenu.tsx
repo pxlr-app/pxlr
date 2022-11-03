@@ -1,15 +1,4 @@
-import {
-	Accessor,
-	batch,
-	createContext,
-	createEffect,
-	createRenderEffect,
-	createSignal,
-	JSX,
-	onCleanup,
-	onMount,
-	useContext,
-} from "solid-js";
+import { Accessor, batch, createContext, createEffect, createRenderEffect, createSignal, JSX, onCleanup, onMount, useContext } from "solid-js";
 import { Alignement, AnchorContext, VerticalAlign } from "../Anchor";
 
 export type Orientation = "horizontal" | "vertical";
@@ -20,36 +9,36 @@ export type AutoSelectItem = "first" | "last" | "off";
 
 export type Setter<T> = (v: T | ((prev: T) => T)) => T;
 
-export type MenuItemDeclaration = {
+export interface MenuItemDeclaration {
 	id: string;
 	accessKey: string;
 	action?: () => void;
-};
+}
 
-export type RootMenuContextData = {
+export interface RootMenuContextData {
 	showAccessKey: Accessor<boolean>;
 	setShowAccessKey: Setter<boolean>;
 	navigationInput: Accessor<NavigationDevice>;
 	setNavigationInput: Setter<NavigationDevice>;
 	autoSelectItem: Accessor<boolean>;
 	setAutoSelectItem: Setter<boolean>;
-};
+}
 
-export type MenuContextData = {
+export interface MenuContextData {
 	selected: Accessor<string | undefined>;
 	select: Setter<string | undefined>;
 	opened: Accessor<string | undefined>;
 	open: Setter<string | undefined>;
 	items: MenuItemDeclaration[];
 	createMenuItem: (path: string[], item: MenuItemDeclaration) => void;
-};
+}
 
 const RootMenuContext = createContext<RootMenuContextData | undefined>(undefined);
 const MenuContext = createContext<MenuContextData | undefined>(undefined);
 
 const PathContext = createContext<string[]>([]);
 
-export type UnstyledMenuData = {
+export interface UnstyledMenuData {
 	showAccessKey: Accessor<boolean>;
 	setShowAccessKey: Setter<boolean>;
 	navigationInput: Accessor<NavigationDevice>;
@@ -62,9 +51,9 @@ export type UnstyledMenuData = {
 		tabIndex: number;
 		onKeyDown: (e: KeyboardEvent) => void;
 	};
-};
+}
 
-export type UnstyledMenuProps = {
+export interface UnstyledMenuProps {
 	/**
 	 * The HTML Element to attach keyboard events to
 	 */
@@ -79,7 +68,7 @@ export type UnstyledMenuProps = {
 	 * Render child
 	 */
 	children: (menu: UnstyledMenuData) => JSX.Element;
-};
+}
 
 export const UnstyledMenu = (props: UnstyledMenuProps) => {
 	const path = useContext(PathContext);
@@ -183,18 +172,15 @@ export const UnstyledMenu = (props: UnstyledMenuProps) => {
 					e.preventDefault();
 					e.stopImmediatePropagation();
 					batch(() => {
-						rootContext.setShowAccessKey((state) => !state);
+						rootContext.setShowAccessKey(state => !state);
 						rootContext.setNavigationInput("keyboard");
 					});
 				} else if (!menuContext.opened()) {
 					const selected = menuContext.selected();
-					let selectedIdx = items.findIndex((p) => p.id === selected);
+					let selectedIdx = items.findIndex(p => p.id === selected);
 
 					// Down
-					if (
-						(props.orientation === "vertical" && e.code === "ArrowDown") ||
-						(props.orientation === "horizontal" && e.code === "ArrowRight")
-					) {
+					if ((props.orientation === "vertical" && e.code === "ArrowDown") || (props.orientation === "horizontal" && e.code === "ArrowRight")) {
 						e.preventDefault();
 						e.stopImmediatePropagation();
 						selectedIdx = (selectedIdx + 1) % items.length;
@@ -203,12 +189,8 @@ export const UnstyledMenu = (props: UnstyledMenuProps) => {
 							rootContext.setAutoSelectItem(false);
 							menuContext.select(items[selectedIdx].id);
 						});
-					}
-					// Up
-					else if (
-						(props.orientation === "vertical" && e.code === "ArrowUp") ||
-						(props.orientation === "horizontal" && e.code === "ArrowLeft")
-					) {
+					} // Up
+					else if ((props.orientation === "vertical" && e.code === "ArrowUp") || (props.orientation === "horizontal" && e.code === "ArrowLeft")) {
 						e.preventDefault();
 						e.stopImmediatePropagation();
 						if (selectedIdx === -1) {
@@ -221,15 +203,14 @@ export const UnstyledMenu = (props: UnstyledMenuProps) => {
 							rootContext.setAutoSelectItem(false);
 							menuContext.select(items[selectedIdx].id);
 						});
-					}
-					// Forward
+					} // Forward
 					else if (
 						(props.orientation === "vertical" && e.code === "ArrowRight") ||
 						(props.orientation === "horizontal" && e.code === "ArrowDown") ||
 						e.code === "Enter"
 					) {
 						const selectedItem = items[selectedIdx];
-						if (selectedItem.action) {
+						if (selectedItem.action != null) {
 							selectedItem.action();
 						} else {
 							e.preventDefault();
@@ -240,15 +221,12 @@ export const UnstyledMenu = (props: UnstyledMenuProps) => {
 								menuContext.open(selectedItem.id);
 							});
 						}
-					}
-					// AccessKey
+					} // AccessKey
 					else if (rootContext.showAccessKey()) {
-						const accessedItem = items.find(
-							({ id, accessKey }) => `Key${accessKey.toUpperCase()}` === e.code,
-						);
-						if (accessedItem) {
-							if (accessedItem.action) {
-								if (document.activeElement) {
+						const accessedItem = items.find(({ id, accessKey }) => `Key${accessKey.toUpperCase()}` === e.code);
+						if (accessedItem != null) {
+							if (accessedItem.action != null) {
+								if (document.activeElement != null) {
 									(document.activeElement as HTMLElement).blur();
 								}
 								accessedItem.action();
@@ -264,12 +242,8 @@ export const UnstyledMenu = (props: UnstyledMenuProps) => {
 							}
 						}
 					}
-				}
-				// Back
-				else if (
-					(props.orientation === "vertical" && e.code === "ArrowLeft") ||
-					(props.orientation === "horizontal" && e.code === "ArrowUp")
-				) {
+				} // Back
+				else if ((props.orientation === "vertical" && e.code === "ArrowLeft") || (props.orientation === "horizontal" && e.code === "ArrowUp")) {
 					if (menuContext.opened()) {
 						e.preventDefault();
 						e.stopImmediatePropagation();
@@ -292,7 +266,7 @@ export const UnstyledMenu = (props: UnstyledMenuProps) => {
 	);
 };
 
-export type UnstyledMenuItemData = {
+export interface UnstyledMenuItemData {
 	showAccessKey: Accessor<boolean>;
 	navigationInput: Accessor<NavigationDevice>;
 	selected: Accessor<boolean>;
@@ -304,9 +278,9 @@ export type UnstyledMenuItemData = {
 		onMouseEnter: (e: MouseEvent) => void;
 		onClick: (e: MouseEvent) => void;
 	};
-};
+}
 
-export type UnstyledMenuItemProps = {
+export interface UnstyledMenuItemProps {
 	/**
 	 * A unique identifier for this menu item
 	 */
@@ -324,27 +298,27 @@ export type UnstyledMenuItemProps = {
 	 * Render child
 	 */
 	children: (item: UnstyledMenuItemData) => JSX.Element;
-};
+}
 
 export const UnstyledMenuItem = (props: UnstyledMenuItemProps) => {
 	const path = useContext(PathContext).concat([props.id]);
 	const fullpath = "/" + path.join("/") + "/";
 
 	const rootContext = useContext(RootMenuContext);
-	if (!rootContext) {
-		throw new Error(
-			"UnstyledMenuItem requires a RootMenuContext somewhere in the DOM. Did you forget to wrap your component in RootMenuContext?",
-		);
+	if (rootContext == null) {
+		throw new Error("UnstyledMenuItem requires a RootMenuContext somewhere in the DOM. Did you forget to wrap your component in RootMenuContext?");
 	}
 
 	const menuContext = useContext(MenuContext);
-	if (!menuContext) {
-		throw new Error(
-			"UnstyledMenuItem requires a MenuContext somewhere in the DOM. Did you forget to wrap your component in MenuContext?",
-		);
+	if (menuContext == null) {
+		throw new Error("UnstyledMenuItem requires a MenuContext somewhere in the DOM. Did you forget to wrap your component in MenuContext?");
 	}
 
-	menuContext.createMenuItem(path, { id: props.id, accessKey: props.accessKey, action: props.action });
+	menuContext.createMenuItem(path, {
+		id: props.id,
+		accessKey: props.accessKey,
+		action: props.action,
+	});
 
 	const data: UnstyledMenuItemData = {
 		showAccessKey: rootContext.showAccessKey,
@@ -379,7 +353,7 @@ export const UnstyledMenuItem = (props: UnstyledMenuItemProps) => {
 			},
 			onClick(e) {
 				if (e.target === e.currentTarget) {
-					if (props.action) {
+					if (props.action != null) {
 						props.action();
 					} else {
 						e.preventDefault();

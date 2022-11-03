@@ -8,7 +8,12 @@ Deno.test("ZipFilesystem", async (t) => {
 	await t.step("write", async () => {
 		const tmpFile = await Deno.makeTempFile({ suffix: ".zip" });
 		{
-			const fsFile = await Deno.open(tmpFile, { create: true, read: true, write: true, truncate: false });
+			const fsFile = await Deno.open(tmpFile, {
+				create: true,
+				read: true,
+				write: true,
+				truncate: false,
+			});
 			const denoFile = new DenoFile(fsFile);
 			const zip = new Zip(denoFile);
 			await zip.open();
@@ -28,7 +33,11 @@ Deno.test("ZipFilesystem", async (t) => {
 			fsFile.close();
 		}
 		{
-			const fsFile = await Deno.open(tmpFile, { read: true, write: false, truncate: false });
+			const fsFile = await Deno.open(tmpFile, {
+				read: true,
+				write: false,
+				truncate: false,
+			});
 			const denoFile = new DenoFile(fsFile);
 			const zip = new Zip(denoFile);
 			await zip.open();

@@ -37,7 +37,13 @@ Deno.test("Repository", async (t) => {
 	await t.step("set/get object", async () => {
 		const fs = new MemoryFilesystem();
 		const repo = new Repository(fs);
-		const object1 = new Object(autoid(), autoid(), "note", { name: "README" }, "# Hello World");
+		const object1 = new Object(
+			autoid(),
+			autoid(),
+			"note",
+			{ name: "README" },
+			"# Hello World",
+		);
 		await repo.writeObject(object1);
 		const object2 = await repo.getObject(object1.hash);
 		assertEquals(object1, object2);
@@ -46,9 +52,25 @@ Deno.test("Repository", async (t) => {
 	await t.step("iter tree", async () => {
 		const fs = new MemoryFilesystem();
 		const repo = new Repository(fs);
-		const object1 = new Object(autoid(), autoid(), "note", { name: "README" }, "# Hello World");
-		const tree1 = new Tree(autoid(), autoid(), "group", "Parent", [{ hash: object1.hash, id: object1.id, kind: object1.kind, name: object1.headers.get("name")! }]);
-		const tree2 = new Tree(autoid(), autoid(), "group", "Parent", [{ hash: tree1.hash, id: tree1.id, kind: "tree", name: tree1.name }]);
+		const object1 = new Object(
+			autoid(),
+			autoid(),
+			"note",
+			{ name: "README" },
+			"# Hello World",
+		);
+		const tree1 = new Tree(autoid(), autoid(), "group", "Parent", [{
+			hash: object1.hash,
+			id: object1.id,
+			kind: object1.kind,
+			name: object1.headers.get("name")!,
+		}]);
+		const tree2 = new Tree(autoid(), autoid(), "group", "Parent", [{
+			hash: tree1.hash,
+			id: tree1.id,
+			kind: "tree",
+			name: tree1.name,
+		}]);
 		await repo.writeObject(object1);
 		await repo.writeTree(tree1);
 		await repo.writeTree(tree2);
@@ -62,12 +84,47 @@ Deno.test("Repository", async (t) => {
 	await t.step("iter history", async () => {
 		const fs = new MemoryFilesystem();
 		const repo = new Repository(fs);
-		const object1 = new Object(autoid(), autoid(), "note", { name: "README" }, "# Hello World");
-		const tree1 = new Tree(autoid(), autoid(), "group", "Parent", [{ hash: object1.hash, id: object1.id, kind: object1.kind, name: object1.headers.get("name")! }]);
-		const tree2 = new Tree(autoid(), autoid(), "group", "Parent", [{ hash: tree1.hash, id: tree1.id, kind: "tree", name: tree1.name }]);
-		const tree3 = new Tree(autoid(), tree2.id, "group", "Parent2", [{ hash: tree1.hash, id: tree1.id, kind: "tree", name: tree1.name }]);
-		const commit1 = new Commit(autoid(), "", tree2.hash, "Test <test@test.local>", new Date(), "");
-		const commit2 = new Commit(autoid(), commit1.hash, tree3.hash, "Test <test@test.local>", new Date(), "");
+		const object1 = new Object(
+			autoid(),
+			autoid(),
+			"note",
+			{ name: "README" },
+			"# Hello World",
+		);
+		const tree1 = new Tree(autoid(), autoid(), "group", "Parent", [{
+			hash: object1.hash,
+			id: object1.id,
+			kind: object1.kind,
+			name: object1.headers.get("name")!,
+		}]);
+		const tree2 = new Tree(autoid(), autoid(), "group", "Parent", [{
+			hash: tree1.hash,
+			id: tree1.id,
+			kind: "tree",
+			name: tree1.name,
+		}]);
+		const tree3 = new Tree(autoid(), tree2.id, "group", "Parent2", [{
+			hash: tree1.hash,
+			id: tree1.id,
+			kind: "tree",
+			name: tree1.name,
+		}]);
+		const commit1 = new Commit(
+			autoid(),
+			"",
+			tree2.hash,
+			"Test <test@test.local>",
+			new Date(),
+			"",
+		);
+		const commit2 = new Commit(
+			autoid(),
+			commit1.hash,
+			tree3.hash,
+			"Test <test@test.local>",
+			new Date(),
+			"",
+		);
 		await repo.writeObject(object1);
 		await repo.writeTree(tree1);
 		await repo.writeTree(tree2);

@@ -41,12 +41,26 @@ Deno.test("Repository", async (t) => {
 	await t.step("set/get object", async () => {
 		const fs = new MemoryFilesystem();
 		const repo = new BufferedRepository(fs);
-		const object1 = new Object(autoid(), autoid(), "note", { name: "README" }, "# Hello World");
+		const object1 = new Object(
+			autoid(),
+			autoid(),
+			"note",
+			{ name: "README" },
+			"# Hello World",
+		);
 		await repo.writeObject(object1);
-		assertFalse(fs.entries.has(`objects/${object1.hash[0]}/${object1.hash[1]}/${object1.hash}`));
+		assertFalse(
+			fs.entries.has(
+				`objects/${object1.hash[0]}/${object1.hash[1]}/${object1.hash}`,
+			),
+		);
 		const object2 = await repo.getObject(object1.hash);
 		assertEquals(object1, object2);
 		await repo.flushToFilesystem();
-		assert(fs.entries.has(`objects/${object1.hash[0]}/${object1.hash[1]}/${object1.hash}`));
+		assert(
+			fs.entries.has(
+				`objects/${object1.hash[0]}/${object1.hash[1]}/${object1.hash}`,
+			),
+		);
 	});
 });

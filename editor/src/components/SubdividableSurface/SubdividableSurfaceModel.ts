@@ -1,7 +1,7 @@
 const { abs, min, max } = Math;
 const EPS = 0.1; // On a 4k monitor
 
-export type SurfaceDeclaration<T = any> = {
+export interface SurfaceDeclaration<T = any> {
 	/**
 	 * Unique key of this surface
 	 */
@@ -26,7 +26,7 @@ export type SurfaceDeclaration<T = any> = {
 	 * Props
 	 */
 	props: T;
-};
+}
 
 export type Axe = "horizontal" | "vertical";
 
@@ -34,12 +34,7 @@ export class EdgeModel {
 	public constructor(public axe: Axe, public position: number, public offset: number, public length: number) {}
 
 	public equals(other: EdgeModel) {
-		return (
-			this.axe === other.axe &&
-			abs(this.offset - other.offset) < 0.0001 &&
-			abs(this.length - other.length) < 0.0001 &&
-			abs(this.position - other.position) < 0.0001
-		);
+		return this.axe === other.axe && abs(this.offset - other.offset) < 0.0001 && abs(this.length - other.length) < 0.0001 && abs(this.position - other.position) < 0.0001;
 	}
 
 	public toString() {
@@ -54,7 +49,7 @@ export class SurfaceModel {
 		public topEdge?: LongEdgeModel,
 		public rightEdge?: LongEdgeModel,
 		public bottomEdge?: LongEdgeModel,
-		public leftEdge?: LongEdgeModel,
+		public leftEdge?: LongEdgeModel
 	) {}
 
 	public get left() {
@@ -129,10 +124,7 @@ export class LongEdgeModel {
 	}
 
 	public equals(other: LongEdgeModel) {
-		return (
-			this.edges.length === other.edges.length &&
-			this.edges.filter((b, i) => !other.edges[i].equals(b)).length === 0
-		);
+		return this.edges.length === other.edges.length && this.edges.filter((b, i) => !other.edges[i].equals(b)).length === 0;
 	}
 
 	public toString() {
@@ -141,78 +133,63 @@ export class LongEdgeModel {
 }
 
 export class CrossModel {
-	public constructor(
-		public top: EdgeModel | undefined,
-		public right: EdgeModel | undefined,
-		public bottom: EdgeModel | undefined,
-		public left: EdgeModel | undefined,
-	) {}
+	public constructor(public top: EdgeModel | undefined, public right: EdgeModel | undefined, public bottom: EdgeModel | undefined, public left: EdgeModel | undefined) {}
 
 	public get x() {
-		return (
-			this.top?.position ??
-			this.bottom?.position ??
-			this.right?.offset ??
-			(this.left ? this.left.offset + this.left.length : Number.NEGATIVE_INFINITY)
-		);
+		return this.top?.position ?? this.bottom?.position ?? this.right?.offset ?? (this.left != null ? this.left.offset + this.left.length : Number.NEGATIVE_INFINITY);
 	}
 
 	public set x(value) {
-		if (this.top) {
+		if (this.top != null) {
 			this.top.position = value;
 		}
-		if (this.right) {
+		if (this.right != null) {
 			const t = this.right.offset + this.right.length;
 			this.right.offset = value;
 			this.right.length = t - value;
 		}
-		if (this.bottom) {
+		if (this.bottom != null) {
 			this.bottom.position = value;
 		}
-		if (this.left) {
+		if (this.left != null) {
 			this.left.length = value - this.left.offset;
 		}
 	}
 
 	public get y() {
-		return (
-			this.left?.position ??
-			this.right?.position ??
-			this.bottom?.offset ??
-			(this.top ? this.top.offset + this.top.length : Number.NEGATIVE_INFINITY)
-		);
+		return this.left?.position ?? this.right?.position ?? this.bottom?.offset ?? (this.top != null ? this.top.offset + this.top.length : Number.NEGATIVE_INFINITY);
 	}
 
 	public set y(value) {
-		if (this.top) {
+		if (this.top != null) {
 			this.top.length = value - this.top.offset;
 		}
-		if (this.right) {
+		if (this.right != null) {
 			this.right.position = value;
 		}
-		if (this.bottom) {
+		if (this.bottom != null) {
 			const t = this.bottom.offset + this.bottom.length;
 			this.bottom.offset = value;
 			this.bottom.length = t - value;
 		}
-		if (this.left) {
+		if (this.left != null) {
 			this.left.position = value;
 		}
 	}
 
 	public equals(other: CrossModel) {
 		return (
-			this.top &&
-			other.top &&
+			this.top != null &&
+			other.top != null &&
 			this.top.equals(other.top) &&
-			this.right &&
-			other.right &&
+			this.right != null &&
+			other.right != null &&
 			this.right.equals(other.right) &&
-			this.bottom &&
-			other.bottom &&
+			this.bottom != null &&
+			other.bottom != null &&
 			this.bottom.equals(other.bottom) &&
-			this.left &&
-			other.left &&
+			this.left != null &&
+			other.left != null &&
 			this.left.equals(other.left)
 		);
 	}
@@ -283,16 +260,11 @@ export function buildModelsFromDeclarations(surfaceDeclarations: SurfaceDeclarat
 		for (let i = 1, l = splits.length; i < l; ++i) {
 			const position = parseFloat(key.substr(1));
 			if (position > 0 && position < 100) {
-				const edge = new EdgeModel(
-					key[0] === "v" ? "vertical" : "horizontal",
-					position,
-					splits[i - 1],
-					splits[i] - splits[i - 1],
-				);
+				const edge = new EdgeModel(key[0] === "v" ? "vertical" : "horizontal", position, splits[i - 1], splits[i] - splits[i - 1]);
 				tmp.push(edge);
 			}
 		}
-		if (tmp.length) {
+		if (tmp.length > 0) {
 			longEdges.push(new LongEdgeModel(tmp));
 			edges.push(...tmp);
 		}
@@ -307,41 +279,25 @@ export function buildModelsFromDeclarations(surfaceDeclarations: SurfaceDeclarat
 
 		// Top
 		for (const edge of edges) {
-			if (
-				edge.axe === "horizontal" &&
-				edge.position === decl.y &&
-				segmentIntersect(edge.offset, edge.offset + edge.length, decl.x, decl.x + decl.width)
-			) {
+			if (edge.axe === "horizontal" && edge.position === decl.y && segmentIntersect(edge.offset, edge.offset + edge.length, decl.x, decl.x + decl.width)) {
 				topEdge.edges.push(edge);
 			}
 		}
 		// Right
 		for (const edge of edges) {
-			if (
-				edge.axe === "vertical" &&
-				edge.position === decl.x + decl.width &&
-				segmentIntersect(edge.offset, edge.offset + edge.length, decl.y, decl.y + decl.height)
-			) {
+			if (edge.axe === "vertical" && edge.position === decl.x + decl.width && segmentIntersect(edge.offset, edge.offset + edge.length, decl.y, decl.y + decl.height)) {
 				rightEdge.edges.push(edge);
 			}
 		}
 		// Bottom
 		for (const edge of edges) {
-			if (
-				edge.axe === "horizontal" &&
-				edge.position === decl.y + decl.height &&
-				segmentIntersect(edge.offset, edge.offset + edge.length, decl.x, decl.x + decl.width)
-			) {
+			if (edge.axe === "horizontal" && edge.position === decl.y + decl.height && segmentIntersect(edge.offset, edge.offset + edge.length, decl.x, decl.x + decl.width)) {
 				bottomEdge.edges.push(edge);
 			}
 		}
 		// Left
 		for (const edge of edges) {
-			if (
-				edge.axe === "vertical" &&
-				edge.position === decl.x &&
-				segmentIntersect(edge.offset, edge.offset + edge.length, decl.y, decl.y + decl.height)
-			) {
+			if (edge.axe === "vertical" && edge.position === decl.x && segmentIntersect(edge.offset, edge.offset + edge.length, decl.y, decl.y + decl.height)) {
 				leftEdge.edges.push(edge);
 			}
 		}
@@ -350,19 +306,16 @@ export function buildModelsFromDeclarations(surfaceDeclarations: SurfaceDeclarat
 			new SurfaceModel(
 				decl.key,
 				decl.props,
-				topEdge.edges.length ? topEdge : undefined,
-				rightEdge.edges.length ? rightEdge : undefined,
-				bottomEdge.edges.length ? bottomEdge : undefined,
-				leftEdge.edges.length ? leftEdge : undefined,
-			),
+				topEdge.edges.length > 0 ? topEdge : undefined,
+				rightEdge.edges.length > 0 ? rightEdge : undefined,
+				bottomEdge.edges.length > 0 ? bottomEdge : undefined,
+				leftEdge.edges.length > 0 ? leftEdge : undefined
+			)
 		);
 	}
 
 	// Build CrossModels from edges
-	const crossMap: Map<
-		string,
-		[EdgeModel | undefined, EdgeModel | undefined, EdgeModel | undefined, EdgeModel | undefined]
-	> = new Map();
+	const crossMap: Map<string, [EdgeModel | undefined, EdgeModel | undefined, EdgeModel | undefined, EdgeModel | undefined]> = new Map();
 	for (let i = 0, l = edges.length; i < l; ++i) {
 		const edge = edges[i];
 		// Left cross
@@ -390,33 +343,21 @@ export function buildModelsFromDeclarations(surfaceDeclarations: SurfaceDeclarat
 	}
 	crosses.push(
 		...Array.from(crossMap.values())
-			.filter(([top, right, bottom, left]) => +!!top + +!!right + +!!bottom + +!!left > 2)
-			.map(([top, right, bottom, left]) => new CrossModel(top, right, bottom, left)),
+			.filter(([top, right, bottom, left]) => +!(top == null) + +!(right == null) + +!(bottom == null) + +!(left == null) > 2)
+			.map(([top, right, bottom, left]) => new CrossModel(top, right, bottom, left))
 	);
 
 	return [surfaces, edges, longEdges, crosses];
 }
 
 export function getEdgeDraggingBounds(edge: EdgeModel, surfaces: SurfaceModel[]) {
-	const left = surfaces.find((s) =>
-		edge.axe === "horizontal"
-			? s.bottomEdge?.edges.includes(edge) ?? false
-			: s.rightEdge?.edges.includes(edge) ?? false,
-	);
-	const right = surfaces.find((s) =>
-		edge.axe === "horizontal"
-			? s.topEdge?.edges.includes(edge) ?? false
-			: s.leftEdge?.edges.includes(edge) ?? false,
-	);
-	if (left && !right) {
-		return edge.axe === "horizontal"
-			? new DOMRect(edge.offset, left.top, edge.length, left.height)
-			: new DOMRect(left.left, edge.offset, left.width, edge.length);
-	} else if (!left && right) {
-		return edge.axe === "horizontal"
-			? new DOMRect(edge.offset, right.top, edge.length, right.height)
-			: new DOMRect(right.left, edge.offset, right.width, edge.length);
-	} else if (left && right) {
+	const left = surfaces.find(s => (edge.axe === "horizontal" ? s.bottomEdge?.edges.includes(edge) ?? false : s.rightEdge?.edges.includes(edge) ?? false));
+	const right = surfaces.find(s => (edge.axe === "horizontal" ? s.topEdge?.edges.includes(edge) ?? false : s.leftEdge?.edges.includes(edge) ?? false));
+	if (left != null && right == null) {
+		return edge.axe === "horizontal" ? new DOMRect(edge.offset, left.top, edge.length, left.height) : new DOMRect(left.left, edge.offset, left.width, edge.length);
+	} else if (left == null && right != null) {
+		return edge.axe === "horizontal" ? new DOMRect(edge.offset, right.top, edge.length, right.height) : new DOMRect(right.left, edge.offset, right.width, edge.length);
+	} else if (left != null && right != null) {
 		return edge.axe === "horizontal"
 			? new DOMRect(edge.offset, left.top, edge.length, left.height + right.height)
 			: new DOMRect(left.left, edge.offset, left.width + right.width, edge.length);
@@ -426,7 +367,7 @@ export function getEdgeDraggingBounds(edge: EdgeModel, surfaces: SurfaceModel[])
 }
 
 export function getLongEdgeDraggingBounds(edgeList: LongEdgeModel, surfaces: SurfaceModel[]) {
-	let { axe, offset, length } = edgeList;
+	const { axe, offset, length } = edgeList;
 	let top = axe === "horizontal" ? -Number.MAX_VALUE : offset;
 	let right = axe === "horizontal" ? offset + length : Number.MAX_VALUE;
 	let bottom = axe === "horizontal" ? Number.MAX_VALUE : offset + length;
@@ -447,10 +388,10 @@ export function getLongEdgeDraggingBounds(edgeList: LongEdgeModel, surfaces: Sur
 }
 
 export function getCrossDraggingBounds(cross: CrossModel) {
-	let top = cross.top?.offset ?? 0;
-	let right = cross.right ? cross.right.offset + cross.right.length : 100;
-	let bottom = cross.bottom ? cross.bottom.offset + cross.bottom.length : 100;
-	let left = cross.left?.offset ?? 0;
+	const top = cross.top?.offset ?? 0;
+	const right = cross.right != null ? cross.right.offset + cross.right.length : 100;
+	const bottom = cross.bottom != null ? cross.bottom.offset + cross.bottom.length : 100;
+	const left = cross.left?.offset ?? 0;
 
 	return new DOMRect(left, top, right - left, bottom - top);
 }

@@ -22,7 +22,9 @@ export class Branch {
 		return this.#reference;
 	}
 
-	iterHistory(options?: { fromHash?: AutoId; abortSignal?: AbortSignal }): AsyncIterableIterator<Commit> {
+	iterHistory(
+		options?: { fromHash?: AutoId; abortSignal?: AbortSignal },
+	): AsyncIterableIterator<Commit> {
 		const fromHash = options?.fromHash ?? this.#reference.commit;
 		return this.workspace.repository.iterHistory(fromHash);
 	}

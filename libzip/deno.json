@@ -7,7 +7,19 @@
 			"deno.web"
 		]
 	},
+	"lint": {
+		"files": {
+			"exclude": [
+				"npm"
+			]
+		}
+	},
 	"fmt": {
+		"files": {
+			"exclude": [
+				"npm"
+			]
+		},
 		"options": {
 			"useTabs": true,
 			"lineWidth": 180

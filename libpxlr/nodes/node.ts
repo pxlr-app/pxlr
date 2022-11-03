@@ -85,7 +85,12 @@ export class UnloadedNode extends Node {
 
 	// deno-lint-ignore require-await
 	static async fromObject({ object }: NodeConstructorOptions): Promise<Node> {
-		return new UnloadedNode(object.hash, object.id, object.kind, object.headers.get("name") ?? "(unnamed)");
+		return new UnloadedNode(
+			object.hash,
+			object.id,
+			object.kind,
+			object.headers.get("name") ?? "(unnamed)",
+		);
 	}
 }
 

@@ -49,7 +49,10 @@ export class DenoFile implements File {
 					controller.close();
 					return;
 				}
-				const chunkSize = Math.min(controller.desiredSize ?? 4 * 1024, size - offset);
+				const chunkSize = Math.min(
+					controller.desiredSize ?? 4 * 1024,
+					size - offset,
+				);
 				const buffer = new Uint8Array(chunkSize);
 				const bytesRead = await this.#file.read(buffer);
 				if (bytesRead === null) {

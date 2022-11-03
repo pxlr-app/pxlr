@@ -26,7 +26,10 @@ export class MemoryFilesystem extends Filesystem {
 		const entries = Array.from(
 			new Set(
 				Array.from(this.entries.keys())
-					.filter((key) => key.substring(0, path.length) === path && key.substring(path.length, path.length + 1) === "/")
+					.filter((key) =>
+						key.substring(0, path.length) === path &&
+						key.substring(path.length, path.length + 1) === "/"
+					)
 					.map((key) => key.substring(path.length + 1).split("/").shift()!),
 			),
 		);
@@ -54,12 +57,16 @@ export class MemoryFilesystem extends Filesystem {
 		return new WritableStream({
 			write(chunk) {
 				if (!(chunk instanceof Uint8Array)) {
-					throw new TypeError(`Expected chunk to be an Uint8Array, got ${chunk}.`);
+					throw new TypeError(
+						`Expected chunk to be an Uint8Array, got ${chunk}.`,
+					);
 				}
 				chunks.push(chunk);
 			},
 			close: () => {
-				const buffer = new Uint8Array(chunks.reduce((size, chunk) => size + chunk.byteLength, 0));
+				const buffer = new Uint8Array(
+					chunks.reduce((size, chunk) => size + chunk.byteLength, 0),
+				);
 				let offset = 0;
 				for (const chunk of chunks) {
 					buffer.set(chunk, offset);

@@ -20,7 +20,9 @@ Deno.test("NoteNode", async (t) => {
 
 	await t.step("handles set content command", () => {
 		const node1 = NoteNode.new("A", "Content");
-		const node2 = node1.executeCommand(node1.setContent("New content")) as NoteNode;
+		const node2 = node1.executeCommand(
+			node1.setContent("New content"),
+		) as NoteNode;
 		assert(node2 !== node1);
 		assertNotEquals(node2.hash, node1.hash);
 		assertEquals(node2.id, node1.id);

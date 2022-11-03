@@ -5,15 +5,19 @@ import { UnstyledMenu, UnstyledMenuItem, UnstyledMenuItemProps } from "./Unstyle
 import { Anchor, AnchorContext, Constraints, HorizontalAlign, VerticalAlign } from "../Anchor";
 import "./Menubar.css";
 
-export type MenubarProps = {
+export interface MenubarProps {
 	ref?: HTMLElement | ((e: HTMLElement) => void);
-};
+}
 
-export const Menubar: ParentComponent<MenubarProps> = (props) => {
+export const Menubar: ParentComponent<MenubarProps> = props => {
 	return (
 		<UnstyledMenu orientation="horizontal">
 			{({ props: innerProps }) => (
-				<nav {...innerProps} ref={props.ref} class="menubar">
+				<nav
+					{...innerProps}
+					ref={props.ref}
+					class="menubar"
+				>
 					<ul class="menubar__list">{props.children}</ul>
 				</nav>
 			)}
@@ -28,9 +32,13 @@ export type MenubarItemProps = Omit<UnstyledMenuItemProps, "children"> & {
 	label: string;
 };
 
-export const MenubarItem: ParentComponent<MenubarItemProps> = (props) => {
+export const MenubarItem: ParentComponent<MenubarItemProps> = props => {
 	return (
-		<UnstyledMenuItem id={props.id} accessKey={props.accessKey} action={props.action}>
+		<UnstyledMenuItem
+			id={props.id}
+			accessKey={props.accessKey}
+			action={props.action}
+		>
 			{({ selected, opened, showAccessKey, props: innerProps }) => {
 				const hasChildren = "children" in props;
 				return (
@@ -42,7 +50,10 @@ export const MenubarItem: ParentComponent<MenubarItemProps> = (props) => {
 						}}
 					>
 						<div class="menubar-item__label">
-							<Show when={props.accessKey} fallback={props.label}>
+							<Show
+								when={props.accessKey}
+								fallback={props.label}
+							>
 								<>
 									{props.label.split(props.accessKey).shift()}
 									<span
@@ -57,7 +68,10 @@ export const MenubarItem: ParentComponent<MenubarItemProps> = (props) => {
 							</Show>
 						</div>
 						<Show when={hasChildren && opened()}>
-							<Anchor constraints={anchorConstraints} class="menubar-item__anchor">
+							<Anchor
+								constraints={anchorConstraints}
+								class="menubar-item__anchor"
+							>
 								{props.children}
 							</Anchor>
 						</Show>

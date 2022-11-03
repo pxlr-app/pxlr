@@ -4,9 +4,17 @@ import { Object } from "../repository/mod.ts";
 import { Node } from "./node.ts";
 import { NodeRegistryEntry } from "./registry.ts";
 
-export const NoteNodeRegistryEntry = new NodeRegistryEntry("note", async ({ object }) => {
-	return new NoteNode(object.hash, object.id, object.headers.get("name") ?? "", await object.text());
-});
+export const NoteNodeRegistryEntry = new NodeRegistryEntry(
+	"note",
+	async ({ object }) => {
+		return new NoteNode(
+			object.hash,
+			object.id,
+			object.headers.get("name") ?? "",
+			await object.text(),
+		);
+	},
+);
 
 export class NoteNode extends Node {
 	#content: string;
@@ -34,9 +42,19 @@ export class NoteNode extends Node {
 				if (command.renameTo === this.name) {
 					return this;
 				}
-				return new NoteNode(autoid(command.target + this.hash), this.id, command.renameTo, this.content);
+				return new NoteNode(
+					autoid(command.target + this.hash),
+					this.id,
+					command.renameTo,
+					this.content,
+				);
 			} else if (command instanceof SetContentCommand) {
-				return new NoteNode(autoid(command.target + this.hash), this.id, this.name, command.newContent);
+				return new NoteNode(
+					autoid(command.target + this.hash),
+					this.id,
+					this.name,
+					command.newContent,
+				);
 			} else if (command instanceof ReplaceNodeCommand) {
 				return command.node;
 			}
@@ -45,7 +63,13 @@ export class NoteNode extends Node {
 	}
 
 	toObject(): Object {
-		return new Object(this.hash, this.id, "note", { name: this.name }, this.content);
+		return new Object(
+			this.hash,
+			this.id,
+			"note",
+			{ name: this.name },
+			this.content,
+		);
 	}
 
 	setContent(newContent: string): SetContentCommand {

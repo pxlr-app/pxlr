@@ -1,9 +1,5 @@
-import { ParentComponent, For, JSX } from "solid-js";
-import {
-	UnstyledSubdividableSurface,
-	UnstyledSubdividableSurfaceData,
-	UnstyledSubdividableSurfaceProps,
-} from "./UnstyledSubdividableSurface";
+import { For, JSX, ParentComponent } from "solid-js";
+import { UnstyledSubdividableSurface, UnstyledSubdividableSurfaceData, UnstyledSubdividableSurfaceProps } from "./UnstyledSubdividableSurface";
 import "./SubdividableSurface.css";
 import { Dynamic } from "solid-js/web";
 
@@ -20,23 +16,29 @@ export const SubdividableSurface = <T,>(props: SubdividableSurfaceProps<T>) => {
 	return (
 		<UnstyledSubdividableSurface {...props}>
 			{({ surfaces, edges, longEdges, crosses, props: surfaceProps }) => (
-				<div class="subdividablesurface" {...surfaceProps}>
+				<div
+					class="subdividablesurface"
+					{...surfaceProps}
+				>
 					<For each={Object.values(surfaces)}>
-						{(surface) => (
+						{surface => (
 							<Surface surface={surface}>
-								<Dynamic component={props.component} {...surface.data.props} />
+								<Dynamic
+									component={props.component}
+									{...surface.data.props}
+								/>
 							</Surface>
 						)}
 					</For>
-					<For each={edges}>{(edge) => <Edge edge={edge} />}</For>
-					<For each={crosses}>{(cross) => <Cross cross={cross} />}</For>
+					<For each={edges}>{edge => <Edge edge={edge} />}</For>
+					<For each={crosses}>{cross => <Cross cross={cross} />}</For>
 				</div>
 			)}
 		</UnstyledSubdividableSurface>
 	);
 };
 
-const Surface: ParentComponent<{ surface: UnstyledSubdividableSurfaceData["surfaces"][0] }> = (props) => {
+const Surface: ParentComponent<{ surface: UnstyledSubdividableSurfaceData["surfaces"][0] }> = props => {
 	return (
 		<div
 			{...props.surface.props}
@@ -68,5 +70,10 @@ const Edge = (props: { edge: UnstyledSubdividableSurfaceData["edges"][0] }) => {
 };
 
 const Cross = (props: { cross: UnstyledSubdividableSurfaceData["crosses"][0] }) => {
-	return <div {...props.cross.props} class="subdividablesurface__cross" />;
+	return (
+		<div
+			{...props.cross.props}
+			class="subdividablesurface__cross"
+		/>
+	);
 };

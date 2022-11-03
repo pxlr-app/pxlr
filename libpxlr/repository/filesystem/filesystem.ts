@@ -1,8 +1,17 @@
 export abstract class Filesystem {
 	abstract exists(path: string, abortSignal?: AbortSignal): Promise<boolean>;
-	abstract list(path: string, abortSignal?: AbortSignal): AsyncIterableIterator<string>;
-	abstract read(path: string, abortSignal?: AbortSignal): Promise<ReadableStream<Uint8Array>>;
-	abstract write(path: string, abortSignal?: AbortSignal): Promise<WritableStream<Uint8Array>>;
+	abstract list(
+		path: string,
+		abortSignal?: AbortSignal,
+	): AsyncIterableIterator<string>;
+	abstract read(
+		path: string,
+		abortSignal?: AbortSignal,
+	): Promise<ReadableStream<Uint8Array>>;
+	abstract write(
+		path: string,
+		abortSignal?: AbortSignal,
+	): Promise<WritableStream<Uint8Array>>;
 }
 
 export class IOError extends Error {

@@ -34,7 +34,9 @@ Deno.test("GroupNode", async (t) => {
 	await t.step("handles remove child command", () => {
 		const node1 = GroupNode.new("A", []);
 		const node2 = GroupNode.new("B", [node1]);
-		const node3 = node2.executeCommand(node2.removeChild(node1.id)) as GroupNode;
+		const node3 = node2.executeCommand(
+			node2.removeChild(node1.id),
+		) as GroupNode;
 		assert(node3 !== node2);
 		assertNotEquals(node3.hash, node2.hash);
 		assertEquals(node3.id, node2.id);
@@ -46,7 +48,9 @@ Deno.test("GroupNode", async (t) => {
 		const node2 = GroupNode.new("B", []);
 		const node3 = GroupNode.new("C", []);
 		const node4 = GroupNode.new("D", [node1, node2, node3]);
-		const node5 = node4.executeCommand(node4.moveChild(node2.id, 2)) as GroupNode;
+		const node5 = node4.executeCommand(
+			node4.moveChild(node2.id, 2),
+		) as GroupNode;
 		assert(node5 !== node4);
 		assertNotEquals(node5.hash, node4.hash);
 		assertEquals(node5.id, node4.id);
@@ -54,7 +58,9 @@ Deno.test("GroupNode", async (t) => {
 		assertEquals(node5.children[0], node1);
 		assertEquals(node5.children[1], node3);
 		assertEquals(node5.children[2], node2);
-		const node6 = node4.executeCommand(node4.moveChild(node2.id, 0)) as GroupNode;
+		const node6 = node4.executeCommand(
+			node4.moveChild(node2.id, 0),
+		) as GroupNode;
 		assert(node6 !== node4);
 		assertNotEquals(node6.hash, node4.hash);
 		assertEquals(node6.id, node4.id);
@@ -83,7 +89,9 @@ Deno.test("GroupNode", async (t) => {
 		assertEquals(child1p.id, child1.id);
 		assertEquals(child1p.name, "NewChild");
 		assert(child2p === child2);
-		const root1pp = root1.executeCommand(new RenameCommand(autoid(), autoid(), "Foo"));
+		const root1pp = root1.executeCommand(
+			new RenameCommand(autoid(), autoid(), "Foo"),
+		);
 		assert(root1pp === root1);
 	});
 

@@ -5,15 +5,19 @@ import { UnstyledMenu, UnstyledMenuItem, UnstyledMenuItemProps } from "./Unstyle
 import { Anchor, AnchorContext, Constraints, HorizontalAlign, VerticalAlign } from "../Anchor";
 import "./Menu.css";
 
-export type MenuProps = {
+export interface MenuProps {
 	ref?: HTMLElement | ((e: HTMLElement) => void);
-};
+}
 
-export const Menu: ParentComponent<MenuProps> = (props) => {
+export const Menu: ParentComponent<MenuProps> = props => {
 	return (
 		<UnstyledMenu orientation="vertical">
 			{({ props: innerProps }) => (
-				<nav {...innerProps} ref={props.ref} class="menu">
+				<nav
+					{...innerProps}
+					ref={props.ref}
+					class="menu"
+				>
 					<div class="menu__wrapper">
 						<ul class="menu__list">{props.children}</ul>
 					</div>
@@ -38,9 +42,13 @@ export type MenuItemProps = Omit<UnstyledMenuItemProps, "children"> & {
 	checked?: boolean;
 };
 
-export const MenuItem: ParentComponent<MenuItemProps> = (props) => {
+export const MenuItem: ParentComponent<MenuItemProps> = props => {
 	return (
-		<UnstyledMenuItem id={props.id} accessKey={props.accessKey} action={props.action}>
+		<UnstyledMenuItem
+			id={props.id}
+			accessKey={props.accessKey}
+			action={props.action}
+		>
 			{({ selected, opened, showAccessKey, props: innerProps }) => {
 				const hasChildren = "children" in props;
 				return (
@@ -58,7 +66,10 @@ export const MenuItem: ParentComponent<MenuItemProps> = (props) => {
 								</Show>
 							</div>
 							<div class="menu-item__label">
-								<Show when={props.accessKey} fallback={props.label}>
+								<Show
+									when={props.accessKey}
+									fallback={props.label}
+								>
 									<>
 										{props.label.split(props.accessKey).shift()}
 										<span
@@ -80,7 +91,10 @@ export const MenuItem: ParentComponent<MenuItemProps> = (props) => {
 							</div>
 						</div>
 						<Show when={hasChildren && opened()}>
-							<Anchor constraints={anchorConstraints} class="menu-item__anchor">
+							<Anchor
+								constraints={anchorConstraints}
+								class="menu-item__anchor"
+							>
 								<NestedMenu>{props.children}</NestedMenu>
 							</Anchor>
 						</Show>
@@ -91,7 +105,7 @@ export const MenuItem: ParentComponent<MenuItemProps> = (props) => {
 	);
 };
 
-const NestedMenu: ParentComponent = (props) => {
+const NestedMenu: ParentComponent = props => {
 	const ctx = useContext(AnchorContext);
 	const transform = () => ctx()?.transform ?? [HorizontalAlign.LEFT, VerticalAlign.TOP];
 	return (
@@ -129,5 +143,10 @@ const anchorConstraints: Constraints = {
 };
 
 export const Separator = () => {
-	return <li tabIndex={-1} class="menu-separator" />;
+	return (
+		<li
+			tabIndex={-1}
+			class="menu-separator"
+		/>
+	);
 };

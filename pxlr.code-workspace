@@ -1,14 +1,26 @@
 {
 	"folders": [
 		{
+			"name": "editor",
+			"path": "editor"
+		},
+		{
+			"name": "libzip",
 			"path": "libzip"
 		},
 		{
+			"name": "libpxlr",
 			"path": "libpxlr"
-		},
-		{
-			"path": "editor"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"explorer.fileNesting.enabled": true,
+		"explorer.fileNesting.expand": false,
+		"explorer.fileNesting.patterns": {
+			"*.tsx": "${capture}.ts, ${capture}.css",
+			"*.ts": "${capture}.test.ts",
+		},
+		"editor.detectIndentation": false,
+		"editor.insertSpaces": false
+	}
 }

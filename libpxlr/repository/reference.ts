@@ -10,7 +10,9 @@ const ReferencePathRegExp = new RegExp(`^([a-z0-9-]+/){1,}[a-z0-9%.+-]+$`, "i");
  * @param value The value to test
  * @returns If value is a ReferencePath
  */
-export function assertReferencePath(value?: unknown): asserts value is ReferencePath {
+export function assertReferencePath(
+	value?: unknown,
+): asserts value is ReferencePath {
 	if (!value || typeof value !== "string" || !ReferencePathRegExp.test(value)) {
 		throw new InvalidReferencePathError(value);
 	}
@@ -58,7 +60,9 @@ export class Reference {
 		await writer.close();
 	}
 
-	static async deserialize(stream: ReadableStream<Uint8Array>): Promise<Reference> {
+	static async deserialize(
+		stream: ReadableStream<Uint8Array>,
+	): Promise<Reference> {
 		const { headers, body } = await deserializeObjectLike(stream);
 		const ref = headers.get("ref") ?? "";
 		headers.delete("ref");

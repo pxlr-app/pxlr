@@ -9,7 +9,12 @@ export class Document {
 	#commit: Commit;
 	#historyRoots: Node[];
 	#historyCursor: number;
-	constructor(workspace: Workspace, reference: Reference | undefined, commit: Commit, rootNode: Node) {
+	constructor(
+		workspace: Workspace,
+		reference: Reference | undefined,
+		commit: Commit,
+		rootNode: Node,
+	) {
 		this.#workspace = workspace;
 		this.#reference = reference;
 		this.#commit = commit;
@@ -38,20 +43,25 @@ export class Document {
 	}
 
 	redoCommand() {
-		this.#historyCursor = Math.min(this.#historyRoots.length - 1, this.#historyCursor + 1);
+		this.#historyCursor = Math.min(
+			this.#historyRoots.length - 1,
+			this.#historyCursor + 1,
+		);
 	}
 
 	getNodeByHash(hash: AutoId): Node | undefined {
 		assertAutoId(hash);
 		if (this.rootNode) {
 			let result: Node | undefined;
-			visit(this.rootNode, { enter(node) {
-				if (node.hash === hash) {
-					result = node;
-					return VisitorResult.Break;
-				}
-				return VisitorResult.Continue;
-			}});
+			visit(this.rootNode, {
+				enter(node) {
+					if (node.hash === hash) {
+						result = node;
+						return VisitorResult.Break;
+					}
+					return VisitorResult.Continue;
+				},
+			});
 			return result;
 		}
 	}
@@ -60,13 +70,15 @@ export class Document {
 		assertAutoId(id);
 		if (this.rootNode) {
 			let result: Node | undefined;
-			visit(this.rootNode, { enter(node) {
-				if (node.id === id) {
-					result = node;
-					return VisitorResult.Break;
-				}
-				return VisitorResult.Continue;
-			}});
+			visit(this.rootNode, {
+				enter(node) {
+					if (node.id === id) {
+						result = node;
+						return VisitorResult.Break;
+					}
+					return VisitorResult.Continue;
+				},
+			});
 			return result;
 		}
 	}
@@ -107,12 +119,21 @@ export class Document {
 				if (oldNodeSet.has(node)) {
 					return VisitorResult.Skip;
 				}
-				writeObjectPromises.push(this.workspace.repository.writeObject(node.toObject()));
+				writeObjectPromises.push(
+					this.workspace.repository.writeObject(node.toObject()),
+				);
 				return VisitorResult.Continue;
-			}
+			},
 		});
 		await Promise.allSettled(writeObjectPromises);
-		const commit = new Commit(autoid(), this.#commit!.hash, newRoot.hash, author, new Date(), message);
+		const commit = new Commit(
+			autoid(),
+			this.#commit!.hash,
+			newRoot.hash,
+			author,
+			new Date(),
+			message,
+		);
 		await this.workspace.repository.writeCommit(commit);
 		if (this.reference) {
 			const reference = new Reference(this.reference.ref, commit.hash);

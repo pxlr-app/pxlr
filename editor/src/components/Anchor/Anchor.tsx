@@ -1,14 +1,4 @@
-import {
-	ParentComponent,
-	createEffect,
-	createMemo,
-	onCleanup,
-	createContext,
-	createSignal,
-	Accessor,
-	onMount,
-	JSX,
-} from "solid-js";
+import { Accessor, createContext, createEffect, createMemo, createSignal, JSX, onCleanup, onMount, ParentComponent } from "solid-js";
 
 export enum VerticalAlign {
 	TOP = "TOP",
@@ -24,10 +14,10 @@ export enum HorizontalAlign {
 
 export type Alignement = [HorizontalAlign, VerticalAlign];
 
-export type Constraints = {
+export interface Constraints {
 	element?: HTMLElement | (() => HTMLElement);
-	origins: { anchor: Alignement; transform: Alignement }[];
-};
+	origins: Array<{ anchor: Alignement; transform: Alignement }>;
+}
 
 export const AnchorContext = createContext<
 	Accessor<
@@ -56,7 +46,7 @@ export type AnchorProps =
 			};
 	  };
 
-export const Anchor: ParentComponent<AnchorProps> = (props) => {
+export const Anchor: ParentComponent<AnchorProps> = props => {
 	let anchor: HTMLDivElement | undefined;
 	let transform: HTMLDivElement | undefined;
 	const [alignment, setAlignment] = createSignal<
@@ -68,9 +58,9 @@ export const Anchor: ParentComponent<AnchorProps> = (props) => {
 	>(undefined);
 
 	const recalc = () => {
-		if (anchor && transform) {
-			let newAnchorOrigin: Alignement | undefined = undefined;
-			let newTransformOrigin: Alignement | undefined = undefined;
+		if (anchor != null && transform != null) {
+			let newAnchorOrigin: Alignement | undefined;
+			let newTransformOrigin: Alignement | undefined;
 
 			if ("anchorOrigin" in props && "transformOrigin" in props) {
 				newAnchorOrigin = props.anchorOrigin;
@@ -80,20 +70,18 @@ export const Anchor: ParentComponent<AnchorProps> = (props) => {
 					throw new Error("Needs at least one constraints.origins.");
 				}
 
-				const anchorParentBounds = anchor.parentElement!.getBoundingClientRect();
+				const anchorParentBounds = anchor.parentElement.getBoundingClientRect();
 				const transformBounds = transform.getBoundingClientRect();
-				const constraintElement = props.constraints.element
-					? getOrRetrieve(props.constraints.element)
-					: document.body.parentElement!;
+				const constraintElement = props.constraints.element != null ? getOrRetrieve(props.constraints.element) : document.body.parentElement;
 				const constraintsBounds = constraintElement.getBoundingClientRect();
 
 				const w = transformBounds.width;
 				const h = transformBounds.height;
 
-				const origins: {
+				const origins: Array<{
 					overflow: number;
 					align: { anchor: Alignement; transform: Alignement };
-				}[] = [];
+				}> = [];
 
 				for (const origin of props.constraints.origins) {
 					let anchorX = anchorParentBounds.left;
@@ -124,10 +112,7 @@ export const Anchor: ParentComponent<AnchorProps> = (props) => {
 					const prospectOverlaps = rectOverlaps(constraintsBounds, prospectBounds);
 					const overflowBounds = rectIntersection(constraintsBounds, prospectBounds);
 
-					const overflow = prospectOverlaps
-						? (overflowBounds.width * overflowBounds.height) /
-						  (prospectBounds.width * prospectBounds.height)
-						: 0;
+					const overflow = prospectOverlaps ? (overflowBounds.width * overflowBounds.height) / (prospectBounds.width * prospectBounds.height) : 0;
 
 					origins.push({
 						overflow,
@@ -141,10 +126,10 @@ export const Anchor: ParentComponent<AnchorProps> = (props) => {
 				newTransformOrigin = origins[0].align.transform;
 			}
 
-			if (newAnchorOrigin && newTransformOrigin) {
+			if (newAnchorOrigin != null && newTransformOrigin != null) {
 				const align = alignment();
 				if (
-					!align ||
+					align == null ||
 					newAnchorOrigin[0] !== align.anchor[0] ||
 					newAnchorOrigin[1] !== align.anchor[1] ||
 					newTransformOrigin[0] !== align.transform[0] ||
@@ -223,7 +208,11 @@ export const Anchor: ParentComponent<AnchorProps> = (props) => {
 	});
 
 	return (
-		<div ref={anchor} class={props.class} classList={props.classList ?? {}}>
+		<div
+			ref={anchor}
+			class={props.class}
+			classList={props.classList ?? {}}
+		>
 			<div ref={transform}>
 				<AnchorContext.Provider value={alignment}>{props.children}</AnchorContext.Provider>
 			</div>
@@ -246,10 +235,5 @@ function rectIntersection(a: DOMRect, b: DOMRect): DOMRect {
 	const right = min(a.right, b.right);
 	const top = max(a.top, b.top);
 	const bottom = min(a.bottom, b.bottom);
-	return new DOMRect(
-		min(left, right),
-		min(top, bottom),
-		max(left, right) - min(left, right),
-		max(top, bottom) - min(top, bottom),
-	);
+	return new DOMRect(min(left, right), min(top, bottom), max(left, right) - min(left, right), max(top, bottom) - min(top, bottom));
 }

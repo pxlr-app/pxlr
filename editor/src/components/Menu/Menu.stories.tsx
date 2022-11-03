@@ -28,7 +28,12 @@ export const Default = () => (
 			keybind="Ctrl+O"
 			action={() => console.log("click openfile")}
 		/>
-		<MenuItem id="openrecent" label="Open Recent" accessKey="R" keybind="Ctrl+Shift+O">
+		<MenuItem
+			id="openrecent"
+			label="Open Recent"
+			accessKey="R"
+			keybind="Ctrl+Shift+O"
+		>
 			<Menu>
 				<MenuItem
 					id="reopen"
@@ -37,11 +42,30 @@ export const Default = () => (
 					keybind="Ctrl+Shift+T"
 					action={() => console.log("click reopen")}
 				/>
-				<MenuItem id="recentfiles" label="Recent Files" accessKey="F">
+				<MenuItem
+					id="recentfiles"
+					label="Recent Files"
+					accessKey="F"
+				>
 					<Menu>
-						<MenuItem id="filea" label="File A" accessKey="A" action={() => console.log("click filea")} />
-						<MenuItem id="fileb" label="File B" accessKey="B" action={() => console.log("click fileb")} />
-						<MenuItem id="filec" label="File C" accessKey="C" action={() => console.log("click filec")} />
+						<MenuItem
+							id="filea"
+							label="File A"
+							accessKey="A"
+							action={() => console.log("click filea")}
+						/>
+						<MenuItem
+							id="fileb"
+							label="File B"
+							accessKey="B"
+							action={() => console.log("click fileb")}
+						/>
+						<MenuItem
+							id="filec"
+							label="File C"
+							accessKey="C"
+							action={() => console.log("click filec")}
+						/>
 					</Menu>
 				</MenuItem>
 
@@ -54,7 +78,13 @@ export const Default = () => (
 			</Menu>
 		</MenuItem>
 		<Separator />
-		<MenuItem id="save" label="Save" accessKey="S" keybind="Ctrl+S" action={() => console.log("click save")} />
+		<MenuItem
+			id="save"
+			label="Save"
+			accessKey="S"
+			keybind="Ctrl+S"
+			action={() => console.log("click save")}
+		/>
 		<MenuItem
 			id="saveas"
 			label="Save As…"
@@ -62,9 +92,19 @@ export const Default = () => (
 			keybind="Ctrl+Shift+S"
 			action={() => console.log("click saveas")}
 		/>
-		<MenuItem id="autosave" label="Auto Save" accessKey="t" checked action={() => console.log("click autosave")} />
+		<MenuItem
+			id="autosave"
+			label="Auto Save"
+			accessKey="t"
+			checked
+			action={() => console.log("click autosave")}
+		/>
 		<Separator />
-		<MenuItem id="preferences" label="Preferences" accessKey="P">
+		<MenuItem
+			id="preferences"
+			label="Preferences"
+			accessKey="P"
+		>
 			<Menu>
 				<MenuItem
 					id="settings"
@@ -81,6 +121,11 @@ export const Default = () => (
 				/>
 			</Menu>
 		</MenuItem>
-		<MenuItem id="useraccount" label="User Account" accessKey="U" action={() => console.log("click useraccount")} />
+		<MenuItem
+			id="useraccount"
+			label="User Account"
+			accessKey="U"
+			action={() => console.log("click useraccount")}
+		/>
 	</Menu>
 );

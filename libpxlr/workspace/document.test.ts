@@ -15,7 +15,14 @@ Deno.test("Document", async (t) => {
 		const note1 = new NoteNode(autoid(), autoid(), "My Note", "...");
 		const root1 = new GroupNode(autoid(), autoid(), "", [note1]);
 		const tree = new Tree(autoid(), autoid(), "group", "", []);
-		const commit = new Commit(autoid(), "", root1.hash, "Test <test@test.local>", new Date(), "init");
+		const commit = new Commit(
+			autoid(),
+			"",
+			root1.hash,
+			"Test <test@test.local>",
+			new Date(),
+			"init",
+		);
 		const reference = new Reference("refs/heads/main", commit.hash);
 		await repository.writeObject(note1.toObject());
 		await repository.writeObject(root1.toObject());
@@ -23,12 +30,17 @@ Deno.test("Document", async (t) => {
 		await repository.writeCommit(commit);
 		await repository.writeReference(reference);
 		const workspace1 = new Workspace({ repository, nodeRegistry });
-		const document1 = await workspace1.checkoutDocumentAtBranch("main", { shallow: false });
+		const document1 = await workspace1.checkoutDocumentAtBranch("main", {
+			shallow: false,
+		});
 		for (let i = 1_000; --i >= 0;) {
 			const note = document1.getNodeById(note1.id)!;
 			document1.executeCommand(note.rename(`My Note ${i}`));
 			if (i % 100 === 0) {
-				await document1.commitChanges("Test <test@test.local>", `Rename My Note ${i}`);
+				await document1.commitChanges(
+					"Test <test@test.local>",
+					`Rename My Note ${i}`,
+				);
 			}
 		}
 		// assertEquals(document1.getNodeById(note1.id)!.name, "My Note 0");
@@ -51,7 +63,9 @@ Deno.test("Document", async (t) => {
 		await repository.flushToFilesystem();
 
 		const workspace2 = new Workspace({ repository, nodeRegistry });
-		const document2 = await workspace2.checkoutDocumentAtBranch("main", { shallow: false });
+		const document2 = await workspace2.checkoutDocumentAtBranch("main", {
+			shallow: false,
+		});
 		const note2 = document2.getNodeById(note1.id);
 		assertEquals(note2?.name, "My Note 0");
 	});

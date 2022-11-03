@@ -53,7 +53,11 @@ export class Object {
 		await writer.write(encoder.encode(`id ${this.id}\n`));
 		await writer.write(encoder.encode(`kind ${this.kind}\n`));
 		for (const [key, value] of this.headers) {
-			await writer.write(encoder.encode(`${encodeURIComponent(key)} ${encodeURIComponent(value)}\n`));
+			await writer.write(
+				encoder.encode(
+					`${encodeURIComponent(key)} ${encodeURIComponent(value)}\n`,
+				),
+			);
 		}
 		await writer.write(encoder.encode(`\n`));
 		if (this.body instanceof ReadableStream) {
@@ -68,7 +72,8 @@ export class Object {
 
 	async arrayBuffer() {
 		if (this.body instanceof ReadableStream) {
-			(this as { body: ArrayBuffer }).body = await new Response(this.body).arrayBuffer();
+			(this as { body: ArrayBuffer }).body = await new Response(this.body)
+				.arrayBuffer();
 		}
 		if (this.body instanceof ArrayBuffer) {
 			return this.body;
@@ -80,7 +85,8 @@ export class Object {
 
 	async text() {
 		if (this.body instanceof ReadableStream) {
-			(this as { body: ArrayBuffer }).body = await new Response(this.body).arrayBuffer();
+			(this as { body: ArrayBuffer }).body = await new Response(this.body)
+				.arrayBuffer();
 		}
 		if (this.body instanceof ArrayBuffer) {
 			return textDecoder.decode(this.body);
@@ -90,7 +96,9 @@ export class Object {
 		throw new TypeError(`Object's body is undefined.`);
 	}
 
-	static async deserialize(stream: ReadableStream<Uint8Array>): Promise<Object> {
+	static async deserialize(
+		stream: ReadableStream<Uint8Array>,
+	): Promise<Object> {
 		const { headers, body } = await deserializeObjectLike(stream);
 		const hash = headers.get("hash") ?? "";
 		headers.delete("hash");
@@ -104,7 +112,9 @@ export class Object {
 	}
 }
 
-export async function deserializeObjectLike(stream: ReadableStream<Uint8Array>) {
+export async function deserializeObjectLike(
+	stream: ReadableStream<Uint8Array>,
+) {
 	const decoder = new TextDecoder();
 	const reader = stream.getReader();
 	const headers = new Map<string, string>();

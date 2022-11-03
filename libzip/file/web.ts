@@ -30,7 +30,9 @@ export class WebFile implements File {
 		if (!this.#fileHandle) {
 			throw new FileClosedError();
 		}
-		const writableStream = await this.#fileHandle.createWritable({ keepExistingData: true });
+		const writableStream = await this.#fileHandle.createWritable({
+			keepExistingData: true,
+		});
 		await writableStream.truncate(length);
 		await writableStream.close();
 	}
@@ -60,7 +62,10 @@ export class WebFile implements File {
 					controller.close();
 					return;
 				}
-				const chunkSize = Math.min(controller.desiredSize ?? 4 * 1024, size - offset);
+				const chunkSize = Math.min(
+					controller.desiredSize ?? 4 * 1024,
+					size - offset,
+				);
 				const blob = file.slice(this.#offset, this.#offset + chunkSize);
 				const arrayBuffer = new Uint8Array(await blob.arrayBuffer());
 				controller.enqueue(arrayBuffer);
@@ -74,8 +79,15 @@ export class WebFile implements File {
 		if (!this.#fileHandle) {
 			throw new FileClosedError();
 		}
-		const writableStream = await this.#fileHandle.createWritable({ keepExistingData: true });
-		await writableStream.write({ type: "write", data: buffer, position: this.#offset, size: buffer.byteLength });
+		const writableStream = await this.#fileHandle.createWritable({
+			keepExistingData: true,
+		});
+		await writableStream.write({
+			type: "write",
+			data: buffer,
+			position: this.#offset,
+			size: buffer.byteLength,
+		});
 		await writableStream.close();
 		this.#offset += buffer.byteLength;
 		return buffer.byteLength;
@@ -85,7 +97,9 @@ export class WebFile implements File {
 		if (!this.#fileHandle) {
 			throw new FileClosedError();
 		}
-		const writableStream = await this.#fileHandle.createWritable({ keepExistingData: true });
+		const writableStream = await this.#fileHandle.createWritable({
+			keepExistingData: true,
+		});
 		//return writableStream;
 		let byteWritten = 0;
 		return new WritableStream({
@@ -95,7 +109,7 @@ export class WebFile implements File {
 			},
 			close: () => {
 				this.#offset += byteWritten;
-			}
+			},
 		});
 	}
 

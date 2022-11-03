@@ -39,14 +39,17 @@ export const Default = () => {
 	]);
 	return (
 		<div style="width: calc(100vw - 2rem); height: calc(100vh - 2rem)">
-			<SubdividableSurface component={Dummy} state={state()} />
+			<SubdividableSurface
+				component={Dummy}
+				state={state()}
+			/>
 		</div>
 	);
 };
 
 export const SurfaceReuse = () => {
 	const [split, setSplit] = createSignal(75);
-	let t = setInterval(() => setSplit(Math.round(50 + Math.random() * 25)), 1000);
+	const t = setInterval(() => setSplit(Math.round(50 + Math.random() * 25)), 1000);
 	onCleanup(() => clearInterval(t));
 
 	return (

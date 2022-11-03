@@ -7,7 +7,13 @@ export enum VisitorResult {
 	Skip = "skip",
 }
 
-export function visit(node: Node, { enter, leave }: { enter: (node: Node) => VisitorResult; leave?: (node: Node) => void }): VisitorResult {
+export function visit(
+	node: Node,
+	{ enter, leave }: {
+		enter: (node: Node) => VisitorResult;
+		leave?: (node: Node) => void;
+	},
+): VisitorResult {
 	const result = enter(node);
 	if (result === VisitorResult.Continue) {
 		if (node instanceof GroupNode) {

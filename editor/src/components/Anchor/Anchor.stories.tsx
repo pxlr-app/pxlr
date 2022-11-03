@@ -51,7 +51,10 @@ export const AnchorTransform = (props: any) => {
 			}}
 		>
 			Anchor
-			<Anchor anchorOrigin={anchorOrigin} transformOrigin={transformOrigin}>
+			<Anchor
+				anchorOrigin={anchorOrigin}
+				transformOrigin={transformOrigin}
+			>
 				<div
 					style={{
 						display: "inline-block",
@@ -71,33 +74,13 @@ AnchorTransform.argTypes = {
 		description: "Anchor alignment",
 		defaultValue: "TopRight",
 		control: { type: "select" },
-		options: [
-			"TopLeft",
-			"TopCenter",
-			"TopRight",
-			"MiddleLeft",
-			"MiddleCenter",
-			"MiddleRight",
-			"BottomLeft",
-			"BottomCenter",
-			"BottomRight",
-		],
+		options: ["TopLeft", "TopCenter", "TopRight", "MiddleLeft", "MiddleCenter", "MiddleRight", "BottomLeft", "BottomCenter", "BottomRight"],
 	},
 	transformOrigin: {
 		description: "Transform alignment",
 		defaultValue: "TopLeft",
 		control: { type: "select" },
-		options: [
-			"TopLeft",
-			"TopCenter",
-			"TopRight",
-			"MiddleLeft",
-			"MiddleCenter",
-			"MiddleRight",
-			"BottomLeft",
-			"BottomCenter",
-			"BottomRight",
-		],
+		options: ["TopLeft", "TopCenter", "TopRight", "MiddleLeft", "MiddleCenter", "MiddleRight", "BottomLeft", "BottomCenter", "BottomRight"],
 	},
 };
 
@@ -176,8 +159,8 @@ export const Constrained = (props: any) => {
 										padding: "4px",
 									}}
 								>
-									{ctx?.anchor.map((a) => a.substr(0, 1)).join("")}
-									{ctx?.transform.map((a) => a.substr(0, 1)).join("")}
+									{ctx?.anchor.map(a => a.substr(0, 1)).join("")}
+									{ctx?.transform.map(a => a.substr(0, 1)).join("")}
 								</div>
 							);
 						}}
@@ -192,16 +175,6 @@ Constrained.argTypes = {
 		description: "Parent alignment",
 		defaultValue: "TopLeft",
 		control: { type: "select" },
-		options: [
-			"TopLeft",
-			"TopCenter",
-			"TopRight",
-			"MiddleLeft",
-			"MiddleCenter",
-			"MiddleRight",
-			"BottomLeft",
-			"BottomCenter",
-			"BottomRight",
-		],
+		options: ["TopLeft", "TopCenter", "TopRight", "MiddleLeft", "MiddleCenter", "MiddleRight", "BottomLeft", "BottomCenter", "BottomRight"],
 	},
 };

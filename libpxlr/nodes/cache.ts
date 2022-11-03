@@ -26,7 +26,9 @@ export class NodeCache {
 	}
 
 	clearReclaimed() {
-		const notReclaimed = Array.from(this.#cache.entries()).filter(([_id, nodeRef]) => !!nodeRef.deref());
+		const notReclaimed = Array.from(this.#cache.entries()).filter((
+			[_id, nodeRef],
+		) => !!nodeRef.deref());
 		this.#cache = new Map(notReclaimed);
 	}
 }

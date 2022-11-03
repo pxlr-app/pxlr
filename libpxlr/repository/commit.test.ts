@@ -4,7 +4,14 @@ import { Commit } from "./commit.ts";
 
 Deno.test("CommitObject", async (t) => {
 	await t.step("serialize and deserialize", async () => {
-		const commit1 = new Commit(autoid(), autoid(), autoid(), "John Doe <jdoe@example.org>", new Date(), "init");
+		const commit1 = new Commit(
+			autoid(),
+			autoid(),
+			autoid(),
+			"John Doe <jdoe@example.org>",
+			new Date(),
+			"init",
+		);
 		const obj1 = commit1.toObject();
 		const commit2 = await Commit.fromObject(obj1);
 		assertEquals(commit2.hash, commit1.hash);

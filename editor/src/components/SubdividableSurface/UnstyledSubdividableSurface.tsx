@@ -1,14 +1,4 @@
-import {
-	createContext,
-	JSX,
-	onCleanup,
-	onMount,
-	useContext,
-	Component,
-	createMemo,
-	createEffect,
-	batch,
-} from "solid-js";
+import { batch, createContext, createEffect, JSX, onCleanup } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
 import {
 	Axe,
@@ -24,13 +14,13 @@ import {
 	SurfaceModels,
 } from "./SubdividableSurfaceModel";
 
-export type SubdividableSurfaceContextData = {};
+export interface SubdividableSurfaceContextData {}
 
 const SubdividableSurfaceContext = createContext<SubdividableSurfaceContextData | undefined>(undefined);
 
-export type SubdividableSurfaceState<T = any> = SurfaceDeclaration<T>[];
+export type SubdividableSurfaceState<T = any> = Array<SurfaceDeclaration<T>>;
 
-export type UnstyledSubdividableSurfaceData<T = any> = {
+export interface UnstyledSubdividableSurfaceData<T = any> {
 	surfaces: {
 		[key: string]: {
 			data: {
@@ -47,7 +37,7 @@ export type UnstyledSubdividableSurfaceData<T = any> = {
 			};
 		};
 	};
-	edges: {
+	edges: Array<{
 		data: {
 			axe: Axe;
 			position: number;
@@ -58,8 +48,8 @@ export type UnstyledSubdividableSurfaceData<T = any> = {
 			style: JSX.CSSProperties;
 			onPointerDown: (e: PointerEvent) => void;
 		};
-	}[];
-	longEdges: {
+	}>;
+	longEdges: Array<{
 		data: {
 			axe: Axe;
 			position: number;
@@ -67,8 +57,8 @@ export type UnstyledSubdividableSurfaceData<T = any> = {
 			length: number;
 		};
 		props: {};
-	}[];
-	crosses: {
+	}>;
+	crosses: Array<{
 		data: {
 			x: number;
 			y: number;
@@ -77,13 +67,13 @@ export type UnstyledSubdividableSurfaceData<T = any> = {
 			style: JSX.CSSProperties;
 			onPointerDown: (e: PointerEvent) => void;
 		};
-	}[];
+	}>;
 	props: {
 		ref: (e: HTMLElement) => void;
 	};
-};
+}
 
-export type UnstyledSubdividableSurfaceProps<T = any> = {
+export interface UnstyledSubdividableSurfaceProps<T = any> {
 	/**
 	 * Surface state
 	 */
@@ -98,7 +88,7 @@ export type UnstyledSubdividableSurfaceProps<T = any> = {
 	 * Render child
 	 */
 	children: (menu: UnstyledSubdividableSurfaceData) => JSX.Element;
-};
+}
 
 // https://github.com/pxlr-app/pxlr.app/blob/e5bad8060182f482392ad811c06d9ea92b8fb23f/app2/client/Layout.svelte
 // https://github.com/pxlr-app/pxlr.app/blob/e5bad8060182f482392ad811c06d9ea92b8fb23f/app2/client/helpers/Layout.ts
@@ -109,7 +99,7 @@ export function UnstyledSubdividableSurface(props: UnstyledSubdividableSurfacePr
 	let models: SurfaceModels | undefined;
 	let dragging = false;
 	let dragBounds = new DOMRect();
-	let dragObject: EdgeModel | LongEdgeModel | CrossModel | undefined = undefined;
+	let dragObject: EdgeModel | LongEdgeModel | CrossModel | undefined;
 
 	const [state, setState] = createStore<UnstyledSubdividableSurfaceData>({
 		surfaces: {},
@@ -130,7 +120,7 @@ export function UnstyledSubdividableSurface(props: UnstyledSubdividableSurfacePr
 		}
 	};
 	const onMove = (e: PointerEvent) => {
-		if (dragging && models && surfaceRef) {
+		if (dragging && models != null && surfaceRef != null) {
 			const bounds = surfaceRef.getBoundingClientRect();
 			const [x, y] = [e.clientX - bounds.x, e.clientY - bounds.y];
 			const [pX, pY] = [(x / bounds.width) * 100, (y / bounds.height) * 100];
@@ -150,12 +140,12 @@ export function UnstyledSubdividableSurface(props: UnstyledSubdividableSurfacePr
 		}
 	};
 	const syncStateFromModels = () => {
-		if (models) {
+		if (models != null) {
 			const [surfaces, edges, longEdges, crosses] = models;
-			console.log(surfaces.map((s) => s.toString()).join(", "));
-			console.log(edges.map((s) => s.toString()).join(", "));
-			console.log(longEdges.map((s) => s.toString()).join(", "));
-			console.log(crosses.map((s) => s.toString()).join(", "));
+			console.log(surfaces.map(s => s.toString()).join(", "));
+			console.log(edges.map(s => s.toString()).join(", "));
+			console.log(longEdges.map(s => s.toString()).join(", "));
+			console.log(crosses.map(s => s.toString()).join(", "));
 			batch(() => {
 				for (const model of surfaces) {
 					setState(
@@ -168,12 +158,7 @@ export function UnstyledSubdividableSurface(props: UnstyledSubdividableSurfacePr
 								y: model.y,
 								width: model.width,
 								height: model.height,
-								hasNeighbors: [
-									!!model.topEdge,
-									!!model.rightEdge,
-									!!model.bottomEdge,
-									!!model.leftEdge,
-								],
+								hasNeighbors: [!(model.topEdge == null), !(model.rightEdge == null), !(model.bottomEdge == null), !(model.leftEdge == null)],
 								props: model.props,
 							},
 							props: {
@@ -184,7 +169,7 @@ export function UnstyledSubdividableSurface(props: UnstyledSubdividableSurfacePr
 									left: model.left + "%",
 								},
 							},
-						} as UnstyledSubdividableSurfaceData["surfaces"][""]),
+						} as UnstyledSubdividableSurfaceData["surfaces"][""])
 					);
 				}
 				for (let i = 0, l = edges.length; i < l; ++i) {
@@ -209,8 +194,8 @@ export function UnstyledSubdividableSurface(props: UnstyledSubdividableSurfacePr
 									console.log("Edge.onPointerDown", e);
 									dragging = true;
 
-									const longEdge = longEdges.find((le) => le.edges.includes(model));
-									if (longEdge) {
+									const longEdge = longEdges.find(le => le.edges.includes(model));
+									if (longEdge != null) {
 										// CTRL break long edge?
 										if (e.ctrlKey) {
 											debugger;
@@ -223,7 +208,7 @@ export function UnstyledSubdividableSurface(props: UnstyledSubdividableSurfacePr
 									}
 								},
 							},
-						} as UnstyledSubdividableSurfaceData["edges"][0]),
+						} as UnstyledSubdividableSurfaceData["edges"][0])
 					);
 				}
 				for (let i = 0, l = longEdges.length; i < l; ++i) {
@@ -239,7 +224,7 @@ export function UnstyledSubdividableSurface(props: UnstyledSubdividableSurfacePr
 								length: model.length,
 							},
 							props: {},
-						} as UnstyledSubdividableSurfaceData["longEdges"][0]),
+						} as UnstyledSubdividableSurfaceData["longEdges"][0])
 					);
 				}
 				for (let i = 0, l = crosses.length; i < l; ++i) {
@@ -264,7 +249,7 @@ export function UnstyledSubdividableSurface(props: UnstyledSubdividableSurfacePr
 									dragBounds = getCrossDraggingBounds(model);
 								},
 							},
-						} as UnstyledSubdividableSurfaceData["crosses"][0]),
+						} as UnstyledSubdividableSurfaceData["crosses"][0])
 					);
 				}
 			});
@@ -286,9 +271,5 @@ export function UnstyledSubdividableSurface(props: UnstyledSubdividableSurfacePr
 		syncStateFromModels();
 	});
 
-	return (
-		<SubdividableSurfaceContext.Provider value={context()}>
-			{props.children(state)}
-		</SubdividableSurfaceContext.Provider>
-	);
+	return <SubdividableSurfaceContext.Provider value={context()}>{props.children(state)}</SubdividableSurfaceContext.Provider>;
 }

@@ -16,20 +16,32 @@ export class ZipFilesystem extends Filesystem {
 			return false;
 		}
 	}
-	async *list(path: string, _abortSignal?: AbortSignal): AsyncIterableIterator<string> {
+	async *list(
+		path: string,
+		_abortSignal?: AbortSignal,
+	): AsyncIterableIterator<string> {
 		const entries = Array.from(
 			new Set(
 				Array.from(this.#zip.iterCentralDirectoryFileHeader())
-					.filter((cdfh) => cdfh.fileName.substring(0, path.length) === path && cdfh.fileName.substring(path.length, path.length + 1) === "/")
+					.filter((cdfh) =>
+						cdfh.fileName.substring(0, path.length) === path &&
+						cdfh.fileName.substring(path.length, path.length + 1) === "/"
+					)
 					.map((cdfh) => cdfh.fileName.substring(path.length + 1).split("/").shift()!),
 			),
 		);
 		yield* entries;
 	}
-	read(path: string, abortSignal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
+	read(
+		path: string,
+		abortSignal?: AbortSignal,
+	): Promise<ReadableStream<Uint8Array>> {
 		return this.#zip.getStream(path, abortSignal);
 	}
-	write(path: string, abortSignal?: AbortSignal): Promise<WritableStream<Uint8Array>> {
+	write(
+		path: string,
+		abortSignal?: AbortSignal,
+	): Promise<WritableStream<Uint8Array>> {
 		return this.#zip.putStream(path, { compressionMethod: 8, abortSignal });
 	}
 }

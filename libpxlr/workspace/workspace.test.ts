@@ -19,7 +19,9 @@ Deno.test("Workspace", async (t) => {
 		const fs = new MemoryFilesystem();
 		const repository = new BufferedRepository(fs);
 		await repository.writeReference(new Reference("refs/heads/main", autoid()));
-		await repository.writeReference(new Reference("refs/heads/fix/hero", autoid()));
+		await repository.writeReference(
+			new Reference("refs/heads/fix/hero", autoid()),
+		);
 		const workspace = new Workspace({ repository, nodeRegistry });
 		const branches = workspace.listBranches();
 		assertEquals((await branches.next()).value, "fix/hero");
@@ -31,7 +33,14 @@ Deno.test("Workspace", async (t) => {
 		const fs = new MemoryFilesystem();
 		const repository = new BufferedRepository(fs);
 		const root = new Tree(autoid(), autoid(), "group", "", []);
-		const commit = new Commit(autoid(), "", root.hash, "Test <test@test.local>", new Date(), "");
+		const commit = new Commit(
+			autoid(),
+			"",
+			root.hash,
+			"Test <test@test.local>",
+			new Date(),
+			"",
+		);
 		const reference = new Reference("refs/heads/main", commit.hash);
 		await repository.writeTree(root);
 		await repository.writeCommit(commit);
@@ -47,7 +56,14 @@ Deno.test("Workspace", async (t) => {
 		const note1 = new NoteNode(autoid(), autoid(), "My Note", "...");
 		const root1 = new GroupNode(autoid(), autoid(), "", [note1]);
 		const tree = new Tree(autoid(), autoid(), "group", "", []);
-		const commit = new Commit(autoid(), "", root1.hash, "Test <test@test.local>", new Date(), "");
+		const commit = new Commit(
+			autoid(),
+			"",
+			root1.hash,
+			"Test <test@test.local>",
+			new Date(),
+			"",
+		);
 		const reference = new Reference("refs/heads/main", commit.hash);
 		await repository.writeObject(note1.toObject());
 		await repository.writeObject(root1.toObject());
@@ -60,7 +76,9 @@ Deno.test("Workspace", async (t) => {
 		const note2 = document1.getNodeByHash(note1.hash);
 		assertEquals(note2?.hash, note1.hash);
 		assertEquals(note2?.id, note1.id);
-		const document2 = await workspace.checkoutDocumentAtReference(reference.ref);
+		const document2 = await workspace.checkoutDocumentAtReference(
+			reference.ref,
+		);
 		assertEquals(document2.commit.hash, commit.hash);
 		const note3 = document2.getNodeByHash(note1.hash);
 		assertEquals(note3?.hash, note1.hash);
