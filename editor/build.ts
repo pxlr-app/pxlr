@@ -65,6 +65,7 @@ const dev = new Command()
 			...baseBuildOptions,
 			minify: false,
 			write: false,
+			sourcemap: true,
 			watch: {
 				onRebuild(error, newResult) {
 					if (error) {
