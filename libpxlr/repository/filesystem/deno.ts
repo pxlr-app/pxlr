@@ -21,8 +21,8 @@ export class DenoFilesystem extends Filesystem {
 		}
 	}
 
-	async *list(path: string) {
-		for await (const entry of Deno.readDir(join(this.root, path))) {
+	async *list(prefix: string) {
+		for await (const entry of Deno.readDir(join(this.root, prefix))) {
 			yield entry.name;
 		}
 	}

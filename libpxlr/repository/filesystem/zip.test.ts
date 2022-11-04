@@ -1,6 +1,7 @@
 import { assertEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
 import { ZipFilesystem } from "./zip.ts";
-import { DenoFile, Zip } from "../../../libzip/mod.ts";
+import { Zip } from "../../../libzip/mod.ts";
+import { DenoFile } from "../../../libzip/file/deno.ts";
 
 Deno.test("ZipFilesystem", async (t) => {
 	const textEncoder = new TextEncoder();
@@ -19,14 +20,18 @@ Deno.test("ZipFilesystem", async (t) => {
 			await zip.open();
 			const zipfs = new ZipFilesystem(zip);
 
-			const stream = await zipfs.write("README.md");
+			const stream = await zipfs.write("refs/heads/README.md");
 			const writer = stream.getWriter();
 			await writer.write(textEncoder.encode("# Hello World"));
 			await writer.close();
 
-			// for await (const path of zipfs.list("")) {
-			// 	console.log(path);
-			// }
+			const listIter = zipfs.list("refs/heads");
+			assertEquals((await listIter.next()).value, "README.md");
+			assertEquals((await listIter.next()).done, true);
+
+			const listIter2 = zipfs.list("");
+			assertEquals((await listIter2.next()).value, "refs");
+			assertEquals((await listIter2.next()).done, true);
 
 			await zip.close();
 			await denoFile.close();
@@ -42,7 +47,7 @@ Deno.test("ZipFilesystem", async (t) => {
 			const zip = new Zip(denoFile);
 			await zip.open();
 
-			const readableContent = textDecoder.decode(await zip.get("README.md"));
+			const readableContent = textDecoder.decode(await zip.get("refs/heads/README.md"));
 			assertEquals(readableContent, "# Hello World");
 
 			await zip.close();

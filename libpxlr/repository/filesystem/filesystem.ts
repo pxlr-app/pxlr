@@ -1,7 +1,7 @@
 export abstract class Filesystem {
 	abstract exists(path: string, abortSignal?: AbortSignal): Promise<boolean>;
 	abstract list(
-		path: string,
+		prefix: string,
 		abortSignal?: AbortSignal,
 	): AsyncIterableIterator<string>;
 	abstract read(

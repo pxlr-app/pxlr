@@ -22,16 +22,19 @@ export class MemoryFilesystem extends Filesystem {
 		return true;
 	}
 
-	async *list(path: string) {
+	async *list(prefix: string) {
 		const entries = Array.from(
-			new Set(
-				Array.from(this.entries.keys())
-					.filter((key) =>
-						key.substring(0, path.length) === path &&
-						key.substring(path.length, path.length + 1) === "/"
-					)
-					.map((key) => key.substring(path.length + 1).split("/").shift()!),
-			),
+			Array.from(this.entries.keys())
+				.reduce((list, p) => {
+					if (prefix !== "") {
+						if (p.substring(0, prefix.length + 1) === prefix + "/") {
+							list.add(p.substring(prefix.length + 1).split("/").at(0)!);
+						}
+					} else {
+						list.add(p.split("/").at(0)!);
+					}
+					return list;
+				}, new Set<string>()),
 		);
 		entries.sort();
 		yield* entries;

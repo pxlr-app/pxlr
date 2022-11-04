@@ -17,19 +17,23 @@ export class ZipFilesystem extends Filesystem {
 		}
 	}
 	async *list(
-		path: string,
+		prefix: string,
 		_abortSignal?: AbortSignal,
 	): AsyncIterableIterator<string> {
 		const entries = Array.from(
-			new Set(
-				Array.from(this.#zip.iterCentralDirectoryFileHeader())
-					.filter((cdfh) =>
-						cdfh.fileName.substring(0, path.length) === path &&
-						cdfh.fileName.substring(path.length, path.length + 1) === "/"
-					)
-					.map((cdfh) => cdfh.fileName.substring(path.length + 1).split("/").shift()!),
-			),
+			Array.from(this.#zip.iterCentralDirectoryFileHeader())
+				.reduce((list, cdfh) => {
+					if (prefix !== "") {
+						if (cdfh.fileName.substring(0, prefix.length + 1) === prefix + "/") {
+							list.add(cdfh.fileName.substring(prefix.length + 1).split("/").at(0)!);
+						}
+					} else {
+						list.add(cdfh.fileName.split("/").at(0)!);
+					}
+					return list;
+				}, new Set<string>()),
 		);
+		entries.sort();
 		yield* entries;
 	}
 	read(
