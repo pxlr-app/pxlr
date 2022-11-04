@@ -1,5 +1,8 @@
 import { Filesystem } from "./filesystem.ts";
 
+// deno-lint-ignore no-explicit-any
+type FileSystemDirectoryHandle = any;
+
 export class WebFilesystem extends Filesystem {
 	#folderHandle: FileSystemDirectoryHandle | undefined;
 	constructor(

@@ -53,22 +53,22 @@ Deno.test("Workspace", async (t) => {
 	});
 
 	await t.step("checkoutDocument", async () => {
-		const tmpFile = await Deno.makeTempFile({ suffix: ".zip" });
-		console.log(tmpFile);
-		const fsFile = await Deno.open(tmpFile, {
-			create: true,
-			read: true,
-			write: true,
-			truncate: false,
-		});
-		const denoFile = new DenoFile(fsFile);
-		const zip = new Zip(denoFile);
-		await zip.open();
-		const fs = new ZipFilesystem(zip);
-		//const fs = new MemoryFilesystem();
+		// const tmpFile = await Deno.makeTempFile({ suffix: ".zip" });
+		// console.log(tmpFile);
+		// const fsFile = await Deno.open(tmpFile, {
+		// 	create: true,
+		// 	read: true,
+		// 	write: true,
+		// 	truncate: false,
+		// });
+		// const denoFile = new DenoFile(fsFile);
+		// const zip = new Zip(denoFile);
+		// await zip.open();
+		// const fs = new ZipFilesystem(zip);
+		const fs = new MemoryFilesystem();
 		const repository = new BufferedRepository(fs);
-		const note1 = new NoteNode(autoid(), autoid(), "My Note", "...");
-		const root1 = new GroupNode(autoid(), autoid(), "", [note1]);
+		const note1 = NoteNode.new("My Note", "...");
+		const root1 = GroupNode.new("", [note1]);
 		const tree = new Tree(autoid(), autoid(), "group", "", []);
 		const commit = new Commit(
 			autoid(),
@@ -103,9 +103,9 @@ Deno.test("Workspace", async (t) => {
 		assertEquals(note4?.hash, note1.hash);
 		assertEquals(note4?.id, note1.id);
 
-		await repository.flushToFilesystem();
-		await zip.close();
-		await denoFile.close();
-		fsFile.close();
+		// await repository.flushToFilesystem();
+		// await zip.close();
+		// await denoFile.close();
+		// fsFile.close();
 	});
 });

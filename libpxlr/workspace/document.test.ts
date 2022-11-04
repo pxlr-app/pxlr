@@ -12,8 +12,8 @@ Deno.test("Document", async (t) => {
 	await t.step("executeCommand", async () => {
 		const fs = new MemoryFilesystem();
 		const repository = new BufferedRepository(fs);
-		const note1 = new NoteNode(autoid(), autoid(), "My Note", "...");
-		const root1 = new GroupNode(autoid(), autoid(), "", [note1]);
+		const note1 = NoteNode.new("My Note", "...");
+		const root1 = GroupNode.new("", [note1]);
 		const tree = new Tree(autoid(), autoid(), "group", "", []);
 		const commit = new Commit(
 			autoid(),
