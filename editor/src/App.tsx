@@ -1,7 +1,7 @@
 import type { Component } from "solid-js";
 import { Menu, Menubar, MenubarItem, MenuItem, Separator } from "./components/Menu";
 import { WebFile, Zip } from "libzip";
-import { ZipFilesystem, BufferedRepository, Workspace, NodeRegistry, NoteNodeRegistryEntry, GroupNodeRegistryEntry, WebFilesystem } from "libpxlr";
+import { ZipFilesystem, BufferedRepository, Workspace, NodeRegistry, NoteNodeRegistryEntry, GroupNodeRegistryEntry, WebFilesystem, visit, VisitorResult, AutoId } from "libpxlr";
 
 // const App: Component = () => {
 //   const [state, setState] = createSignal([
@@ -80,6 +80,17 @@ const App: Component = () => {
 		const doc = await workspace.checkoutDocumentAtBranch("main");
 		console.timeEnd("checkout from file");
 		console.log(doc);
+		let parents: AutoId[] = [];
+		visit(doc.rootNode, {
+			enter(node) {
+				console.log(node.id, node.kind, parents, node.name);
+				parents.push(node.id);
+				return VisitorResult.Continue;
+			},
+			leave(_) {
+				parents.pop();
+			}
+		});
 		await zip.close();
 	};
 

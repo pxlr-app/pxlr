@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-	"fmt": "prettier --write src",
+    "fmt": "prettier --write src",
     "postinstall": "deno run -A --unstable ../libzip/build.ts && deno run -A --unstable ../libpxlr/build.ts"
   },
   "devDependencies": {
@@ -23,6 +23,8 @@
   },
   "dependencies": {
     "@fortawesome/free-solid-svg-icons": "^6.2.0",
+    "@tanstack/solid-table": "^8.5.22",
+    "@tanstack/solid-virtual": "^3.0.0-beta.18",
     "libpxlr": "file:../libpxlr/npm",
     "libzip": "file:../libzip/npm",
     "solid-fa": "^0.1.0",
