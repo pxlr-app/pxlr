@@ -70,10 +70,10 @@ export const Anchor: ParentComponent<AnchorProps> = props => {
 					throw new Error("Needs at least one constraints.origins.");
 				}
 
-				const anchorParentBounds = anchor.parentElement.getBoundingClientRect();
+				const anchorParentBounds = anchor.parentElement?.getBoundingClientRect() ?? new DOMRect();
 				const transformBounds = transform.getBoundingClientRect();
 				const constraintElement = props.constraints.element != null ? getOrRetrieve(props.constraints.element) : document.body.parentElement;
-				const constraintsBounds = constraintElement.getBoundingClientRect();
+				const constraintsBounds = constraintElement?.getBoundingClientRect() ?? new DOMRect();
 
 				const w = transformBounds.width;
 				const h = transformBounds.height;
