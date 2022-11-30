@@ -1,7 +1,7 @@
 import type { Component } from "solid-js";
 import { Menu, Menubar, MenubarItem, MenuItem, Separator } from "./components/Menu";
-import { WebFile, Zip } from "libzip";
-import { ZipFilesystem, BufferedRepository, Workspace, NodeRegistry, NoteNodeRegistryEntry, GroupNodeRegistryEntry, WebFilesystem, visit, VisitorResult, AutoId } from "libpxlr";
+import { WebFile, Zip } from "../../libzip/mod";
+import { ZipFilesystem, BufferedRepository, Workspace, NodeRegistry, NoteNodeRegistryEntry, GroupNodeRegistryEntry, WebFilesystem, visit, VisitorResult, AutoId } from "../../libpxlr/mod";
 
 // const App: Component = () => {
 //   const [state, setState] = createSignal([
