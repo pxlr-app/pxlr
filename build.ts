@@ -208,7 +208,7 @@ await new Command()
 		console.log("Done.");
 		Deno.exit(0);
 	})
-	.command("dev", "Launch dev serveur")
+	.command("dev", "Launch dev server")
 	.option('-p, --port <port:number>', "The port number", { default: 8000 })
 	.action(({ port }) => dev(port))
 	.parse(Deno.args)
