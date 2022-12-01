@@ -1,8 +1,7 @@
 {
 	"tasks": {
-		"dev": "deno run -A build.ts --watch",
-		"build": "deno run -A build.ts",
-		"serve": "deno run --allow-net --allow-read https://deno.land/std@0.157.0/http/file_server.ts dist/"
+		"dev": "deno run -A build.ts dev",
+		"build": "deno run -A build.ts build"
 	},
 	"compilerOptions": {
 		"jsxFactory": "h",
