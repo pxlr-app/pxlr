@@ -87,7 +87,7 @@ async function dev(port: number) {
 	const subscribers = new Set<WebSocket>();
 
 	console.log(ansi.clearScreen());
-	console.log(`  ${colors.green(colors.bold(`PlusVITE`)+` v0.0.0`)}  ${colors.dim('ready in')} ${(performance.now() - startTime).toFixed(0)}ms`);
+	console.log(`  ${colors.green(colors.bold(`PetiteVITE`)+` v0.0.0`)}  ${colors.dim('ready in')} ${(performance.now() - startTime).toFixed(0)}ms`);
 	console.log(``);
 	console.log(`  ${colors.green('➜')}  ${colors.bold('Local')}: ${colors.blue(`http://localhost:${port}/`)}`);
 	console.log(``);
@@ -202,9 +202,9 @@ await new Command()
 	.action(async () => {
 		const timeStart = performance.now();
 		console.log(ansi.clearScreen());
-		console.log(`${colors.green(colors.bold(`PlusVITE`)+` v0.0.0`)} ${colors.blue('building for production...')}`);
+		console.log(`${colors.green(colors.bold(`PetiteVITE`)+` v0.0.0`)} ${colors.blue('building for production...')}`);
 		const result = await build();
-		console.log(colors.green('✓')+colors.dim(` ${Object.keys(result.metafile!.inputs).length + 2} modules transformed in ${(performance.now() - timeStart).toFixed(0)}ms.`));
+		console.log(colors.green('✓')+colors.dim(` ${Object.keys(result.metafile!.inputs).length} modules transformed in ${(performance.now() - timeStart).toFixed(0)}ms.`));
 		const outouts: { [path: string]: { bytes: number }} = result.metafile!.outputs;
 		outouts['dist/index.html'] = { bytes: (await Deno.stat(join(Deno.cwd(), 'dist/index.html'))).size };
 		outouts['dist/index.css'] = { bytes: (await Deno.stat(join(Deno.cwd(), 'dist/index.css'))).size };
