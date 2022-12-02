@@ -1,6 +1,17 @@
-import { Fragment, h, render } from "https://esm.sh/preact@10.11.0";
+import { Fragment, h, render } from "https://esm.sh/preact@10.11.3";
 import { WebFile, Zip } from "../libzip/mod.ts";
-import { ZipFilesystem, BufferedRepository, Workspace, NodeRegistry, NoteNodeRegistryEntry, GroupNodeRegistryEntry, WebFilesystem, visit, VisitorResult, AutoId } from "../libpxlr/mod.ts";
+import {
+	AutoId,
+	BufferedRepository,
+	GroupNodeRegistryEntry,
+	NodeRegistry,
+	NoteNodeRegistryEntry,
+	visit,
+	VisitorResult,
+	WebFilesystem,
+	Workspace,
+	ZipFilesystem,
+} from "../libpxlr/mod.ts";
 import { Anchor, HorizontalAlign, VerticalAlign } from "./components/Anchor/Anchor.tsx";
 
 function App() {
@@ -48,7 +59,7 @@ function App() {
 		const doc = await workspace.checkoutDocumentAtBranch("main");
 		console.timeEnd("checkout from file");
 		console.log(doc);
-		let parents: AutoId[] = [];
+		const parents: AutoId[] = [];
 		visit(doc.rootNode, {
 			enter(node) {
 				console.log(node.id, node.kind, parents, node.name);
@@ -57,7 +68,7 @@ function App() {
 			},
 			leave(_) {
 				parents.pop();
-			}
+			},
 		});
 		await zip.close();
 	};
@@ -91,7 +102,7 @@ function App() {
 		const doc = await workspace.checkoutDocumentAtBranch("main");
 		console.timeEnd("checkout from folder");
 		console.log(doc);
-		let parents: AutoId[] = [];
+		const parents: AutoId[] = [];
 		visit(doc.rootNode, {
 			enter(node) {
 				console.log(node.id, node.kind, parents, node.name);
@@ -100,19 +111,33 @@ function App() {
 			},
 			leave(_) {
 				parents.pop();
-			}
+			},
 		});
 	};
 
-	return <div class="flex flex-row text-white">
-		<div class="block">
-			<button onClick={e => { openFile(); }}>Open File</button>
-			<button onClick={e => { openFolder(); }}>Open Folder</button>
+	return (
+		<div class="flex flex-row text-white">
+			<div class="block">
+				<button
+					onClick={(e) => {
+						openFile();
+					}}
+				>
+					Open File
+				</button>
+				<button
+					onClick={(e) => {
+						openFolder();
+					}}
+				>
+					Open Folder
+				</button>
+			</div>
+			<div class="block relative">
+				<Anchor anchorOrigin={[HorizontalAlign.RIGHT, VerticalAlign.BOTTOM]} transformOrigin={[HorizontalAlign.LEFT, VerticalAlign.TOP]}>FooBar</Anchor>
+			</div>
 		</div>
-		<div class="block relative">
-			<Anchor anchorOrigin={[HorizontalAlign.RIGHT, VerticalAlign.BOTTOM]} transformOrigin={[HorizontalAlign.LEFT, VerticalAlign.TOP]}>FooBar</Anchor>
-		</div>
-	</div>;
+	);
 }
 
 render(App(), document.getElementById("root")!);

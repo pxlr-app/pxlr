@@ -1,4 +1,4 @@
-import { h, Fragment, Ref, FunctionComponent } from "https://esm.sh/preact@10.11.0";
+import { Fragment, FunctionComponent, h, Ref } from "https://esm.sh/preact@10.11.3";
 import { UnstyledMenu, UnstyledMenuItem, UnstyledMenuItemProps } from "./UnstyledMenu.tsx";
 import { Anchor, Constraints, HorizontalAlign, VerticalAlign } from "../Anchor/mod.ts";
 
@@ -6,7 +6,7 @@ export interface MenubarProps {
 	ref?: Ref<HTMLElement>;
 }
 
-export const Menubar: FunctionComponent<MenubarProps> = props => {
+export const Menubar: FunctionComponent<MenubarProps> = (props) => {
 	return (
 		<UnstyledMenu orientation="horizontal">
 			{({ props: innerProps }) => (
@@ -29,7 +29,7 @@ export type MenubarItemProps = Omit<UnstyledMenuItemProps<HTMLLIElement>, "child
 	label: string;
 };
 
-export const MenubarItem: FunctionComponent<MenubarItemProps> = props => {
+export const MenubarItem: FunctionComponent<MenubarItemProps> = (props) => {
 	return (
 		<UnstyledMenuItem<HTMLLIElement>
 			id={props.id}
@@ -45,24 +45,27 @@ export const MenubarItem: FunctionComponent<MenubarItemProps> = props => {
 					>
 						<div class="menubar-item__label">
 							{!props.accessKey && props.label}
-							{props.accessKey && <>
-								{props.label.split(props.accessKey).shift()}
-								<span
-									class={showAccessKey.value ? "menubar-item__label--accesskey" : ""}
-								>
-									{props.accessKey}
-								</span>
-								{props.label.split(props.accessKey).slice(1).join(props.accessKey)}
-							</>}
+							{props.accessKey && (
+								<>
+									{props.label.split(props.accessKey).shift()}
+									<span
+										class={showAccessKey.value ? "menubar-item__label--accesskey" : ""}
+									>
+										{props.accessKey}
+									</span>
+									{props.label.split(props.accessKey).slice(1).join(props.accessKey)}
+								</>
+							)}
 						</div>
-						{hasChildren && opened.value && 
-							<Anchor
-								constraints={anchorConstraints}
-								class="menubar-item__anchor"
-							>
-								{props.children}
-							</Anchor>
-						}
+						{hasChildren && opened.value &&
+							(
+								<Anchor
+									constraints={anchorConstraints}
+									class="menubar-item__anchor"
+								>
+									{props.children}
+								</Anchor>
+							)}
 					</li>
 				);
 			}}

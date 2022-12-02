@@ -1,6 +1,6 @@
-import { h, createContext, Ref, FunctionComponent, ComponentChildren } from "https://esm.sh/preact@10.11.0";
-import { useState, useEffect, useRef, useContext } from "https://esm.sh/preact@10.11.0/hooks";
-import { useSignal, effect, Signal, batch, computed } from "https://esm.sh/@preact/signals@1.1.2?deps=preact@10.11.3";
+import { ComponentChildren, createContext, FunctionComponent, h, Ref } from "https://esm.sh/preact@10.11.3";
+import { useContext, useEffect, useRef, useState } from "https://esm.sh/preact@10.11.3/hooks?dep=preact@10.11.3";
+import { batch, computed, effect, Signal, useSignal } from "https://esm.sh/@preact/signals@1.1.2?dep=preact@10.11.3";
 import { Alignement, AnchorContext, VerticalAlign } from "../Anchor/mod.ts";
 import { createRef } from "https://esm.sh/v99/preact@10.11.3/src/index.d.ts";
 
@@ -80,8 +80,7 @@ export const UnstyledMenu = (props: UnstyledMenuProps) => {
 		},
 	};
 
-	const rootContext =
-		useContext(RootMenuContext) ??
+	const rootContext = useContext(RootMenuContext) ??
 		(() => {
 			const showAccessKey = useSignal(false);
 			const navigationInput = useSignal<NavigationDevice>("pointer");
@@ -162,7 +161,7 @@ export const UnstyledMenu = (props: UnstyledMenuProps) => {
 					});
 				} else if (!menuContext.opened.value) {
 					const selected = menuContext.selected.value;
-					let selectedIdx = items.findIndex(p => p.id === selected);
+					let selectedIdx = items.findIndex((p) => p.id === selected);
 
 					// Down
 					if ((props.orientation === "vertical" && e.code === "ArrowDown") || (props.orientation === "horizontal" && e.code === "ArrowRight")) {
@@ -285,7 +284,7 @@ export interface UnstyledMenuItemProps<Item extends HTMLElement> {
 	children: (item: UnstyledMenuItemData<Item>) => ComponentChildren;
 }
 
-export const UnstyledMenuItem = <Item extends HTMLElement,>(props: UnstyledMenuItemProps<Item>) => {
+export const UnstyledMenuItem = <Item extends HTMLElement>(props: UnstyledMenuItemProps<Item>) => {
 	const path = useContext(PathContext).concat([props.id]);
 	const fullpath = "/" + path.join("/") + "/";
 
@@ -315,7 +314,7 @@ export const UnstyledMenuItem = <Item extends HTMLElement,>(props: UnstyledMenuI
 		} else if (menuItemRef.current === document.activeElement) {
 			menuItemRef.current?.blur();
 		}
-	})
+	});
 
 	const data: UnstyledMenuItemData<Item> = {
 		showAccessKey: rootContext.showAccessKey,

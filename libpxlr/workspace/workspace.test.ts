@@ -1,10 +1,8 @@
 import { assertEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
-import { BufferedRepository, Commit, MemoryFilesystem, Reference, Tree, ZipFilesystem } from "../repository/mod.ts";
+import { BufferedRepository, Commit, MemoryFilesystem, Reference, Tree } from "../repository/mod.ts";
 import { GroupNode, GroupNodeRegistryEntry, NodeRegistry, NoteNode, NoteNodeRegistryEntry } from "../nodes/mod.ts";
 import { Workspace } from "./workspace.ts";
 import { autoid } from "../autoid.ts";
-import { DenoFile } from "../../libzip/file/deno.ts";
-import { Zip } from "../../libzip/zip.ts";
 
 const nodeRegistry = new NodeRegistry();
 nodeRegistry.registerNodeConstructor(NoteNodeRegistryEntry);

@@ -1,6 +1,6 @@
-import { h, Fragment, Ref, FunctionComponent } from "https://esm.sh/preact@10.11.0";
-import { useState, useEffect, useRef, useContext } from "https://esm.sh/preact@10.11.0/hooks";
-import { useSignal, effect, Signal, batch, computed } from "https://esm.sh/@preact/signals@1.1.2?deps=preact@10.11.3";
+import { Fragment, FunctionComponent, h, Ref } from "https://esm.sh/preact@10.11.3";
+import { useContext, useEffect, useRef, useState } from "https://esm.sh/preact@10.11.3/hooks?dep=preact@10.11.3";
+import { batch, computed, effect, Signal, useSignal } from "https://esm.sh/@preact/signals@1.1.2?dep=preact@10.11.3";
 import { faCheck, faChevronRight } from "https://esm.sh/@fortawesome/free-solid-svg-icons@6.2.1";
 import { FontAwesomeIcon } from "https://esm.sh/@fortawesome/react-fontawesome@0.2.0";
 import { UnstyledMenu, UnstyledMenuItem, UnstyledMenuItemProps } from "./UnstyledMenu.tsx";
@@ -10,7 +10,7 @@ export interface MenuProps {
 	ref?: Ref<HTMLElement>;
 }
 
-export const Menu: FunctionComponent<MenuProps> = props => {
+export const Menu: FunctionComponent<MenuProps> = (props) => {
 	return (
 		<UnstyledMenu orientation="vertical">
 			{({ props: innerProps }) => (
@@ -43,7 +43,7 @@ export type MenuItemProps = Omit<UnstyledMenuItemProps<HTMLLIElement>, "children
 	checked?: boolean;
 };
 
-export const MenuItem: FunctionComponent<MenuItemProps> = props => {
+export const MenuItem: FunctionComponent<MenuItemProps> = (props) => {
 	return (
 		<UnstyledMenuItem<HTMLLIElement>
 			id={props.id}
@@ -60,12 +60,12 @@ export const MenuItem: FunctionComponent<MenuItemProps> = props => {
 						<div class="menu-item__wrapper">
 							<div class="menu-item__icon">
 								{props.checked &&
-									<FontAwesomeIcon icon={faCheck} />
-								}
+									<FontAwesomeIcon icon={faCheck} />}
 							</div>
 							<div class="menu-item__label">
 								{!props.accessKey && props.label}
-								{props.accessKey && <>
+								{props.accessKey && (
+									<>
 										{props.label.split(props.accessKey).shift()}
 										<span
 											class={showAccessKey.value ? "menu-item__label--accesskey" : ""}
@@ -74,23 +74,23 @@ export const MenuItem: FunctionComponent<MenuItemProps> = props => {
 										</span>
 										{props.label.split(props.accessKey).slice(1).join(props.accessKey)}
 									</>
-			}
+								)}
 							</div>
 							<div class="menu-item__keybind">{props.keybind}</div>
 							<div class="menu-item__icon">
-								{hasChildren && 
-									<FontAwesomeIcon icon={faChevronRight} />
-			}
+								{hasChildren &&
+									<FontAwesomeIcon icon={faChevronRight} />}
 							</div>
 						</div>
-						{hasChildren && opened.value && 
-							<Anchor
-								constraints={anchorConstraints}
-								class="menu-item__anchor"
-							>
-								<NestedMenu>{props.children}</NestedMenu>
-							</Anchor>
-			}
+						{hasChildren && opened.value &&
+							(
+								<Anchor
+									constraints={anchorConstraints}
+									class="menu-item__anchor"
+								>
+									<NestedMenu>{props.children}</NestedMenu>
+								</Anchor>
+							)}
 					</li>
 				);
 			}}
@@ -98,12 +98,14 @@ export const MenuItem: FunctionComponent<MenuItemProps> = props => {
 	);
 };
 
-const NestedMenu: FunctionComponent = props => {
+const NestedMenu: FunctionComponent = (props) => {
 	const ctx = useContext(AnchorContext);
-	const transform = computed(() => ctx.value.transform ?? [HorizontalAlign.LEFT, VerticalAlign.TOP])
+	const transform = computed(() => ctx.value.transform ?? [HorizontalAlign.LEFT, VerticalAlign.TOP]);
 	return (
 		<div
-			class={`menu-item__nested ${transform.value[1] === VerticalAlign.TOP ? "menu-item__nested--top" : ""} ${transform.value[1] === VerticalAlign.BOTTOM ? "menu-item__nested--bottom" : ""}`}
+			class={`menu-item__nested ${transform.value[1] === VerticalAlign.TOP ? "menu-item__nested--top" : ""} ${
+				transform.value[1] === VerticalAlign.BOTTOM ? "menu-item__nested--bottom" : ""
+			}`}
 		>
 			{props.children}
 		</div>

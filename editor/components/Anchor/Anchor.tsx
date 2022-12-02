@@ -1,6 +1,6 @@
-import { h, createContext, FunctionComponent } from "https://esm.sh/preact@10.11.3";
-import { useRef, useEffect } from "https://esm.sh/preact@10.11.3/hooks";
-import { useSignal, effect, Signal, signal } from "https://esm.sh/@preact/signals@1.1.2?deps=preact@10.11.3";
+import { createContext, FunctionComponent, h } from "https://esm.sh/preact@10.11.3";
+import { useEffect, useRef } from "https://esm.sh/preact@10.11.3/hooks?dep=preact@10.11.3";
+import { effect, Signal, signal, useSignal } from "https://esm.sh/@preact/signals@1.1.2?dep=preact@10.11.3";
 
 export enum VerticalAlign {
 	TOP = "TOP",
@@ -30,7 +30,8 @@ export const AnchorContext = createContext<
 	Signal<{
 		anchor: Alignement;
 		transform: Alignement;
-	}>>(signal(defaultAlignment));
+	}>
+>(signal(defaultAlignment));
 
 export type AnchorProps =
 	| {
@@ -43,14 +44,13 @@ export type AnchorProps =
 		class?: string;
 	};
 
-export const Anchor: FunctionComponent<AnchorProps> = props => {
+export const Anchor: FunctionComponent<AnchorProps> = (props) => {
 	const anchor = useRef<HTMLDivElement>(null);
 	const transform = useRef<HTMLDivElement>(null);
 	const alignment = useSignal<{
 		anchor: Alignement;
 		transform: Alignement;
-	}
-	>({ anchor: [HorizontalAlign.CENTER, VerticalAlign.MIDDLE], transform: [HorizontalAlign.CENTER, VerticalAlign.MIDDLE] });
+	}>({ anchor: [HorizontalAlign.CENTER, VerticalAlign.MIDDLE], transform: [HorizontalAlign.CENTER, VerticalAlign.MIDDLE] });
 
 	const recalc = () => {
 		if (anchor.current != null && transform.current != null) {

@@ -1,7 +1,10 @@
 {
 	"tasks": {
 		"dev": "deno run -A build.ts dev",
-		"build": "deno run -A build.ts build"
+		"build": "deno run -A build.ts build",
+		"fmt": "deno fmt",
+		"lint": "deno lint",
+		"test": "deno test -A"
 	},
 	"compilerOptions": {
 		"jsxFactory": "h",
