@@ -1,6 +1,7 @@
 import { Fragment, h, render } from "https://esm.sh/preact@10.11.0";
 import { WebFile, Zip } from "../libzip/mod.ts";
 import { ZipFilesystem, BufferedRepository, Workspace, NodeRegistry, NoteNodeRegistryEntry, GroupNodeRegistryEntry, WebFilesystem, visit, VisitorResult, AutoId } from "../libpxlr/mod.ts";
+import { Anchor, HorizontalAlign, VerticalAlign } from "./components/Anchor/Anchor.tsx";
 
 function App() {
 	const openFile = async () => {
@@ -103,9 +104,14 @@ function App() {
 		});
 	};
 
-	return <div class="flex text-white">
-		<button onClick={e => { openFile(); }}>Open File</button>
-		<button onClick={e => { openFolder(); }}>Open Folder</button>
+	return <div class="flex flex-row text-white">
+		<div class="block">
+			<button onClick={e => { openFile(); }}>Open File</button>
+			<button onClick={e => { openFolder(); }}>Open Folder</button>
+		</div>
+		<div class="block relative">
+			<Anchor anchorOrigin={[HorizontalAlign.RIGHT, VerticalAlign.BOTTOM]} transformOrigin={[HorizontalAlign.LEFT, VerticalAlign.TOP]}>FooBar</Anchor>
+		</div>
 	</div>;
 }
 

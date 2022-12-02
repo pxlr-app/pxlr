@@ -34,7 +34,10 @@ async function build(onRebuild?: () => void) {
 			}
 		}
 
+		const { warn } = console;
+		Object.assign(console, { warn: () => {} });
 		shim(content);
+		Object.assign(console, { warn });
 		const style = getStyleTagProperties(sheet);
 		await Deno.writeTextFile(join(Deno.cwd(), 'dist/index.css'), style.textContent);
 	}
