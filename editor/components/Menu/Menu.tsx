@@ -1,10 +1,12 @@
-import { Fragment, FunctionComponent, h, Ref } from "https://esm.sh/preact@10.11.3";
+import { h } from "https://esm.sh/preact@10.11.3";
+import type { Fragment, FunctionComponent, Ref } from "https://esm.sh/preact@10.11.3";
 import { useContext, useEffect, useRef, useState } from "https://esm.sh/preact@10.11.3/hooks?dep=preact@10.11.3";
 import { batch, computed, effect, Signal, useSignal } from "https://esm.sh/@preact/signals@1.1.2?dep=preact@10.11.3";
 import { faCheck, faChevronRight } from "https://esm.sh/@fortawesome/free-solid-svg-icons@6.2.1";
 import { FontAwesomeIcon } from "https://esm.sh/@fortawesome/react-fontawesome@0.2.0";
 import { UnstyledMenu, UnstyledMenuItem, UnstyledMenuItemProps } from "./UnstyledMenu.tsx";
 import { Anchor, AnchorContext, Constraints, HorizontalAlign, VerticalAlign } from "../Anchor/mod.ts";
+import "./Menu.css";
 
 export interface MenuProps {
 	ref?: Ref<HTMLElement>;
@@ -103,9 +105,8 @@ const NestedMenu: FunctionComponent = (props) => {
 	const transform = computed(() => ctx.value.transform ?? [HorizontalAlign.LEFT, VerticalAlign.TOP]);
 	return (
 		<div
-			class={`menu-item__nested ${transform.value[1] === VerticalAlign.TOP ? "menu-item__nested--top" : ""} ${
-				transform.value[1] === VerticalAlign.BOTTOM ? "menu-item__nested--bottom" : ""
-			}`}
+			class={`menu-item__nested ${transform.value[1] === VerticalAlign.TOP ? "menu-item__nested--top" : ""} ${transform.value[1] === VerticalAlign.BOTTOM ? "menu-item__nested--bottom" : ""
+				}`}
 		>
 			{props.children}
 		</div>

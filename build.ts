@@ -1,51 +1,25 @@
 import { Command } from "https://deno.land/x/cliffy@v0.25.1/mod.ts";
 import * as esbuild from "https://deno.land/x/esbuild@v0.15.8/mod.js";
-import { apply, setup } from "https://esm.sh/v94/twind@0.16.17/";
-import { getStyleTagProperties, shim, virtualSheet } from "https://esm.sh/v94/twind@0.16.17/shim/server";
-import { walk } from "https://deno.land/std@0.156.0/fs/mod.ts";
-import { extname, globToRegExp, join, relative } from "https://deno.land/std@0.156.0/path/mod.ts";
+import { extname, join, relative } from "https://deno.land/std@0.156.0/path/mod.ts";
 import { contentType } from "https://deno.land/std@0.157.0/media_types/mod.ts";
 import * as ansi from "https://deno.land/x/ansi@1.0.1/mod.ts";
 import * as colors from "https://deno.land/std@0.165.0/fmt/colors.ts";
 import { prettyBytes } from "https://deno.land/x/pretty_bytes@v2.0.0/mod.ts";
 
 async function build(onRebuild?: () => void) {
-	await Deno.copyFile(join(Deno.cwd(), "editor/index.html"), join(Deno.cwd(), "dist/index.html"));
-
-	const sheet = virtualSheet();
-	setup({
-		sheet,
-		preflight: {
-			"html, body": apply`w-full h-full bg-gray-900`,
-			"#root": apply`flex h-full min-h-full flex-col`,
-		},
-		theme: {
-			fill: (theme) => theme("colors"),
-		},
-	});
-	async function generateStyle() {
-		sheet.reset();
-		let content = "";
-
-		for await (const entry of walk(".", { match: [globToRegExp("editor/**/*.{tsx,html}")] })) {
-			if (entry.isFile) {
-				content += await Deno.readTextFile(entry.path);
-				content += `\n\n`;
-			}
-		}
-
-		const { warn } = console;
-		Object.assign(console, { warn: () => {} });
-		shim(content);
-		Object.assign(console, { warn });
-		const style = getStyleTagProperties(sheet);
-		await Deno.writeTextFile(join(Deno.cwd(), "dist/index.css"), style.textContent);
+	const tailwindcssExists = await Deno.stat(".deno/tailwindcss").then(_ => true).catch(_ => false);
+	if (!tailwindcssExists) {
+		const binary = await Deno.open(".deno/tailwindcss", { create: true, write: true });
+		const download = await fetch("https://github.com/tailwindlabs/tailwindcss/releases/download/v3.2.4/tailwindcss-linux-x64");
+		await download.body?.pipeTo(binary.writable);
+		await Deno.chmod(".deno/tailwindcss", 0o500);
 	}
 
 	const isDev = !!onRebuild;
 
 	const result = await esbuild.build({
 		entryPoints: [
+			join(Deno.cwd(), "editor/index.html"),
 			join(Deno.cwd(), "editor/index.tsx"),
 			join(Deno.cwd(), "editor/worker.tsx"),
 		],
@@ -57,22 +31,34 @@ async function build(onRebuild?: () => void) {
 		treeShaking: !isDev,
 		sourcemap: isDev ? "inline" : false,
 		watch: isDev
-			? {
-				async onRebuild(_error, _result) {
-					await generateStyle();
-					onRebuild?.();
-				},
-			}
+			? { onRebuild }
 			: false,
 		target: "esnext",
 		format: "esm",
 		platform: "browser",
 		plugins: [BundleHttpModule],
 		jsxFactory: "h",
+		logLevel: "error",
 		jsxFragment: "Fragment",
+		loader: {
+			'.js': 'js',
+			'.jsx': 'jsx',
+			'.ts': 'ts',
+			'.tsx': 'tsx',
+			'.css': 'css',
+			'.html': 'copy'
+		}
 	});
 
-	await generateStyle();
+	const tailwindcss = Deno.run({
+		cmd: [".deno/tailwindcss", "-i", "dist/index.css", "-o", "dist/index.css", isDev ? "--watch" : ""],
+		stdout: "null",
+		stderr: "null"
+	});
+
+	if (!isDev) {
+		await tailwindcss.status();
+	}
 
 	return result;
 }
@@ -206,8 +192,6 @@ await new Command()
 		const result = await build();
 		console.log(colors.green("✓") + colors.dim(` ${Object.keys(result.metafile!.inputs).length} modules transformed in ${(performance.now() - timeStart).toFixed(0)}ms.`));
 		const outouts: { [path: string]: { bytes: number } } = result.metafile!.outputs;
-		outouts["dist/index.html"] = { bytes: (await Deno.stat(join(Deno.cwd(), "dist/index.html"))).size };
-		outouts["dist/index.css"] = { bytes: (await Deno.stat(join(Deno.cwd(), "dist/index.css"))).size };
 		const maxLength = Object.keys(outouts).reduce((length, key) => Math.max(length, key.length), 0);
 		const sortedOutput = Object.entries(outouts);
 		sortedOutput.sort((a, b) => a[0].localeCompare(b[0]));

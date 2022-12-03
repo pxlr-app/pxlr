@@ -1,8 +1,7 @@
-import { ComponentChildren, createContext, FunctionComponent, h, Ref } from "https://esm.sh/preact@10.11.3";
+import { ComponentChildren, createContext, FunctionComponent, h, Ref, createRef } from "https://esm.sh/preact@10.11.3";
 import { useContext, useEffect, useRef, useState } from "https://esm.sh/preact@10.11.3/hooks?dep=preact@10.11.3";
 import { batch, computed, effect, Signal, useSignal } from "https://esm.sh/@preact/signals@1.1.2?dep=preact@10.11.3";
 import { Alignement, AnchorContext, VerticalAlign } from "../Anchor/mod.ts";
-import { createRef } from "https://esm.sh/v99/preact@10.11.3/src/index.d.ts";
 
 export type Orientation = "horizontal" | "vertical";
 
@@ -61,7 +60,7 @@ export interface UnstyledMenuProps {
 	/**
 	 * Render child
 	 */
-	children: (menu: UnstyledMenuData) => ComponentChildren;
+	children?: (menu: UnstyledMenuData) => ComponentChildren;
 }
 
 export const UnstyledMenu = (props: UnstyledMenuProps) => {
@@ -245,7 +244,7 @@ export const UnstyledMenu = (props: UnstyledMenuProps) => {
 
 	return (
 		<RootMenuContext.Provider value={rootContext}>
-			<MenuContext.Provider value={menuContext}>{props.children(data)}</MenuContext.Provider>
+			<MenuContext.Provider value={menuContext}>{props.children?.(data)}</MenuContext.Provider>
 		</RootMenuContext.Provider>
 	);
 };
