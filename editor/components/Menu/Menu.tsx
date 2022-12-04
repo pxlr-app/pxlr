@@ -101,8 +101,9 @@ const NestedMenu: FunctionComponent = (props) => {
 	const transform = computed(() => ctx.value.transform ?? [HorizontalAlign.LEFT, VerticalAlign.TOP]);
 	return (
 		<div
-			class={`menu-item__nested ${transform.value[1] === VerticalAlign.TOP ? "menu-item__nested--top" : ""} ${transform.value[1] === VerticalAlign.BOTTOM ? "menu-item__nested--bottom" : ""
-				}`}
+			class={`menu-item__nested ${transform.value[1] === VerticalAlign.TOP ? "menu-item__nested--top" : ""} ${
+				transform.value[1] === VerticalAlign.BOTTOM ? "menu-item__nested--bottom" : ""
+			}`}
 		>
 			{props.children}
 		</div>

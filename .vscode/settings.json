@@ -11,6 +11,6 @@
 	"explorer.fileNesting.patterns": {
 		"*.ts": "${capture}.test.ts, ${capture}.css",
 		"*.tsx": "${capture}.test.tsx, ${capture}.css, ${capture}.html",
-		"deno.json": "deno.lock, import_map.json, build.ts, .gitignore, .prettierrc",
+		"deno.json": "deno.lock, import_map.json, build.ts, .gitignore, .prettierrc"
 	}
 }

@@ -2,7 +2,7 @@ import { Command } from "https://deno.land/x/cliffy@v0.25.1/mod.ts";
 import * as esbuild from "https://deno.land/x/esbuild@v0.15.8/mod.js";
 import Processor from "https://esm.sh/windicss@3.5.6";
 import { CSSParser } from "https://esm.sh/v99/windicss@3.5.6/utils/parser";
-import { extname, dirname, join, relative, isAbsolute } from "https://deno.land/std@0.156.0/path/mod.ts";
+import { dirname, extname, isAbsolute, join, relative } from "https://deno.land/std@0.156.0/path/mod.ts";
 import { contentType } from "https://deno.land/std@0.157.0/media_types/mod.ts";
 import * as ansi from "https://deno.land/x/ansi@1.0.1/mod.ts";
 import * as colors from "https://deno.land/std@0.165.0/fmt/colors.ts";
@@ -170,7 +170,7 @@ let importMap: { imports: Record<string, string> } | undefined;
 try {
 	const denoJson = await Deno.readTextFile(join(Deno.cwd(), "deno.json"));
 	const denoConfig = JSON.parse(denoJson) ?? {};
-	if ('importMap' in denoConfig && typeof denoConfig.importMap === 'string') {
+	if ("importMap" in denoConfig && typeof denoConfig.importMap === "string") {
 		try {
 			const importMapPath = join(dirname(join(Deno.cwd(), "deno.json")), denoConfig.importMap);
 			importMapBase = dirname(importMapPath);
@@ -180,7 +180,9 @@ try {
 			importMap = undefined;
 		}
 	}
-} catch (_err) { }
+} catch (_err) {
+	importMap = undefined;
+}
 const BundleWebPlugin: esbuild.Plugin = {
 	name: "BundleWebPlugin",
 	setup(build) {

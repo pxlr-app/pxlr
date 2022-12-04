@@ -14,8 +14,7 @@
 			"deno.ns",
 			"deno.window",
 			"deno.url",
-			"deno.web",
-			"deno.worker"
+			"deno.web"
 		],
 		"types": [
 			"https://raw.githubusercontent.com/DefinitelyTyped/DefinitelyTyped/master/types/wicg-file-system-access/index.d.ts"
