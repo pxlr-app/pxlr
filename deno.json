@@ -1,4 +1,5 @@
 {
+	"importMap": "import_map.json",
 	"tasks": {
 		"dev": "DENO_DIR=.deno deno run -A build.ts dev",
 		"build": "DENO_DIR=.deno deno run -A build.ts build",
@@ -13,17 +14,21 @@
 			"deno.ns",
 			"deno.window",
 			"deno.url",
-			"deno.web"
+			"deno.web",
+			"deno.worker"
+		],
+		"types": [
+			"https://raw.githubusercontent.com/DefinitelyTyped/DefinitelyTyped/master/types/wicg-file-system-access/index.d.ts"
 		]
 	},
 	"lint": {
 		"files": {
-			"exclude": ["dist/"]
+			"exclude": ["dist/", ".deno/"]
 		}
 	},
 	"fmt": {
 		"files": {
-			"exclude": ["dist/"]
+			"exclude": ["dist/", ".deno/"]
 		},
 		"options": {
 			"useTabs": true,
@@ -32,7 +37,7 @@
 	},
 	"test": {
 		"files": {
-			"exclude": ["dist/"]
+			"exclude": ["dist/", ".deno/"]
 		}
 	}
 }

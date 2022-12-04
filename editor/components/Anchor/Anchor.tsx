@@ -1,7 +1,5 @@
-import { createContext, h } from "https://esm.sh/preact@10.11.3";
-import type { FunctionComponent } from "https://esm.sh/preact@10.11.3";
-import { useEffect, useRef } from "https://esm.sh/preact@10.11.3/hooks?dep=preact@10.11.3";
-import { effect, Signal, signal, useSignal } from "https://esm.sh/@preact/signals@1.1.2?dep=preact@10.11.3";
+import { createContext, effect, h, Signal, signal, useEffect, useRef, useSignal } from "/editor/deps.ts";
+import type { FunctionComponent } from "/editor/deps.ts";
 
 export enum VerticalAlign {
 	TOP = "TOP",

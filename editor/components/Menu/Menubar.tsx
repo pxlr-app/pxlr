@@ -1,4 +1,4 @@
-import { Fragment, FunctionComponent, h, Ref } from "https://esm.sh/preact@10.11.3";
+import { Fragment, FunctionComponent, h, Ref } from "/editor/deps.ts";
 import { UnstyledMenu, UnstyledMenuItem, UnstyledMenuItemProps } from "./UnstyledMenu.tsx";
 import { Anchor, Constraints, HorizontalAlign, VerticalAlign } from "../Anchor/mod.ts";
 

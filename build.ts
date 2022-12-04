@@ -1,21 +1,34 @@
 import { Command } from "https://deno.land/x/cliffy@v0.25.1/mod.ts";
 import * as esbuild from "https://deno.land/x/esbuild@v0.15.8/mod.js";
-import { extname, join, relative } from "https://deno.land/std@0.156.0/path/mod.ts";
+import Processor from "https://esm.sh/windicss@3.5.6";
+import { CSSParser } from "https://esm.sh/v99/windicss@3.5.6/utils/parser";
+import { extname, dirname, join, relative, isAbsolute } from "https://deno.land/std@0.156.0/path/mod.ts";
 import { contentType } from "https://deno.land/std@0.157.0/media_types/mod.ts";
 import * as ansi from "https://deno.land/x/ansi@1.0.1/mod.ts";
 import * as colors from "https://deno.land/std@0.165.0/fmt/colors.ts";
 import { prettyBytes } from "https://deno.land/x/pretty_bytes@v2.0.0/mod.ts";
 
 async function build(onRebuild?: () => void) {
-	const tailwindcssExists = await Deno.stat(".deno/tailwindcss").then(_ => true).catch(_ => false);
-	if (!tailwindcssExists) {
-		const binary = await Deno.open(".deno/tailwindcss", { create: true, write: true });
-		const download = await fetch("https://github.com/tailwindlabs/tailwindcss/releases/download/v3.2.4/tailwindcss-linux-x64");
-		await download.body?.pipeTo(binary.writable);
-		await Deno.chmod(".deno/tailwindcss", 0o500);
-	}
-
 	const isDev = !!onRebuild;
+
+	const processor = new Processor({
+		darkMode: "class",
+	});
+	const preflight = processor.preflight();
+
+	async function processCSS(metafile?: esbuild.Metafile) {
+		if (metafile) {
+			for await (const path of Object.keys(metafile.outputs)) {
+				if (path.match(/\.css$/i)) {
+					const input = await Deno.readTextFile(path);
+					const parser = new CSSParser(input, processor);
+					const sheet = parser.parse();
+					const output = sheet.extend(preflight).build(!isDev);
+					await Deno.writeTextFile(path, output);
+				}
+			}
+		}
+	}
 
 	const result = await esbuild.build({
 		entryPoints: [
@@ -26,39 +39,36 @@ async function build(onRebuild?: () => void) {
 		outdir: "dist",
 		bundle: true,
 		minify: !isDev,
-		metafile: !isDev,
+		metafile: true,
 		incremental: isDev,
 		treeShaking: !isDev,
 		sourcemap: isDev ? "inline" : false,
 		watch: isDev
-			? { onRebuild }
+			? {
+				async onRebuild(_error, result) {
+					await processCSS(result?.metafile);
+					onRebuild?.();
+				},
+			}
 			: false,
 		target: "esnext",
 		format: "esm",
 		platform: "browser",
-		plugins: [BundleHttpModule],
+		plugins: [BundleWebPlugin],
 		jsxFactory: "h",
 		logLevel: "error",
 		jsxFragment: "Fragment",
 		loader: {
-			'.js': 'js',
-			'.jsx': 'jsx',
-			'.ts': 'ts',
-			'.tsx': 'tsx',
-			'.css': 'css',
-			'.html': 'copy'
-		}
+			".js": "js",
+			".jsx": "jsx",
+			".ts": "ts",
+			".tsx": "tsx",
+			".css": "css",
+			".html": "copy",
+		},
 	});
 
-	const tailwindcss = Deno.run({
-		cmd: [".deno/tailwindcss", "-i", "dist/index.css", "-o", "dist/index.css", isDev ? "--watch" : ""],
-		stdout: "null",
-		stderr: "null"
-	});
-
-	if (!isDev) {
-		await tailwindcss.status();
-	}
+	await processCSS(result.metafile);
 
 	return result;
 }
@@ -155,14 +165,44 @@ async function dev(port: number) {
 }
 
 const httpCache = await caches.open(import.meta.url);
-
-const BundleHttpModule: esbuild.Plugin = {
-	name: "BundleHttpModule",
+let importMapBase = "";
+let importMap: { imports: Record<string, string> } | undefined;
+try {
+	const denoJson = await Deno.readTextFile(join(Deno.cwd(), "deno.json"));
+	const denoConfig = JSON.parse(denoJson) ?? {};
+	if ('importMap' in denoConfig && typeof denoConfig.importMap === 'string') {
+		try {
+			const importMapPath = join(dirname(join(Deno.cwd(), "deno.json")), denoConfig.importMap);
+			importMapBase = dirname(importMapPath);
+			const importMapJson = await Deno.readTextFile(importMapPath);
+			importMap = JSON.parse(importMapJson) ?? undefined;
+		} catch (_err) {
+			importMap = undefined;
+		}
+	}
+} catch (_err) { }
+const BundleWebPlugin: esbuild.Plugin = {
+	name: "BundleWebPlugin",
 	setup(build) {
 		build.onResolve({ filter: /^https?:\/\// }, (args) => ({
 			path: args.path,
 			namespace: "bundle-http",
 		}));
+		build.onResolve({ filter: /.*?/, namespace: "file" }, (args) => {
+			for (const [url, map] of Object.entries(importMap?.imports ?? {})) {
+				if (args.path.substring(0, url.length) === url) {
+					args.path = join(importMapBase, map, args.path.substring(url.length));
+					break;
+				}
+			}
+			if (!isAbsolute(args.path)) {
+				args.path = join(args.resolveDir, args.path);
+			}
+			return {
+				path: args.path,
+				namespace: args.namespace,
+			};
+		});
 		build.onResolve({ filter: /.*/, namespace: "bundle-http" }, (args) => ({
 			path: new URL(args.path, args.importer).toString(),
 			namespace: "bundle-http",
@@ -177,8 +217,8 @@ const BundleHttpModule: esbuild.Plugin = {
 				httpCache.put(args.path, response.clone());
 			}
 			const contents = await response.text();
-			const contentType = response.headers.get("Content-Type") ?? "text/javascript; charset=utf-8";
-			return { contents, loader: contentType.includes("javascript") ? "jsx" : "tsx" };
+			const ct = response.headers.get("Content-Type") ?? "text/javascript; charset=utf-8";
+			return { contents, loader: ct.includes("javascript") ? "jsx" : "tsx" };
 		});
 	},
 };

@@ -1,9 +1,5 @@
-import { h } from "https://esm.sh/preact@10.11.3";
-import type { Fragment, FunctionComponent, Ref } from "https://esm.sh/preact@10.11.3";
-import { useContext, useEffect, useRef, useState } from "https://esm.sh/preact@10.11.3/hooks?dep=preact@10.11.3";
-import { batch, computed, effect, Signal, useSignal } from "https://esm.sh/@preact/signals@1.1.2?dep=preact@10.11.3";
-import { faCheck, faChevronRight } from "https://esm.sh/@fortawesome/free-solid-svg-icons@6.2.1";
-import { FontAwesomeIcon } from "https://esm.sh/@fortawesome/react-fontawesome@0.2.0";
+import { computed, faCheck, faChevronRight, FontAwesomeIcon, h, useContext } from "/editor/deps.ts";
+import type { Fragment, FunctionComponent, Ref } from "/editor/deps.ts";
 import { UnstyledMenu, UnstyledMenuItem, UnstyledMenuItemProps } from "./UnstyledMenu.tsx";
 import { Anchor, AnchorContext, Constraints, HorizontalAlign, VerticalAlign } from "../Anchor/mod.ts";
 import "./Menu.css";

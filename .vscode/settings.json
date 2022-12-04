@@ -2,6 +2,15 @@
 	"deno.enable": true,
 	"deno.config": "./deno.json",
 	"deno.unstable": true,
+	"deno.cache": ".deno",
+	"deno.importMap": "import_map.json",
 	"editor.formatOnSave": true,
-	"editor.defaultFormatter": "denoland.vscode-deno"
+	"editor.defaultFormatter": "denoland.vscode-deno",
+	"explorer.fileNesting.enabled": true,
+	"explorer.fileNesting.expand": false,
+	"explorer.fileNesting.patterns": {
+		"*.ts": "${capture}.test.ts, ${capture}.css",
+		"*.tsx": "${capture}.test.tsx, ${capture}.css, ${capture}.html",
+		"deno.json": "deno.lock, import_map.json, build.ts, .gitignore, .prettierrc",
+	}
 }

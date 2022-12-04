@@ -1,0 +1,7 @@
+{
+	"imports": {
+		"/editor/": "./editor/",
+		"/libpxlr/": "./libpxlr/",
+		"/libzip/": "./libzip/"
+	}
+}

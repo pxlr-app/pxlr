@@ -1,5 +1,5 @@
-import { h } from "https://esm.sh/preact@10.11.3";
-import { WebFile, Zip } from "../libzip/mod.ts";
+import { h } from "/editor/deps.ts";
+import { WebFile, Zip } from "/libzip/mod.ts";
 import {
 	AutoId,
 	BufferedRepository,
@@ -11,10 +11,10 @@ import {
 	WebFilesystem,
 	Workspace,
 	ZipFilesystem,
-} from "../libpxlr/mod.ts";
-import { Anchor, HorizontalAlign, VerticalAlign } from "./components/Anchor/Anchor.tsx";
-import { Menu } from "./components/Menu/Menu.tsx";
-import "./App.css";
+} from "/libpxlr/mod.ts";
+import { Anchor, HorizontalAlign, VerticalAlign } from "/editor/components/Anchor/Anchor.tsx";
+import { Menu } from "/editor/components/Menu/Menu.tsx";
+import "/editor/App.css";
 
 export default function App() {
 	const openFile = async () => {

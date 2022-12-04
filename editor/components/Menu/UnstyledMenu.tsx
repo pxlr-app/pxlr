@@ -1,7 +1,6 @@
-import { ComponentChildren, createContext, FunctionComponent, h, Ref, createRef } from "https://esm.sh/preact@10.11.3";
-import { useContext, useEffect, useRef, useState } from "https://esm.sh/preact@10.11.3/hooks?dep=preact@10.11.3";
-import { batch, computed, effect, Signal, useSignal } from "https://esm.sh/@preact/signals@1.1.2?dep=preact@10.11.3";
-import { Alignement, AnchorContext, VerticalAlign } from "../Anchor/mod.ts";
+import { batch, computed, createContext, createRef, effect, h, Signal, useContext, useEffect, useSignal } from "/editor/deps.ts";
+import type { ComponentChildren, Ref } from "/editor/deps.ts";
+import { AnchorContext, VerticalAlign } from "../Anchor/mod.ts";
 
 export type Orientation = "horizontal" | "vertical";
 
