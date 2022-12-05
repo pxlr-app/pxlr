@@ -1,6 +1,6 @@
-import { Fragment, computed, faCheck, faChevronRight, FontAwesomeIcon, h, useContext, useState, usePopper } from "/editor/deps.ts";
+import { computed, faCheck, faChevronRight, FontAwesomeIcon, Fragment, h, useContext, usePopper, useState } from "/editor/deps.ts";
 import type { FunctionComponent, Ref } from "/editor/deps.ts";
-import { UnstyledMenu, UnstyledMenuItem, UnstyledMenuItemProps, PopperContext } from "./UnstyledMenu.tsx";
+import { PopperContext, UnstyledMenu, UnstyledMenuItem, UnstyledMenuItemProps } from "./UnstyledMenu.tsx";
 import "./Menu.css";
 
 export interface MenuProps {
@@ -92,24 +92,24 @@ const NestedMenu: FunctionComponent = (props) => {
 	const [referenceElement, setReferenceElement] = useState<HTMLDivElement | null>(null);
 	const [popperElement, setPopperElement] = useState<HTMLDivElement | null>(null);
 	const { styles, attributes, state } = usePopper(referenceElement, popperElement, {
-		placement: 'right-start',
+		placement: "right-start",
 		modifiers: [
 			{
-				name: 'flip',
+				name: "flip",
 				options: {
-					fallbackPlacements: ['right-end', 'left-start', 'left-end']
-				}
-			}
-		]
+					fallbackPlacements: ["right-end", "left-start", "left-end"],
+				},
+			},
+		],
 	});
 	const { placement } = state ?? {};
 	return (
 		<div
 			ref={setReferenceElement}
-			class={`menu-item__nested ${placement?.includes('end') ? 'menu-item__nested--end' : ''}`}
+			class={`menu-item__nested ${placement?.includes("end") ? "menu-item__nested--end" : ""}`}
 		>
-			<div ref={setPopperElement} style={{ visibility: placement ? 'visible' : 'hidden', ...styles.popper }} {...attributes.popper}>
-				<PopperContext.Provider value={placement ?? 'right-start'}>
+			<div ref={setPopperElement} style={{ visibility: placement ? "visible" : "hidden", ...styles.popper }} {...attributes.popper}>
+				<PopperContext.Provider value={placement ?? "right-start"}>
 					{props.children}
 				</PopperContext.Provider>
 			</div>

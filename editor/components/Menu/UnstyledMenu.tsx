@@ -32,7 +32,7 @@ const RootMenuContext = createContext<RootMenuContextData | undefined>(undefined
 const MenuContext = createContext<MenuContextData | undefined>(undefined);
 
 const PathContext = createContext<string[]>([]);
-export const PopperContext = createContext<string>('left-start');
+export const PopperContext = createContext<string>("left-start");
 
 export interface UnstyledMenuData {
 	showAccessKey: Signal<boolean>;
@@ -132,7 +132,7 @@ export const UnstyledMenu = (props: UnstyledMenuProps) => {
 
 	useEffect(() => {
 		if (rootContext.navigationInput.value === "keyboard" && rootContext.autoSelectItem.value && !menuContext.opened.value) {
-			if (popperContext.includes('bottom')) {
+			if (popperContext.includes("bottom")) {
 				menuContext.selected.value = items.current[items.current.length - 1].id;
 			} else {
 				menuContext.selected.value = items.current[0].id;

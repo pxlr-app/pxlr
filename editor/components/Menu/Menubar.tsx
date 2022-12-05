@@ -1,5 +1,5 @@
-import { Fragment, FunctionComponent, h, Ref, useState, usePopper } from "/editor/deps.ts";
-import { UnstyledMenu, UnstyledMenuItem, UnstyledMenuItemProps, PopperContext } from "./UnstyledMenu.tsx";
+import { Fragment, FunctionComponent, h, Ref, usePopper, useState } from "/editor/deps.ts";
+import { PopperContext, UnstyledMenu, UnstyledMenuItem, UnstyledMenuItemProps } from "./UnstyledMenu.tsx";
 import "./Menubar.css";
 
 export interface MenubarProps {
@@ -58,10 +58,11 @@ export const MenubarItem: FunctionComponent<MenubarItemProps> = (props) => {
 							)}
 						</div>
 						{hasChildren && opened.value &&
-							<NestedMenu>
-								{props.children}
-							</NestedMenu>
-						}
+							(
+								<NestedMenu>
+									{props.children}
+								</NestedMenu>
+							)}
 					</li>
 				);
 			}}
@@ -73,15 +74,15 @@ const NestedMenu: FunctionComponent = (props) => {
 	const [referenceElement, setReferenceElement] = useState<HTMLDivElement | null>(null);
 	const [popperElement, setPopperElement] = useState<HTMLDivElement | null>(null);
 	const { styles, attributes, state } = usePopper(referenceElement, popperElement, {
-		placement: 'bottom-start',
+		placement: "bottom-start",
 		modifiers: [
 			{
-				name: 'flip',
+				name: "flip",
 				options: {
-					fallbackPlacements: ['top-start']
-				}
-			}
-		]
+					fallbackPlacements: ["top-start"],
+				},
+			},
+		],
 	});
 	const { placement } = state ?? {};
 	return (
@@ -89,8 +90,8 @@ const NestedMenu: FunctionComponent = (props) => {
 			ref={setReferenceElement}
 			class={`menubar-item__nested`}
 		>
-			<div ref={setPopperElement} style={{ visibility: placement ? 'visible' : 'hidden', ...styles.popper }} {...attributes.popper}>
-				<PopperContext.Provider value={(placement ?? 'bottom-start').includes('bottom') ? 'top-start' : 'bottom-start'}>
+			<div ref={setPopperElement} style={{ visibility: placement ? "visible" : "hidden", ...styles.popper }} {...attributes.popper}>
+				<PopperContext.Provider value={(placement ?? "bottom-start").includes("bottom") ? "top-start" : "bottom-start"}>
 					{props.children}
 				</PopperContext.Provider>
 			</div>

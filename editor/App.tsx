@@ -12,7 +12,7 @@ import {
 	Workspace,
 	ZipFilesystem,
 } from "/libpxlr/mod.ts";
-import { Menu, MenuItem, Menubar, MenubarItem, Separator } from "/editor/components/Menu/mod.ts";
+import { Menu, Menubar, MenubarItem, MenuItem, Separator } from "/editor/components/Menu/mod.ts";
 import "/editor/App.css";
 
 export default function App() {
