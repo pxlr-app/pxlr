@@ -237,7 +237,7 @@ await new Command()
 		const maxLength = Object.keys(outouts).reduce((length, key) => Math.max(length, key.length), 0);
 		const sortedOutput = Object.entries(outouts);
 		sortedOutput.sort((a, b) => a[0].localeCompare(b[0]));
-		for await (const [key, meta] of sortedOutput) {
+		for await (const [key] of sortedOutput) {
 			let color = colors.yellow;
 			const ext = extname(key);
 			if (ext === ".html") {
@@ -249,8 +249,11 @@ await new Command()
 			}
 			const file = await Deno.open(key);
 			const stat = await file.stat();
-			const compressed = await new Response(file.readable.pipeThrough(new CompressionStream('gzip'))).arrayBuffer();
-			console.log(`${colors.dim("dist/")}${color(relative("dist/", key))}`.padEnd(maxLength + 30, " ") + colors.dim(prettyBytes(stat.size).padEnd(7) + ' | ' + prettyBytes(compressed.byteLength)));
+			const compressed = await new Response(file.readable.pipeThrough(new CompressionStream("gzip"))).arrayBuffer();
+			console.log(
+				`${colors.dim("dist/")}${color(relative("dist/", key))}`.padEnd(maxLength + 30, " ") +
+					colors.dim(prettyBytes(stat.size).padEnd(7) + " | " + prettyBytes(compressed.byteLength)),
+			);
 		}
 		Deno.exit(0);
 	})
