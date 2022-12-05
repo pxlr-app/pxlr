@@ -5,6 +5,7 @@
 		"build": "DENO_DIR=.deno deno run -A build.ts build",
 		"fmt": "DENO_DIR=.deno deno fmt",
 		"lint": "DENO_DIR=.deno deno lint",
+		"info": "DENO_DIR=.deno deno info",
 		"test": "DENO_DIR=.deno deno test -A"
 	},
 	"compilerOptions": {

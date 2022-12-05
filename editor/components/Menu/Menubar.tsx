@@ -1,6 +1,6 @@
-import { Fragment, FunctionComponent, h, Ref } from "/editor/deps.ts";
-import { UnstyledMenu, UnstyledMenuItem, UnstyledMenuItemProps } from "./UnstyledMenu.tsx";
-import { Anchor, Constraints, HorizontalAlign, VerticalAlign } from "../Anchor/mod.ts";
+import { Fragment, FunctionComponent, h, Ref, useState, usePopper } from "/editor/deps.ts";
+import { UnstyledMenu, UnstyledMenuItem, UnstyledMenuItemProps, PopperContext } from "./UnstyledMenu.tsx";
+import "./Menubar.css";
 
 export interface MenubarProps {
 	ref?: Ref<HTMLElement>;
@@ -58,14 +58,10 @@ export const MenubarItem: FunctionComponent<MenubarItemProps> = (props) => {
 							)}
 						</div>
 						{hasChildren && opened.value &&
-							(
-								<Anchor
-									constraints={anchorConstraints}
-									class="menubar-item__anchor"
-								>
-									{props.children}
-								</Anchor>
-							)}
+							<NestedMenu>
+								{props.children}
+							</NestedMenu>
+						}
 					</li>
 				);
 			}}
@@ -73,23 +69,31 @@ export const MenubarItem: FunctionComponent<MenubarItemProps> = (props) => {
 	);
 };
 
-const anchorConstraints: Constraints = {
-	origins: [
-		{
-			anchor: [HorizontalAlign.LEFT, VerticalAlign.BOTTOM],
-			transform: [HorizontalAlign.LEFT, VerticalAlign.TOP],
-		},
-		{
-			anchor: [HorizontalAlign.LEFT, VerticalAlign.TOP],
-			transform: [HorizontalAlign.LEFT, VerticalAlign.BOTTOM],
-		},
-		{
-			anchor: [HorizontalAlign.RIGHT, VerticalAlign.BOTTOM],
-			transform: [HorizontalAlign.RIGHT, VerticalAlign.TOP],
-		},
-		{
-			anchor: [HorizontalAlign.RIGHT, VerticalAlign.TOP],
-			transform: [HorizontalAlign.RIGHT, VerticalAlign.BOTTOM],
-		},
-	],
+const NestedMenu: FunctionComponent = (props) => {
+	const [referenceElement, setReferenceElement] = useState<HTMLDivElement | null>(null);
+	const [popperElement, setPopperElement] = useState<HTMLDivElement | null>(null);
+	const { styles, attributes, state } = usePopper(referenceElement, popperElement, {
+		placement: 'bottom-start',
+		modifiers: [
+			{
+				name: 'flip',
+				options: {
+					fallbackPlacements: ['top-start']
+				}
+			}
+		]
+	});
+	const { placement } = state ?? {};
+	return (
+		<div
+			ref={setReferenceElement}
+			class={`menubar-item__nested`}
+		>
+			<div ref={setPopperElement} style={{ visibility: placement ? 'visible' : 'hidden', ...styles.popper }} {...attributes.popper}>
+				<PopperContext.Provider value={(placement ?? 'bottom-start').includes('bottom') ? 'top-start' : 'bottom-start'}>
+					{props.children}
+				</PopperContext.Provider>
+			</div>
+		</div>
+	);
 };

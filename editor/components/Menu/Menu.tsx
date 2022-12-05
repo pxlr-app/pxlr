@@ -1,7 +1,6 @@
-import { computed, faCheck, faChevronRight, FontAwesomeIcon, h, useContext } from "/editor/deps.ts";
-import type { Fragment, FunctionComponent, Ref } from "/editor/deps.ts";
-import { UnstyledMenu, UnstyledMenuItem, UnstyledMenuItemProps } from "./UnstyledMenu.tsx";
-import { Anchor, AnchorContext, Constraints, HorizontalAlign, VerticalAlign } from "../Anchor/mod.ts";
+import { Fragment, computed, faCheck, faChevronRight, FontAwesomeIcon, h, useContext, useState, usePopper } from "/editor/deps.ts";
+import type { FunctionComponent, Ref } from "/editor/deps.ts";
+import { UnstyledMenu, UnstyledMenuItem, UnstyledMenuItemProps, PopperContext } from "./UnstyledMenu.tsx";
 import "./Menu.css";
 
 export interface MenuProps {
@@ -81,14 +80,7 @@ export const MenuItem: FunctionComponent<MenuItemProps> = (props) => {
 							</div>
 						</div>
 						{hasChildren && opened.value &&
-							(
-								<Anchor
-									constraints={anchorConstraints}
-									class="menu-item__anchor"
-								>
-									<NestedMenu>{props.children}</NestedMenu>
-								</Anchor>
-							)}
+							<NestedMenu>{props.children}</NestedMenu>}
 					</li>
 				);
 			}}
@@ -97,38 +89,32 @@ export const MenuItem: FunctionComponent<MenuItemProps> = (props) => {
 };
 
 const NestedMenu: FunctionComponent = (props) => {
-	const ctx = useContext(AnchorContext);
-	const transform = computed(() => ctx.value.transform ?? [HorizontalAlign.LEFT, VerticalAlign.TOP]);
+	const [referenceElement, setReferenceElement] = useState<HTMLDivElement | null>(null);
+	const [popperElement, setPopperElement] = useState<HTMLDivElement | null>(null);
+	const { styles, attributes, state } = usePopper(referenceElement, popperElement, {
+		placement: 'right-start',
+		modifiers: [
+			{
+				name: 'flip',
+				options: {
+					fallbackPlacements: ['right-end', 'left-start', 'left-end']
+				}
+			}
+		]
+	});
+	const { placement } = state ?? {};
 	return (
 		<div
-			class={`menu-item__nested ${transform.value[1] === VerticalAlign.TOP ? "menu-item__nested--top" : ""} ${
-				transform.value[1] === VerticalAlign.BOTTOM ? "menu-item__nested--bottom" : ""
-			}`}
+			ref={setReferenceElement}
+			class={`menu-item__nested ${placement?.includes('end') ? 'menu-item__nested--end' : ''}`}
 		>
-			{props.children}
+			<div ref={setPopperElement} style={{ visibility: placement ? 'visible' : 'hidden', ...styles.popper }} {...attributes.popper}>
+				<PopperContext.Provider value={placement ?? 'right-start'}>
+					{props.children}
+				</PopperContext.Provider>
+			</div>
 		</div>
 	);
-};
-
-const anchorConstraints: Constraints = {
-	origins: [
-		{
-			anchor: [HorizontalAlign.RIGHT, VerticalAlign.TOP],
-			transform: [HorizontalAlign.LEFT, VerticalAlign.TOP],
-		},
-		{
-			anchor: [HorizontalAlign.LEFT, VerticalAlign.TOP],
-			transform: [HorizontalAlign.RIGHT, VerticalAlign.TOP],
-		},
-		{
-			anchor: [HorizontalAlign.RIGHT, VerticalAlign.BOTTOM],
-			transform: [HorizontalAlign.LEFT, VerticalAlign.BOTTOM],
-		},
-		{
-			anchor: [HorizontalAlign.LEFT, VerticalAlign.BOTTOM],
-			transform: [HorizontalAlign.RIGHT, VerticalAlign.BOTTOM],
-		},
-	],
 };
 
 export const Separator = () => {

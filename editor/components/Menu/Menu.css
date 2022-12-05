@@ -40,19 +40,13 @@
 	@apply px-1 text-gray-500;
 }
 
-.menu-item__anchor {
-	@apply z-50;
-}
-
 .menu-item__nested {
-	@apply transform;
+	@apply absolute z-50 left-0 top-0 w-full;
+	@apply transform translate-y-[calc(-0.5rem-1px)];
 }
 
-.menu-item__nested--top {
-	@apply translate-y-[calc(-0.5rem-1px)];
-}
-
-.menu-item__nested--bottom {
+.menu-item__nested--end {
+	@apply top-auto bottom-0;
 	@apply translate-y-[calc(0.5rem+1px)];
 }
 

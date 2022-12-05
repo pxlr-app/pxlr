@@ -12,8 +12,7 @@ import {
 	Workspace,
 	ZipFilesystem,
 } from "/libpxlr/mod.ts";
-import { Anchor, HorizontalAlign, VerticalAlign } from "/editor/components/Anchor/Anchor.tsx";
-import { Menu } from "/editor/components/Menu/Menu.tsx";
+import { Menu, MenuItem, Menubar, MenubarItem, Separator } from "/editor/components/Menu/mod.ts";
 import "/editor/App.css";
 
 export default function App() {
@@ -119,26 +118,177 @@ export default function App() {
 
 	return (
 		<div class="flex flex-row text-white">
-			<div class="block">
-				<button
-					onClick={(e) => {
-						openFile();
-					}}
+			<Menubar>
+				<MenubarItem
+					id="file"
+					label="File"
+					accessKey="F"
 				>
-					Open File
-				</button>
-				<button
-					onClick={(e) => {
-						openFolder();
-					}}
-				>
-					Open Folder
-				</button>
-			</div>
-			<Menu></Menu>
-			<div class="block relative">
-				<Anchor anchorOrigin={[HorizontalAlign.RIGHT, VerticalAlign.BOTTOM]} transformOrigin={[HorizontalAlign.LEFT, VerticalAlign.TOP]}>FooBar</Anchor>
-			</div>
+					<Menu>
+						<MenuItem
+							id="newdoc"
+							label="New Document"
+							accessKey="N"
+						>
+							<Menu>
+								<MenuItem
+									id="newpxlrfile"
+									label="New File…"
+									accessKey="N"
+									keybind="Ctrl+N"
+									action={() => console.log("click newpxlrfile")}
+								/>
+								<MenuItem
+									id="newpxlrfolder"
+									label="New Folder…"
+									accessKey="F"
+									keybind="Ctrl+Shift+N"
+									action={() => console.log("click newpxlrfolder")}
+								/>
+							</Menu>
+						</MenuItem>
+						<Separator />
+						<MenuItem
+							id="opendoc"
+							label="Open Document"
+							accessKey="O"
+						>
+							<Menu>
+								<MenuItem
+									id="openfile"
+									label="Open File…"
+									accessKey="O"
+									keybind="Ctrl+O"
+									action={openFile}
+								/>
+								<MenuItem
+									id="openfolder"
+									label="Open Folder…"
+									accessKey="F"
+									keybind="Ctrl+Shift+O"
+									action={openFolder}
+								/>
+							</Menu>
+						</MenuItem>
+						<MenuItem
+							id="openrecent"
+							label="Open Recent"
+							accessKey="R"
+						>
+							<Menu>
+								<MenuItem
+									id="reopen"
+									label="Reopen Closed Document"
+									accessKey="R"
+									keybind="Ctrl+Shift+T"
+									action={() => console.log("click reopen")}
+								/>
+								<MenuItem
+									id="recentdocs"
+									label="Recent Documents"
+									accessKey="D"
+								>
+									<Menu>
+										<MenuItem
+											id="filea"
+											label="File A"
+											accessKey="A"
+											action={() => console.log("click filea")}
+										/>
+										<MenuItem
+											id="fileb"
+											label="File B"
+											accessKey="B"
+											action={() => console.log("click fileb")}
+										/>
+										<MenuItem
+											id="filec"
+											label="File C"
+											accessKey="C"
+											action={() => console.log("click filec")}
+										/>
+									</Menu>
+								</MenuItem>
+								<MenuItem
+									id="clearrecent"
+									label="Clear Recent Documents"
+									accessKey="C"
+									action={() => console.log("click clearrecent")}
+								/>
+							</Menu>
+						</MenuItem>
+						<Separator />
+						<MenuItem
+							id="saveas"
+							label="Save As"
+							accessKey="A"
+						>
+							<Menu>
+								<MenuItem
+									id="saveaspxlrfile"
+									label="Save As File…"
+									accessKey="S"
+									action={() => console.log("click saveaspxlrfile")}
+								/>
+								<MenuItem
+									id="saveaspxlrfolder"
+									label="Save As Folder…"
+									accessKey="F"
+									action={() => console.log("click saveaspxlrfolder")}
+								/>
+							</Menu>
+						</MenuItem>
+						<Separator />
+						<MenuItem
+							id="preferences"
+							label="Preferences"
+							accessKey="P"
+						>
+							<Menu>
+								<MenuItem
+									id="settings"
+									label="Settings"
+									accessKey="S"
+									keybind="Ctrl+,"
+									action={() => console.log("click settings")}
+								/>
+								<MenuItem
+									id="keyboardshortcuts"
+									label="Keyboard Shortcuts"
+									accessKey="K"
+									action={() => console.log("click keyboardshortcuts")}
+								/>
+							</Menu>
+						</MenuItem>
+						<MenuItem
+							id="useraccount"
+							label="User Account"
+							accessKey="U"
+							action={() => console.log("click useraccount")}
+						/>
+					</Menu>
+				</MenubarItem>
+				<MenubarItem
+					id="edit"
+					label="Edit"
+					accessKey="E"
+				/>
+				<MenubarItem
+					id="selection"
+					label="Selection"
+					accessKey="S"
+				/>
+				<MenubarItem
+					id="view"
+					label="View"
+					accessKey="V"
+				/>
+				<MenubarItem
+					id="help"
+					label="Help"
+					accessKey="H"
+				/>
+			</Menubar>
 		</div>
 	);
 }
