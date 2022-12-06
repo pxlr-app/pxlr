@@ -220,7 +220,7 @@ const BundleWebPlugin: esbuild.Plugin = {
 			}
 			const contents = await response.text();
 			const ct = response.headers.get("Content-Type") ?? "text/javascript; charset=utf-8";
-			return { contents, loader: ct.includes("javascript") ? "jsx" : "tsx" };
+			return { contents, loader: ct.includes("text/javascript") ? "jsx" : (ct.includes("text/css") ? "css" : "tsx") };
 		});
 	},
 };
@@ -233,13 +233,12 @@ await new Command()
 		console.log(`${colors.green(colors.bold(`PetiteVITE`) + ` v0.0.0`)} ${colors.blue("building for production...")}`);
 		const result = await build();
 		console.log(colors.green("✓") + colors.dim(` ${Object.keys(result.metafile!.inputs).length} modules transformed in ${(performance.now() - timeStart).toFixed(0)}ms.`));
-		const outouts: { [path: string]: { bytes: number } } = result.metafile!.outputs;
-		const maxLength = Object.keys(outouts).reduce((length, key) => Math.max(length, key.length), 0);
+		const outouts = result.metafile!.outputs;
 		const sortedOutput = Object.entries(outouts);
 		sortedOutput.sort((a, b) => a[0].localeCompare(b[0]));
-		for await (const [key] of sortedOutput) {
+		for await (const [path, meta] of sortedOutput) {
 			let color = colors.yellow;
-			const ext = extname(key);
+			const ext = extname(path);
 			if (ext === ".html") {
 				color = colors.green;
 			} else if (ext === ".css") {
@@ -247,13 +246,30 @@ await new Command()
 			} else if (ext === ".js") {
 				color = colors.blue;
 			}
-			const file = await Deno.open(key);
+			const file = await Deno.open(path);
 			const stat = await file.stat();
 			const compressed = await new Response(file.readable.pipeThrough(new CompressionStream("gzip"))).arrayBuffer();
+
 			console.log(
-				`${colors.dim("dist/")}${color(relative("dist/", key))}`.padEnd(maxLength + 30, " ") +
-					colors.dim(prettyBytes(stat.size).padEnd(7) + " | " + prettyBytes(compressed.byteLength)),
+				colors.dim(`dist/`) + color(relative("dist/", path)) +
+					colors.dim(` (${prettyBytes(stat.size)} ⇒ ${prettyBytes(compressed.byteLength)})`),
 			);
+
+			const sortedDeps = Object.entries(meta.inputs);
+			sortedDeps.sort((a, b) => b[1].bytesInOutput - a[1].bytesInOutput);
+
+			if (sortedDeps.length > 0) {
+				const moduleCount = sortedDeps.length;
+				let i = 0;
+				const biggestOffenders = sortedDeps.splice(0, 4);
+				for (const [dep, { bytesInOutput }] of biggestOffenders) {
+					console.log(colors.dim(`  ${++i >= moduleCount ? "└" : "├"} ${dep.replace("bundle-http:", "")} (${prettyBytes(bytesInOutput)})`));
+				}
+				if (sortedDeps.length) {
+					const depSize = prettyBytes(sortedDeps.reduce((size, dep) => size + dep[1].bytesInOutput, 0));
+					console.log(colors.dim(`  └ and ${colors.underline(`${sortedDeps.length} others modules`)} (${depSize})`));
+				}
+			}
 		}
 		Deno.exit(0);
 	})
