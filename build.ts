@@ -42,7 +42,7 @@ async function build(onRebuild?: () => void) {
 		metafile: true,
 		incremental: isDev,
 		treeShaking: !isDev,
-		sourcemap: isDev ? "inline" : false,
+		sourcemap: isDev ? "external" : "external",
 		watch: isDev
 			? {
 				async onRebuild(_error, result) {

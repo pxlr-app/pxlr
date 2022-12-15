@@ -1,0 +1,3 @@
+.btn-group {
+	@apply isolate inline-flex rounded-lg shadow-sm;
+}

@@ -1,4 +1,4 @@
-import { faCheck, faChevronRight, FontAwesomeSvgIcon, Fragment, h, usePopper, useState } from "/editor/deps.ts";
+import { mdiCheck, mdiChevronRight, Icon, Fragment, h, usePopper, useState } from "/editor/deps.ts";
 import type { FunctionComponent, Ref } from "/editor/deps.ts";
 import { PopperContext, UnstyledMenu, UnstyledMenuItem, UnstyledMenuItemProps } from "./UnstyledMenu.tsx";
 import "./Menu.css";
@@ -57,7 +57,7 @@ export const MenuItem: FunctionComponent<MenuItemProps> = (props) => {
 						<div class="menu-item__wrapper">
 							<div class="menu-item__icon">
 								{props.checked &&
-									<FontAwesomeSvgIcon icon={faCheck} />}
+									<Icon path={mdiCheck} size={0.5} />}
 							</div>
 							<div class="menu-item__label">
 								{!props.accessKey && props.label}
@@ -76,7 +76,7 @@ export const MenuItem: FunctionComponent<MenuItemProps> = (props) => {
 							<div class="menu-item__keybind">{props.keybind}</div>
 							<div class="menu-item__icon">
 								{hasChildren &&
-									<FontAwesomeSvgIcon icon={faChevronRight} />}
+									<Icon path={mdiChevronRight} size={0.5} />}
 							</div>
 						</div>
 						{hasChildren && opened.value &&

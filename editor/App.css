@@ -1,0 +1,27 @@
+:root {
+	--primary-color: #3d3d3d;
+	--border-color: #d6d6d6;
+	--background-color: #fff;
+	--background-color-hover: #f5f5f5;
+}
+
+* {
+	@apply box-border;
+}
+
+html, body {
+	@apply w-full h-full m-0 overflow-hidden;
+}
+
+#root {
+	@apply h-full p-4;
+	@apply bg-white;
+}
+
+.dark #root {
+	--primary-color: #a6a6a6;
+	--border-color: #3d3d3d;
+	--background-color: #262627;
+	--background-color-hover: #3d3d3d;
+	background-color: #121212;
+}
