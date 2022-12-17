@@ -42,7 +42,7 @@ async function build(onRebuild?: () => void) {
 		metafile: true,
 		incremental: isDev,
 		treeShaking: !isDev,
-		sourcemap: isDev ? "external" : "external",
+		sourcemap: isDev ? "linked" : "external",
 		watch: isDev
 			? {
 				async onRebuild(_error, result) {
@@ -252,7 +252,7 @@ await new Command()
 
 			console.log(
 				colors.dim(`dist/`) + color(relative("dist/", path)) +
-					colors.dim(` (${prettyBytes(stat.size)} ⇒ ${prettyBytes(compressed.byteLength)})`),
+				colors.dim(` (${prettyBytes(stat.size)} ⇒ ${prettyBytes(compressed.byteLength)})`),
 			);
 
 			const sortedDeps = Object.entries(meta.inputs);

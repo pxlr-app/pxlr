@@ -5,10 +5,10 @@
 	@apply text-[var(--primary-color)];
 }
 
-.btn-group > .btn:first-child {
+.btn-group > .btn:first-of-type {
 	@apply rounded-l-md;
 }
 
-.btn-group > .btn:last-child {
+.btn-group > .btn:last-of-type {
 	@apply border-r rounded-r-md;
 }
