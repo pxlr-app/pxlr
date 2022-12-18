@@ -11,7 +11,7 @@
 		"test": "DENO_DIR=.deno deno test -A --parallel"
 	},
 	"compilerOptions": {
-		"jsxFactory": "h",
+		"jsxFactory": "createElement",
 		"jsxFragmentFactory": "Fragment",
 		"lib": [
 			"deno.ns",

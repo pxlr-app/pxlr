@@ -55,9 +55,9 @@ async function build(onRebuild?: () => void) {
 		format: "esm",
 		platform: "browser",
 		plugins: [BundleWebPlugin],
-		jsxFactory: "h",
-		logLevel: "error",
+		jsxFactory: "createElement",
 		jsxFragment: "Fragment",
+		logLevel: "error",
 		loader: {
 			".js": "js",
 			".jsx": "jsx",
@@ -252,7 +252,7 @@ await new Command()
 
 			console.log(
 				colors.dim(`dist/`) + color(relative("dist/", path)) +
-				colors.dim(` (${prettyBytes(stat.size)} ⇒ ${prettyBytes(compressed.byteLength)})`),
+					colors.dim(` (${prettyBytes(stat.size)} ⇒ ${prettyBytes(compressed.byteLength)})`),
 			);
 
 			const sortedDeps = Object.entries(meta.inputs);

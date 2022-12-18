@@ -1,7 +1,6 @@
-import { h } from "/editor/deps.ts";
-import type { FunctionComponent } from "/editor/deps.ts";
+import { createElement, FunctionComponent, HTMLAttributes, PropsWithChildren } from "/editor/deps.ts";
 import "./ButtonGroup.css";
 
-export const ButtonGroup: FunctionComponent<{}> = ({ children }) => {
-	return (<div class="btn-group">{children}</div>)
-}
+export const ButtonGroup: FunctionComponent<PropsWithChildren<HTMLAttributes<HTMLDivElement>>> = ({ children, ...props }) => {
+	return <div {...props} className={`btn-group ${props.className ?? ""}`}>{children}</div>;
+};

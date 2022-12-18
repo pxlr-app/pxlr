@@ -1,173 +1,59 @@
-import { h, Icon, mdiUndo, mdiRedo, mdiMenu } from "/editor/deps.ts";
-import { WebFile, Zip } from "/libzip/mod.ts";
 import {
-	AutoId,
-	BufferedRepository,
-	GroupNodeRegistryEntry,
-	NodeRegistry,
-	NoteNodeRegistryEntry,
-	visit,
-	VisitorResult,
-	WebFilesystem,
-	Workspace,
-	ZipFilesystem,
-} from "/libpxlr/mod.ts";
-import { Menu, Menubar, MenubarItem, MenuItem, Separator } from "/editor/components/Menu/mod.ts";
-import { Button, ButtonGroup, Dropdown } from "/editor/components/Button/mod.ts";
+	createElement,
+	Fragment,
+	Icon,
+	mdiCogOutline,
+	mdiExportVariant,
+	mdiFileDocumentPlusOutline,
+	mdiFolderOutline,
+	mdiHelpCircleOutline,
+	mdiMenu,
+	mdiPackageVariantClosed,
+	mdiRedo,
+	mdiTagPlusOutline,
+	mdiUndo,
+} from "/editor/deps.ts";
 import "./App.css";
+// import { WebFile, Zip } from "/libzip/mod.ts";
+// import {
+// 	AutoId,
+// 	BufferedRepository,
+// 	GroupNodeRegistryEntry,
+// 	NodeRegistry,
+// 	NoteNodeRegistryEntry,
+// 	visit,
+// 	VisitorResult,
+// 	WebFilesystem,
+// 	Workspace,
+// 	ZipFilesystem,
+// } from "/libpxlr/mod.ts";
+// import { Menu, Menubar, MenubarItem, MenuItem, Separator } from "/editor/components/Menu/mod.ts";
+import { Button, ButtonGroup } from "/editor/components/Button/mod.ts";
+import * as Menu from "/editor/components/Menu/Menu.tsx";
 
 export default function App() {
-	return <div>
-		<ButtonGroup>
-			<Dropdown label={() => (<Icon path={mdiMenu} size={0.65} />)}>
-				<Menu>
-					<MenuItem
-						id="newdoc"
-						label="New Document"
-						accessKey="N"
-					>
-						<Menu>
-							<MenuItem
-								id="newpxlrfile"
-								label="New File…"
-								accessKey="N"
-								keybind="Ctrl+N"
-								action={() => console.log("click newpxlrfile")}
-							/>
-							<MenuItem
-								id="newpxlrfolder"
-								label="New Folder…"
-								accessKey="F"
-								keybind="Ctrl+Shift+N"
-								action={() => console.log("click newpxlrfolder")}
-							/>
-						</Menu>
-					</MenuItem>
-					<Separator />
-					<MenuItem
-						id="opendoc"
-						label="Open Document"
-						accessKey="O"
-					>
-						<Menu>
-							<MenuItem
-								id="openfile"
-								label="Open File…"
-								accessKey="O"
-								keybind="Ctrl+O"
-							/>
-							<MenuItem
-								id="openfolder"
-								label="Open Folder…"
-								accessKey="F"
-								keybind="Ctrl+Shift+O"
-							/>
-						</Menu>
-					</MenuItem>
-					<MenuItem
-						id="openrecent"
-						label="Open Recent"
-						accessKey="R"
-					>
-						<Menu>
-							<MenuItem
-								id="reopen"
-								label="Reopen Closed Document"
-								accessKey="R"
-								keybind="Ctrl+Shift+T"
-								action={() => console.log("click reopen")}
-							/>
-							<MenuItem
-								id="recentdocs"
-								label="Recent Documents"
-								accessKey="D"
-							>
-								<Menu>
-									<MenuItem
-										id="filea"
-										label="File A"
-										accessKey="A"
-										action={() => console.log("click filea")}
-									/>
-									<MenuItem
-										id="fileb"
-										label="File B"
-										accessKey="B"
-										action={() => console.log("click fileb")}
-									/>
-									<MenuItem
-										id="filec"
-										label="File C"
-										accessKey="C"
-										action={() => console.log("click filec")}
-									/>
-								</Menu>
-							</MenuItem>
-							<MenuItem
-								id="clearrecent"
-								label="Clear Recent Documents"
-								accessKey="C"
-								action={() => console.log("click clearrecent")}
-							/>
-						</Menu>
-					</MenuItem>
-					<Separator />
-					<MenuItem
-						id="saveas"
-						label="Save As"
-						accessKey="A"
-					>
-						<Menu>
-							<MenuItem
-								id="saveaspxlrfile"
-								label="Save As File…"
-								accessKey="S"
-								action={() => console.log("click saveaspxlrfile")}
-							/>
-							<MenuItem
-								id="saveaspxlrfolder"
-								label="Save As Folder…"
-								accessKey="F"
-								action={() => console.log("click saveaspxlrfolder")}
-							/>
-						</Menu>
-					</MenuItem>
-					<Separator />
-					<MenuItem
-						id="preferences"
-						label="Preferences"
-						accessKey="P"
-					>
-						<Menu>
-							<MenuItem
-								id="settings"
-								label="Settings"
-								accessKey="S"
-								keybind="Ctrl+,"
-								action={() => console.log("click settings")}
-							/>
-							<MenuItem
-								id="keyboardshortcuts"
-								label="Keyboard Shortcuts"
-								accessKey="K"
-								action={() => console.log("click keyboardshortcuts")}
-							/>
-						</Menu>
-					</MenuItem>
-					<MenuItem
-						id="useraccount"
-						label="User Account"
-						accessKey="U"
-						action={() => console.log("click useraccount")}
-					/>
-				</Menu>
-			</Dropdown>
-		</ButtonGroup>
-		<ButtonGroup>
-			<Button><Icon path={mdiUndo} size={0.65} /></Button>
-			<Button><Icon path={mdiRedo} size={0.65} /></Button>
-		</ButtonGroup>
-	</div>;
+	return (
+		<>
+			<Menu.Menu>
+				<Menu.Button>
+					<Button>
+						<Icon path={mdiMenu} size={0.65} />
+					</Button>
+				</Menu.Button>
+				<Menu.Items>
+					<Menu.Item label="New..." keybind="CTRL+N" icon={mdiFileDocumentPlusOutline} />
+					<Menu.Item label="Open..." keybind="CTRL+O" icon={mdiFolderOutline} />
+					<Menu.Separator />
+					<Menu.Item label="Tag..." keybind="CTRL+S" icon={mdiTagPlusOutline} />
+					<Menu.Item label="Save as..." keybind="CTRL+SHIFT+S" icon={mdiPackageVariantClosed} />
+					<Menu.Item label="Export..." keybind="CTRL+SHIFT+E" icon={mdiExportVariant} />
+					<Menu.Separator />
+					<Menu.Item label="Preferences..." keybind="CTRL+," icon={mdiCogOutline} />
+					<Menu.Item label="Help" keybind="F1" icon={mdiHelpCircleOutline} />
+				</Menu.Items>
+			</Menu.Menu>
+		</>
+	);
 }
 
 // export default function App() {

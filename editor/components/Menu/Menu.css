@@ -1,55 +1,55 @@
-.menu {
-	@apply pointer-events-auto inline-block relative cursor-default border border-transparent outline-none bg-gray-700 text-gray-200 text-xs select-none focus:border-blue-500;
-	box-shadow: #000 0px 2px 4px;
+.menu__items {
+	@apply flex flex-col w-[250px] mt-1 p-2.5 rounded-lg;
+	@apply bg-[var(--background-color)];
+	@apply text-[var(--primary-color)];
 }
 
-.menu__wrapper {
-	@apply flex flex-1 p-0 m-0 overflow-visible;
+.menu__items--enter {
+	@apply transition duration-100 ease-out
 }
 
-.menu__list {
-	@apply flex flex-1 flex-col py-2 px-0 m-0 justify-end flex-nowrap;
+.menu__items--enterFrom {
+	@apply transform scale-95 opacity-0
 }
 
-.menu-item {
-	@apply pointer-events-auto relative w-80 flex flex-1 pt-0.5 pb-1 px-1 mx-px cursor-pointer outline-none;
+.menu__items--enterTo {
+	@apply transform scale-100 opacity-100
 }
 
-.menu-item--selected {
-	@apply bg-gray-800 text-blue-300;
+.menu__items--leave {
+	@apply transition duration-75 ease-out
 }
 
-.menu-item__wrapper {
-	@apply pointer-events-none flex flex-1 flex-nowrap whitespace-nowrap;
+.menu__items--leaveFrom {
+	@apply transform scale-100 opacity-100
 }
 
-.menu-item__icon {
+.menu__items--leaveTo {
+	@apply transform scale-95 opacity-0
+}
+
+.menu__separator {
+	@apply h-px my-2;
+	@apply bg-[var(--border-color)];
+}
+
+.menu__item {
+	@apply flex flex-row flex-1 text-xs cursor-pointer px-2.5 py-1 rounded-lg;
+}
+
+.menu__item--active {
+	@apply bg-gray-600;
+}
+
+.menu__item-icon {
 	@apply w-4 flex items-center;
 	font-size: 0.625rem;
 }
 
-.menu-item__label {
+.menu__item-label {
 	@apply px-1 flex-1;
 }
 
-.menu-item__label--accesskey {
-	@apply underline uppercase;
-}
-
-.menu-item__keybind {
-	@apply px-1 text-gray-500;
-}
-
-.menu-item__nested {
-	@apply absolute z-50 left-0 top-0 w-full;
-	@apply transform translate-y-[calc(-0.5rem-1px)];
-}
-
-.menu-item__nested--end {
-	@apply top-auto bottom-0;
-	@apply translate-y-[calc(0.5rem+1px)];
-}
-
-.menu-separator {
-	@apply flex p-0 pt-1 mt-0 mr-2 mb-1 ml-2 border-b border-gray-600;
+.menu__item-keybind {
+	@apply px-1 opacity-40;
 }

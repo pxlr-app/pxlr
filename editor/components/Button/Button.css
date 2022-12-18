@@ -1,14 +1,14 @@
 .btn {
-	@apply flex border border-r-0 p-2 cursor-pointer;
-	@apply bg-[var(--background-color)] border-[var(--border-color)];
+	@apply flex p-2.5 rounded-lg cursor-pointer;
+	@apply bg-[var(--background-color)];
 	@apply hover:bg-[var(--background-color-hover)];
 	@apply text-[var(--primary-color)];
 }
 
-.btn-group > .btn:first-of-type {
+/* .btn-group > .btn:first-of-type {
 	@apply rounded-l-md;
 }
 
 .btn-group > .btn:last-of-type {
 	@apply border-r rounded-r-md;
-}
+} */
