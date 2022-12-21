@@ -77,8 +77,8 @@ export default function Editor() {
 			<Button>
 				<Icon path={mdiAccount} size={0.65} />
 			</Button>
-			{newOpened && <NewWorkspaceDialog open={true} onClose={setNewOpen} />}
-			{openOpened && <OpenWorkspaceDialog open={true} onClose={setOpenOpen} />}
+			<NewWorkspaceDialog open={newOpened} onClose={setNewOpen} />
+			<OpenWorkspaceDialog open={openOpened} onClose={setOpenOpen} />
 		</Stack>
 	);
 }

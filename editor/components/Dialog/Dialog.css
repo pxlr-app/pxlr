@@ -4,7 +4,7 @@
 
 .dialog__backdrop {
 	@apply fixed inset-0 transition-all;
-	@apply bg-[#ffffff00] backdrop-filter backdrop-blur-sm backdrop-brightness-110;
+	@apply bg-[#ffffff00] opacity-0 backdrop-filter backdrop-blur-sm backdrop-brightness-110;
 }
 
 .dialog__backdrop--enter {
@@ -12,11 +12,11 @@
 }
 
 .dialog__backdrop--enterFrom {
-	@apply backdrop-blur-none;
+	@apply opacity-0 backdrop-blur-none;
 }
 
 .dialog__backdrop--enterTo {
-	@apply backdrop-blur-sm;
+	@apply opacity-100 backdrop-blur-sm;
 }
 
 .dialog__backdrop--leave {
@@ -24,11 +24,11 @@
 }
 
 .dialog__backdrop--leaveFrom {
-	@apply backdrop-blur-sm;
+	@apply opacity-100 backdrop-blur-sm;
 }
 
 .dialog__backdrop--leaveTo {
-	@apply backdrop-blur-none;
+	@apply opacity-0 backdrop-blur-none;
 }
 
 .dialog__scroller {

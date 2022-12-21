@@ -14,13 +14,18 @@ import { Button } from "/editor/components/Button/Button.tsx";
 import { Stack } from "/editor/components/Layout/Stack.tsx";
 import "./NewWorkspaceDialog.css";
 
-const settings = [
+const storages = [
 	{ id: "local-folder", name: "Local folder", description: "Stored on your device, within a specially crafted folder. Offer greatest performance." },
 	{ id: "local-file", name: "Local file", description: "Stored on your device, within a zip-like file. Offer greatest portability." },
 	{ id: "cloud", name: "Cloud workspace", description: "Stored on our cloud, encrypted. Offer greatest availability and security.", disabled: true },
 ];
+
 export const NewWorkspaceDialog: FunctionComponent<Dialog.DialogProps> = ({ open, onClose }) => {
-	const [selected, setSelected] = useState(settings[0].id);
+	const [storage, setStorage] = useState(storages[0].id);
+	const onCreate = () => {
+		onClose(false);
+		console.log('create', storage);
+	}
 	return (
 		<Dialog.Dialog open={open} onClose={onClose}>
 			<Dialog.Title>
@@ -30,9 +35,9 @@ export const NewWorkspaceDialog: FunctionComponent<Dialog.DialogProps> = ({ open
 				Choose your storage
 			</Dialog.SubTitle>
 			<Dialog.Body>
-				<UnstyledRadioGroup value={selected} onChange={setSelected}>
+				<UnstyledRadioGroup value={storage} onChange={setStorage}>
 					<ul className="new-workspace-dialog__storages">
-						{settings.map((setting, settingIdx) => (
+						{storages.map((setting, settingIdx) => (
 							<UnstyledRadioGroup.Option
 								key={setting.id}
 								value={setting.id}
@@ -66,7 +71,7 @@ export const NewWorkspaceDialog: FunctionComponent<Dialog.DialogProps> = ({ open
 					</ul>
 				</UnstyledRadioGroup>
 				<Stack justify="end">
-					<Button size="extra-small">
+					<Button size="extra-small" onClick={onCreate}>
 						Create workspace
 					</Button>
 				</Stack>
