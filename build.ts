@@ -166,7 +166,7 @@ async function dev(port: number) {
 
 const httpCache = await caches.open(import.meta.url);
 let importMapBase = "";
-let importMap: { imports: Record<string, string> } | undefined;
+let importMap: { imports: Record<string, string> } = { imports: {} };
 try {
 	const denoJson = await Deno.readTextFile(join(Deno.cwd(), "deno.json"));
 	const denoConfig = JSON.parse(denoJson) ?? {};
@@ -176,20 +176,28 @@ try {
 			importMapBase = dirname(importMapPath);
 			const importMapJson = await Deno.readTextFile(importMapPath);
 			importMap = JSON.parse(importMapJson) ?? undefined;
-		} catch (_err) {
-			importMap = undefined;
+		} catch {
+			// Ignored
 		}
 	}
-} catch (_err) {
-	importMap = undefined;
+} catch {
+	// Ignored
 }
 const BundleWebPlugin: esbuild.Plugin = {
 	name: "BundleWebPlugin",
 	setup(build) {
-		build.onResolve({ filter: /^https?:\/\// }, (args) => ({
-			path: args.path,
-			namespace: "bundle-http",
-		}));
+		build.onResolve({ filter: /^https?:\/\// }, (args) => {
+			for (const [url, map] of Object.entries(importMap?.imports ?? {})) {
+				if (args.path.substring(0, url.length) === url) {
+					args.path = join(map, args.path.substring(url.length));
+					break;
+				}
+			}
+			return {
+				path: args.path,
+				namespace: "bundle-http",
+			};
+		});
 		build.onResolve({ filter: /.*?/, namespace: "file" }, (args) => {
 			for (const [url, map] of Object.entries(importMap?.imports ?? {})) {
 				if (args.path.substring(0, url.length) === url) {
@@ -229,6 +237,12 @@ await new Command()
 	.name("pxlr")
 	.command("build", "Build project")
 	.action(async () => {
+		// importMap.imports["https://esm.sh/react@18.2.0"] = "https://esm.sh/preact@10.11.3/compat";
+		// importMap.imports["https://esm.sh/react-dom@18.2.0?deps=react@18.2.0"] = "https://esm.sh/preact@10.11.3/compat";
+		// importMap.imports["https://esm.sh/@mdi/react@1.6.1?deps=react@18.2.0"] = "https://esm.sh/@mdi/react@1.6.1?alias=react:preact/compat&deps=preact@10.11.3";
+		// importMap.imports["https://esm.sh/react-popper@2.3.0?deps=react@18.2.0,react-dom@18.2.0"] = "https://esm.sh/react-popper@2.3.0?alias=react:preact/compat,react-dom:preact/compat&deps=preact@10.11.3";
+		// importMap.imports["https://esm.sh/@headlessui/react@1.7.7?deps=react@18.2.0,react-dom@18.2.0"] = "https://esm.sh/@headlessui/react@1.7.7?alias=react:preact/compat,react-dom:preact/compat&deps=preact@10.11.3"
+
 		const timeStart = performance.now();
 		console.log(`${colors.green(colors.bold(`PetiteVITE`) + ` v0.0.0`)} ${colors.blue("building for production...")}`);
 		const result = await build();

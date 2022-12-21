@@ -1,14 +1,14 @@
 .btn {
 	@apply flex p-2.5 rounded-lg cursor-pointer;
-	@apply bg-[var(--background-color)];
-	@apply hover:bg-[var(--background-color-hover)];
-	@apply text-[var(--primary-color)];
+	@apply bg-[var(--color-panel)];
+	@apply hover:bg-[var(--color-panel--hover)];
+	@apply text-[var(--color-text)];
 }
 
-/* .btn-group > .btn:first-of-type {
-	@apply rounded-l-md;
+.btn--sm {
+	@apply text-sm;
 }
 
-.btn-group > .btn:last-of-type {
-	@apply border-r rounded-r-md;
-} */
+.btn-xs {
+	@apply text-xs;
+}

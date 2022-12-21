@@ -1,4 +1,4 @@
-import { clsx, createElement, Fragment, FunctionComponent, Icon, PropsWithChildren, Transition, UnstyledMenu } from "/editor/deps.ts";
+import { clsx, createElement, Fragment, FunctionComponent, Icon, MouseEvent, PropsWithChildren, Transition, UnstyledMenu } from "/editor/deps.ts";
 import "./Menu.css";
 
 export const Button: FunctionComponent<PropsWithChildren> = ({ children }) => {
@@ -12,14 +12,21 @@ export const Button: FunctionComponent<PropsWithChildren> = ({ children }) => {
 export const Menu: FunctionComponent<PropsWithChildren> = ({ children }) => {
 	return (
 		<UnstyledMenu>
-			{children}
+			<div className="menu">
+				{children}
+			</div>
 		</UnstyledMenu>
 	);
 };
 
-export const Items: FunctionComponent<PropsWithChildren> = ({ children }) => {
+export type ItemsProps = {
+	placement?: "left" | "right";
+};
+
+export const Items: FunctionComponent<PropsWithChildren<ItemsProps>> = ({ children, ...props }) => {
 	return (
 		<Transition
+			as={Fragment}
 			enter="menu__items--enter"
 			enterFrom="menu__items--enterFrom"
 			enterTo="menu__items--enterTo"
@@ -28,7 +35,7 @@ export const Items: FunctionComponent<PropsWithChildren> = ({ children }) => {
 			leaveTo="menu__items--leaveTo"
 		>
 			<UnstyledMenu.Items as={Fragment}>
-				<ul className="menu__items">
+				<ul className={clsx("menu__items", props.placement === "right" ? "menu__items--right" : "menu__items--left")}>
 					{children}
 				</ul>
 			</UnstyledMenu.Items>
@@ -40,13 +47,14 @@ export type ItemProps = {
 	label: string;
 	icon?: string;
 	keybind?: string;
+	onAction?: (e: MouseEvent<HTMLLIElement>) => void;
 };
 
 export const Item: FunctionComponent<PropsWithChildren<ItemProps>> = ({ children, ...props }) => {
 	return (
 		<UnstyledMenu.Item>
 			{({ active }) => (
-				<li className={clsx("menu__item", active && "menu__item--active")}>
+				<li className={clsx("menu__item", active && "menu__item--active")} onClick={props.onAction}>
 					<div className="menu__item-icon">
 						{props.icon &&
 							<Icon path={props.icon} size={0.5} />}

@@ -1,7 +1,20 @@
+.menu {
+	@apply relative isolate;
+}
+
 .menu__items {
+	@apply absolute;
 	@apply flex flex-col w-[250px] mt-1 p-2.5 rounded-lg;
-	@apply bg-[var(--background-color)];
-	@apply text-[var(--primary-color)];
+	@apply bg-[var(--color-panel)];
+	@apply text-[var(--color-text)];
+}
+
+.menu__items--left {
+	@apply left-0;
+}
+
+.menu__items--right {
+	@apply right-0;
 }
 
 .menu__items--enter {
@@ -30,7 +43,7 @@
 
 .menu__separator {
 	@apply h-px my-2;
-	@apply bg-[var(--border-color)];
+	@apply bg-[var(--color-separator)];
 }
 
 .menu__item {
@@ -38,7 +51,7 @@
 }
 
 .menu__item--active {
-	@apply bg-gray-600;
+	@apply bg-[var(--color-panel--hover)];
 }
 
 .menu__item-icon {

@@ -1,0 +1,55 @@
+.stack {
+	@apply flex;
+}
+
+.stack--horizontal {
+	@apply flex-row;
+}
+
+.stack--vertical {
+	@apply flex-row;
+}
+
+.stack--items-start {
+	@apply items-start;
+}
+
+.stack--items-center {
+	@apply items-center;
+}
+
+.stack--items-end {
+	@apply items-end;
+}
+
+.stack--content-start {
+	@apply content-start;
+}
+
+.stack--content-center {
+	@apply content-center;
+}
+
+.stack--content-end {
+	@apply content-end;
+}
+
+.stack--justify-start {
+	@apply justify-start;
+}
+
+.stack--justify-center {
+	@apply justify-center;
+}
+
+.stack--justify-end {
+	@apply justify-end;
+}
+
+.stack--justify-between {
+	@apply justify-between;
+}
+
+.stack--justify-around {
+	@apply justify-around;
+}
