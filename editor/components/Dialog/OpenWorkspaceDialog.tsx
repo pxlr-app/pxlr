@@ -7,20 +7,23 @@ import {
 	mdiCheckboxBlankCircleOutline,
 	mdiCheckboxMarkedCircleOutline,
 	UnstyledRadioGroup,
+	useContext,
 	useState,
 } from "/editor/deps.ts";
 import * as Dialog from "./Dialog.tsx";
 import { Button } from "/editor/components/Button/Button.tsx";
 import { Stack } from "/editor/components/Layout/Stack.tsx";
+import { EditorContext } from "/editor/components/Editor/mod.ts";
 import "./NewWorkspaceDialog.css";
 
 const storages = [
 	{ id: "local-folder", name: "Local folder", description: "Stored on your device, within a specially crafted folder. Offer greatest performance." },
 	{ id: "local-file", name: "Local file", description: "Stored on your device, within a zip-like file. Offer greatest portability." },
-	{ id: "remote-folder", name: "Web workspace", description: "Stored on the web. Offer a read-only workspace." },
+	{ id: "remote-location", name: "Web workspace", description: "Stored on the web. Offer a read-only workspace." },
 	{ id: "cloud", name: "Cloud workspace", description: "Stored on our cloud, encrypted. Offer greatest availability and security.", disabled: true },
 ];
 export const OpenWorkspaceDialog: FunctionComponent<Dialog.DialogProps> = ({ open, onClose }) => {
+	const editorState = useContext(EditorContext);
 	const [storage, setStorage] = useState(storages[0].id);
 	const onOpen = () => {
 		onClose(false);

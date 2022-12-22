@@ -8,10 +8,12 @@ import {
 	mdiCheckboxMarkedCircleOutline,
 	UnstyledRadioGroup,
 	useState,
+	useContext
 } from "/editor/deps.ts";
 import * as Dialog from "./Dialog.tsx";
 import { Button } from "/editor/components/Button/Button.tsx";
 import { Stack } from "/editor/components/Layout/Stack.tsx";
+import { EditorContext } from "/editor/components/Editor/mod.ts";
 import "./NewWorkspaceDialog.css";
 
 const storages = [
@@ -21,6 +23,7 @@ const storages = [
 ];
 
 export const NewWorkspaceDialog: FunctionComponent<Dialog.DialogProps> = ({ open, onClose }) => {
+	const editorState = useContext(EditorContext);
 	const [storage, setStorage] = useState(storages[0].id);
 	const onCreate = () => {
 		onClose(false);

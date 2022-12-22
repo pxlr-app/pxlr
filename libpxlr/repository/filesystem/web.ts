@@ -3,7 +3,7 @@ import { Filesystem } from "./filesystem.ts";
 // deno-lint-ignore no-explicit-any
 type FileSystemDirectoryHandle = any;
 
-export class WebFilesystem extends Filesystem {
+export class WebFileSystem extends Filesystem {
 	#folderHandle: FileSystemDirectoryHandle | undefined;
 	constructor(
 		folderHandle: FileSystemDirectoryHandle,

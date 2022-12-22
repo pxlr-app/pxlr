@@ -1,86 +1,61 @@
-import {
-	createElement,
-	Fragment,
-	Icon,
-	mdiAccount,
-	mdiArtboard,
-	mdiChartLineVariant,
-	mdiCircle,
-	mdiCogOutline,
-	mdiCursorDefault,
-	mdiEraser,
-	mdiExportVariant,
-	mdiFileDocumentPlusOutline,
-	mdiFolderOutline,
-	mdiFormatColorFill,
-	mdiHelpCircleOutline,
-	mdiMenu,
-	mdiPackageVariantClosed,
-	mdiPencilOutline,
-	mdiRectangle,
-	mdiRedo,
-	mdiTagPlusOutline,
-	mdiUndo,
-	useState,
-} from "/editor/deps.ts";
-import "./App.css";
-// import { WebFile, Zip } from "/libzip/mod.ts";
-// import {
-// 	AutoId,
-// 	BufferedRepository,
-// 	GroupNodeRegistryEntry,
-// 	NodeRegistry,
-// 	NoteNodeRegistryEntry,
-// 	visit,
-// 	VisitorResult,
-// 	WebFilesystem,
-// 	Workspace,
-// 	ZipFilesystem,
-// } from "/libpxlr/mod.ts";
-// import { Menu, Menubar, MenubarItem, MenuItem, Separator } from "/editor/components/Menu/mod.ts";
-import { Button, ButtonGroup } from "/editor/components/Button/mod.ts";
-import * as Menu from "/editor/components/Menu/Menu.tsx";
-import { Stack } from "/editor/components/Layout/mod.ts";
-import { NewWorkspaceDialog, OpenWorkspaceDialog } from "/editor/components/Dialog/mod.ts";
+import { Workspace, ZipFilesystem, WebFileSystem, BufferedRepository, NodeRegistry, NoteNodeRegistryEntry, GroupNodeRegistryEntry } from "/libpxlr/mod.ts";
+import { WebFile, Zip } from "/libzip/mod.ts";
 
-export default function Editor() {
-	const [newOpened, setNewOpen] = useState(false);
-	const [openOpened, setOpenOpen] = useState(false);
-	return (
-		<Stack direction="horizontal">
-			<Menu.Menu>
-				<Menu.Button>
-					<Button>
-						<Icon path={mdiMenu} size={0.65} />
-					</Button>
-				</Menu.Button>
-				<Menu.Items>
-					<Menu.Item label="New..." keybind="CTRL+N" icon={mdiFileDocumentPlusOutline} onAction={() => setNewOpen(true)} />
-					<Menu.Item label="Open..." keybind="CTRL+O" icon={mdiFolderOutline} onAction={() => setOpenOpen(true)} />
-					<Menu.Separator />
-					<Menu.Item label="Tag..." keybind="CTRL+S" icon={mdiTagPlusOutline} />
-					<Menu.Item label="Save as..." keybind="CTRL+SHIFT+S" icon={mdiPackageVariantClosed} />
-					<Menu.Item label="Export..." keybind="CTRL+SHIFT+E" icon={mdiExportVariant} />
-					<Menu.Separator />
-					<Menu.Item label="Preferences..." keybind="CTRL+," icon={mdiCogOutline} />
-					<Menu.Item label="Help" keybind="F1" icon={mdiHelpCircleOutline} />
-				</Menu.Items>
-			</Menu.Menu>
-			<ButtonGroup>
-				<Button>
-					<Icon path={mdiCursorDefault} size={0.65} />
-				</Button>
-				<Button>
-					<Icon path={mdiArtboard} size={0.65} />
-				</Button>
-			</ButtonGroup>
-			<Button>
-				<Icon path={mdiAccount} size={0.65} />
-			</Button>
-			<NewWorkspaceDialog open={newOpened} onClose={setNewOpen} />
-			<OpenWorkspaceDialog open={openOpened} onClose={setOpenOpen} />
-		</Stack>
-	);
+const nodeRegistry = new NodeRegistry();
+nodeRegistry.registerNodeConstructor(NoteNodeRegistryEntry);
+nodeRegistry.registerTreeConstructor(GroupNodeRegistryEntry);
+
+export type FileSystemFileHandle = any;
+export type FileSystemDirectoryHandle = any;
+
+export default class EditorState {
+
+	#workspace?: Workspace;
+
+	public constructor(
+		workspace?: Workspace
+	) {
+		this.#workspace = workspace;
+	}
+
+	get workspace() {
+		return this.#workspace;
+	}
+
+	public async loadWorkspaceFromLocalFile(fileHandle: FileSystemFileHandle) {
+		let filePermission = await fileHandle.queryPermission({ mode: "readwrite" });
+		if (filePermission !== "granted") {
+			filePermission = await fileHandle.requestPermission({ mode: "readwrite" });
+			if (filePermission !== "granted") {
+				return;
+			}
+		}
+
+		const file = new WebFile(fileHandle);
+		const zip = new Zip(file);
+		await zip.open();
+		const fileSystem = new ZipFilesystem(zip);
+		const repository = new BufferedRepository(fileSystem);
+		const workspace = new Workspace({ repository, nodeRegistry });
+
+		return new EditorState(workspace);
+	}
+
+	public loadWorkspaceFromLocalFolder(folderHandle: FileSystemDirectoryHandle) {
+		const fileSystem = new WebFileSystem(folderHandle);
+		const repository = new BufferedRepository(fileSystem);
+		const workspace = new Workspace({ repository, nodeRegistry });
+
+		return Promise.resolve(new EditorState(workspace));
+	}
+
+	// public loadWorkspaceFromRemoteLocation() {
+
+	// }
+
+	// public loadWorkspaceFromCloud() {
+
+	// }
 }
 
 // export default function App() {
@@ -161,7 +136,7 @@ export default function Editor() {
 // 		// 	}
 // 		// }
 
-// 		const fs = new WebFilesystem(folderHandle);
+// 		const fs = new WebFileSystem(folderHandle);
 // 		const repository = new BufferedRepository(fs);
 // 		const nodeRegistry = new NodeRegistry();
 // 		nodeRegistry.registerNodeConstructor(NoteNodeRegistryEntry);

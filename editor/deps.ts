@@ -1,4 +1,4 @@
-export { createContext, createElement, createRef, Fragment, useContext, useRef, useState } from "https://esm.sh/react@18.2.0";
+export { createContext, createElement, createRef, Fragment, useContext, useRef, useState, useMemo } from "https://esm.sh/react@18.2.0";
 export type { FunctionComponent, HTMLAttributes, MouseEvent, PropsWithChildren, PropsWithoutRef, PropsWithRef } from "https://esm.sh/react@18.2.0";
 export { render } from "https://esm.sh/react-dom@18.2.0?deps=react@18.2.0";
 export {
