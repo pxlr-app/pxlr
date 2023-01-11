@@ -152,9 +152,11 @@ async function dev(port: number) {
 			} catch (error) {
 				console.error(error);
 				response = new Response(null, { status: 500 });
-			} finally {
-				// console.log(`${new Date().toISOString()} ${event.request.method} ${pathname} - ${response.status}`);
+			}
+			try {
 				await event.respondWith(response);
+			} catch (err) {
+				console.error(`${new Date().toISOString()} ${event.request.method} ${pathname} - ${999} ${err}`);
 			}
 		}
 	}

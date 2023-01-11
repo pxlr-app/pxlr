@@ -10,8 +10,8 @@
 	"explorer.fileNesting.expand": false,
 	"explorer.fileNesting.patterns": {
 		"*.css": "${capture}.css.map",
-		"*.ts": "${capture}.test.ts, ${capture}.css",
-		"*.tsx": "${capture}.test.tsx, ${capture}.css, ${capture}.html",
+		"*.ts": "${capture}.test.ts, ${capture}.bench.ts, ${capture}.css",
+		"*.tsx": "${capture}.test.tsx, ${capture}.bench.tsx, ${capture}.css, ${capture}.html",
 		"deno.json": "deno.lock, import_map.json, build.ts, .gitignore, .prettierrc"
 	}
 }
