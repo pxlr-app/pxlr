@@ -1,19 +1,20 @@
-import { Workspace, ZipFilesystem, WebFileSystem, BufferedRepository, NodeRegistry, NoteNodeRegistryEntry, GroupNodeRegistryEntry } from "/libpxlr/mod.ts";
+import { BufferedRepository, GroupNodeRegistryEntry, NodeRegistry, NoteNodeRegistryEntry, WebFileSystem, Workspace, ZipFilesystem } from "/libpxlr/mod.ts";
 import { WebFile, Zip } from "/libzip/mod.ts";
 
 const nodeRegistry = new NodeRegistry();
 nodeRegistry.registerNodeConstructor(NoteNodeRegistryEntry);
 nodeRegistry.registerTreeConstructor(GroupNodeRegistryEntry);
 
+// deno-lint-ignore no-explicit-any
 export type FileSystemFileHandle = any;
+// deno-lint-ignore no-explicit-any
 export type FileSystemDirectoryHandle = any;
 
 export default class EditorState {
-
 	#workspace?: Workspace;
 
 	public constructor(
-		workspace?: Workspace
+		workspace?: Workspace,
 	) {
 		this.#workspace = workspace;
 	}

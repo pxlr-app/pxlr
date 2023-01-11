@@ -339,7 +339,7 @@ export class CentralDirectoryFileHeader {
 		const minutes = (time >> 5) & 0b111111;
 		const seconds = (time & 0b11111) << 1;
 		const year = ((date >> 9) & 0b1111111) + 1980;
-		const month = ((date >> 5) & 0b1111);
+		const month = (date >> 5) & 0b1111;
 		const day = date & 0b11111;
 		return new Date(year, month - 1, day, hours, minutes, seconds);
 	}
@@ -565,7 +565,7 @@ export class LocalFileHeader {
 		const minutes = (time >> 5) & 0b111111;
 		const seconds = (time & 0b11111) << 1;
 		const year = ((date >> 9) & 0b1111111) + 1980;
-		const month = ((date >> 5) & 0b1111);
+		const month = (date >> 5) & 0b1111;
 		const day = date & 0b11111;
 		return new Date(year, month - 1, day, hours, minutes, seconds);
 	}

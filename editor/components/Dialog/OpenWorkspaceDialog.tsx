@@ -20,15 +20,15 @@ const storages = [
 	{ id: "local-folder", name: "Local folder", description: "Stored on your device, within a specially crafted folder. Offer greatest performance." },
 	{ id: "local-file", name: "Local file", description: "Stored on your device, within a zip-like file. Offer greatest portability." },
 	{ id: "remote-location", name: "Web workspace", description: "Stored on the web. Offer a read-only workspace." },
-	{ id: "cloud", name: "Cloud workspace", description: "Stored on our cloud, encrypted. Offer greatest availability and security.", disabled: true },
+	// { id: "cloud", name: "Cloud workspace", description: "Stored on our cloud, encrypted. Offer greatest availability and security.", disabled: true },
 ];
 export const OpenWorkspaceDialog: FunctionComponent<Dialog.DialogProps> = ({ open, onClose }) => {
 	const editorState = useContext(EditorContext);
 	const [storage, setStorage] = useState(storages[0].id);
 	const onOpen = () => {
 		onClose(false);
-		console.log('open', storage);
-	}
+		console.log("open", storage);
+	};
 	return (
 		<Dialog.Dialog open={open} onClose={onClose}>
 			<Dialog.Title>

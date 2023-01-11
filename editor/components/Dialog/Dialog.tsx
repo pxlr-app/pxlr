@@ -4,7 +4,7 @@ import "./Dialog.css";
 export interface DialogProps {
 	open: boolean;
 	onClose: (value: boolean) => void;
-};
+}
 
 export const Dialog: FunctionComponent<PropsWithChildren<DialogProps>> = ({ open, onClose, children }) => {
 	return (
