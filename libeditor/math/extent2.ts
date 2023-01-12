@@ -1,23 +1,25 @@
-export class Extent2 {
-	public constructor(public width = 0, public height = 0) { }
+import type { NumberArray, NumberArrayConstructor } from "./arraylike.ts";
 
-	fromArrayBuffer(arrayBuffer: Float32Array | Float64Array) {
-		this.width = arrayBuffer[0];
-		this.height = arrayBuffer[1];
-		return this;
-	}
+export type Extent2 = NumberArray;
 
-	toArrayBuffer(arrayBuffer: Float32Array | Float64Array) {
-		arrayBuffer[0] = this.width;
-		arrayBuffer[1] = this.height;
-		return this;
-	}
-
-	copy(other: ReadonlyExtent2) {
-		this.width = other.width;
-		this.height = other.height;
-		return this;
-	}
+export function create(ctor: NumberArrayConstructor = Array): NumberArray {
+	return new ctor(2).fill(0);
 }
 
-export type ReadonlyExtent2 = Pick<Readonly<Extent2>, "width" | "height" | "toArrayBuffer">;
+export function copy(target: Extent2, other: Readonly<Extent2>) {
+	target[0] = other[0];
+	target[1] = other[1];
+	return target;
+}
+
+export function fromArrayBuffer(target: Extent2, arrayBuffer: Readonly<NumberArray>) {
+	target[0] = arrayBuffer[0];
+	target[1] = arrayBuffer[1];
+	return target;
+}
+
+export function toArrayBuffer(target: NumberArray, extent2: Readonly<Extent2>) {
+	target[0] = extent2[0];
+	target[1] = extent2[1];
+	return target;
+}

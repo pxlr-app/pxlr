@@ -8,7 +8,8 @@
 		"lint": "DENO_DIR=.deno deno lint",
 		"cache": "DENO_DIR=.deno deno cache",
 		"info": "DENO_DIR=.deno deno info",
-		"test": "DENO_DIR=.deno deno test -A --parallel"
+		"bench": "DENO_DIR=.deno deno bench -A --unstable",
+		"test": "DENO_DIR=.deno deno test -A --unstable --parallel"
 	},
 	"compilerOptions": {
 		"jsxFactory": "createElement",

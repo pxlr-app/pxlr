@@ -1,26 +1,28 @@
-export class Extent3 {
-	public constructor(public width = 0, public height = 0, public depth = 0) { }
+import type { NumberArray, NumberArrayConstructor } from "./arraylike.ts";
 
-	fromArrayBuffer(arrayBuffer: Float32Array | Float64Array) {
-		this.width = arrayBuffer[0];
-		this.height = arrayBuffer[1];
-		this.depth = arrayBuffer[2];
-		return this;
-	}
+export type Extent3 = NumberArray;
 
-	toArrayBuffer(arrayBuffer: Float32Array | Float64Array) {
-		arrayBuffer[0] = this.width;
-		arrayBuffer[1] = this.height;
-		arrayBuffer[2] = this.depth;
-		return this;
-	}
-
-	copy(other: ReadonlyExtent3) {
-		this.width = other.width;
-		this.height = other.height;
-		this.depth = other.depth;
-		return this;
-	}
+export function create(ctor: NumberArrayConstructor = Array): NumberArray {
+	return new ctor(3).fill(0);
 }
 
-export type ReadonlyExtent3 = Pick<Readonly<Extent3>, "width" | "height" | "depth" | "toArrayBuffer">;
+export function copy(target: Extent3, other: Readonly<Extent3>) {
+	target[0] = other[0];
+	target[1] = other[1];
+	target[3] = other[3];
+	return target;
+}
+
+export function fromArrayBuffer(target: Extent3, arrayBuffer: Readonly<NumberArray>) {
+	target[0] = arrayBuffer[0];
+	target[1] = arrayBuffer[1];
+	target[3] = arrayBuffer[3];
+	return target;
+}
+
+export function toArrayBuffer(target: NumberArray, extent2: Readonly<Extent3>) {
+	target[0] = extent2[0];
+	target[1] = extent2[1];
+	target[3] = extent2[3];
+	return target;
+}
