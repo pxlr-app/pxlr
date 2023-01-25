@@ -1,4 +1,6 @@
 import { NumberArray, NumberArrayConstructor } from "./arraylike.ts";
+import * as Euler from "./euler.ts";
+import * as Quaternion from "./quaternion.ts";
 import * as Vec3 from "./vec3.ts";
 
 export type Mat4 = NumberArray;
@@ -301,9 +303,9 @@ export function inverse(target: Mat4, other: Readonly<Mat4>) {
 }
 
 export function compose(
-	target: NumberArray,
+	target: Mat4,
 	position: Readonly<Vec3.Vec3>,
-	rotation: Readonly<NumberArray>,
+	rotation: Readonly<Quaternion.Quaternion>,
 	scale: Readonly<Vec3.Vec3>
 ) {
 	const x = rotation[0];
@@ -353,41 +355,41 @@ export function compose(
 	return target;
 }
 
-// export function decompose(position: NumberArray, rotation: NumberArray, scale: NumberArray, mat4: Readonly<NumberArray>) {
-// 	const det = determinant(mat4);
+export function decompose(position: Vec3.Vec3, rotation: Quaternion.Quaternion, scale: Vec3.Vec3, mat4: Readonly<Mat4>) {
+	const det = determinant(mat4);
 
-// 	const sx = Vec3.length(copy(tv0, [mat4[0], mat4[1], mat4[2]])) * (det < 0 ? -1 : 1);
-// 	const sy = Vec3.length(copy(tv0, [mat4[4], mat4[5], mat4[6]]));
-// 	const sz = Vec3.length(copy(tv0, [mat4[8], mat4[9], mat4[10]]));
+	const sx = Vec3.length(copy(tv0, [mat4[0], mat4[1], mat4[2]])) * (det < 0 ? -1 : 1);
+	const sy = Vec3.length(copy(tv0, [mat4[4], mat4[5], mat4[6]]));
+	const sz = Vec3.length(copy(tv0, [mat4[8], mat4[9], mat4[10]]));
 
-// 	position[0] = mat4[12];
-// 	position[1] = mat4[13];
-// 	position[2] = mat4[14];
+	position[0] = mat4[12];
+	position[1] = mat4[13];
+	position[2] = mat4[14];
 
-// 	copy(tm0, mat4);
+	copy(tm0, mat4);
 
-// 	const invSX = 1 / sx;
-// 	const invSY = 1 / sy;
-// 	const invSZ = 1 / sz;
+	const invSX = 1 / sx;
+	const invSY = 1 / sy;
+	const invSZ = 1 / sz;
 
-// 	tm0[0] *= invSX;
-// 	tm0[1] *= invSX;
-// 	tm0[2] *= invSX;
+	tm0[0] *= invSX;
+	tm0[1] *= invSX;
+	tm0[2] *= invSX;
 
-// 	tm0[4] *= invSY;
-// 	tm0[5] *= invSY;
-// 	tm0[6] *= invSY;
+	tm0[4] *= invSY;
+	tm0[5] *= invSY;
+	tm0[6] *= invSY;
 
-// 	tm0[8] *= invSZ;
-// 	tm0[9] *= invSZ;
-// 	tm0[10] *= invSZ;
+	tm0[8] *= invSZ;
+	tm0[9] *= invSZ;
+	tm0[10] *= invSZ;
 
-// 	rotation.setFromRotationMatrix(tm0);
+	Quaternion.setFromRotationMat4(rotation, tm0);
 
-// 	scale[0] = sx;
-// 	scale[1] = sy;
-// 	scale[2] = sz;
-// }
+	scale[0] = sx;
+	scale[1] = sy;
+	scale[2] = sz;
+}
 
 export function makeTranslation(target: Mat4, x: number, y: number, z: number) {
 	return copy(target, [1, 0, 0, x, 0, 1, 0, y, 0, 0, 1, z, 0, 0, 0, 1]);
@@ -440,41 +442,41 @@ export function makeRotationAxis(target: Mat4, axis: Readonly<Vec3.Vec3>, angle:
 	]);
 }
 
-// export function makeTranslationFromVec3(target: NumberArray, vector: Readonly<NumberArray>) {
-// 	return compose(
-// 		target,
-// 		vector,
-// 		Quaternion.IDENTITY,
-// 		Vec3.ONE
-// 	);
-// }
+export function makeTranslationFromVec3(target: Mat4, vec3: Readonly<Vec3.Vec3>) {
+	return compose(
+		target,
+		vec3,
+		Quaternion.IDENTITY,
+		Vec3.ONE
+	);
+}
 
-// export function makeRotationFromQuaternion(target: NumberArray, quaternion: Readonly<NumberArray>) {
-// 	return compose(
-//  	target,
-// 		Vec3.ZERO,
-// 		quaternion,
-// 		Vec3.ONE
-// 	);
-// }
+export function makeRotationFromQuaternion(target: Mat4, quaternion: Readonly<Quaternion.Quaternion>) {
+	return compose(
+		target,
+		Vec3.ZERO,
+		quaternion,
+		Vec3.ONE
+	);
+}
 
-// export function makeRotationFromEuler(target: NumberArray, euler: Readonly<NumberArray>) {
-// 	return compose(
-//  	target,
-// 		Vec3.ZERO,
-// 		tq0.setFromEuler(euler),
-// 		Vec3.ONE
-// 	);
-// }
+export function makeRotationFromEuler(target: Mat4, euler: Readonly<Euler.Euler>) {
+	return compose(
+		target,
+		Vec3.ZERO,
+		Quaternion.setFromEuler(tq0, euler),
+		Vec3.ONE
+	);
+}
 
-// export function makeScaleFromVec3(target: NumberArray, vector: Readonly<NumberArray>) {
-// 	return compose(
-//  	target,
-// 		Vec3.ZERO,
-// 		Quaternion.IDENTITY,
-// 		vector
-// 	);
-// }
+export function makeScaleFromVec3(target: Mat4, vec3: Readonly<Vec3.Vec3>) {
+	return compose(
+		target,
+		Vec3.ZERO,
+		Quaternion.IDENTITY,
+		vec3
+	);
+}
 
 export function makeScale(target: Mat4, x: number, y: number, z: number) {
 	return copy(target, [x, 0, 0, 0, 0, y, 0, 0, 0, 0, z, 0, 0, 0, 0, 1]);
@@ -572,4 +574,5 @@ export function lookAt(target: Mat4, origin: Readonly<Vec3.Vec3>, forward: Reado
 const tv0: NumberArray = [0, 0, 0];
 const tv1: NumberArray = [0, 0, 0];
 const tv2: NumberArray = [0, 0, 0];
-// const tm0: NumberArray = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+const tq0: NumberArray = [0, 0, 0, 0];
+const tm0: NumberArray = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];

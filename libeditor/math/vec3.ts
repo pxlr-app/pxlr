@@ -35,12 +35,12 @@ export function toArrayBuffer(target: Vec3, vec3: Readonly<Vec3>) {
 	return target;
 }
 
-export function length(vec2: Readonly<Vec3>) {
-	return Math.sqrt(vec2[0] * vec2[0] + vec2[1] * vec2[1] + vec2[2] * vec2[2]);
+export function length(vec3: Readonly<Vec3>) {
+	return Math.sqrt(vec3[0] * vec3[0] + vec3[1] * vec3[1] + vec3[2] * vec3[2]);
 }
 
-export function lengthSquared(vec2: Readonly<Vec3>) {
-	return vec2[0] * vec2[0] + vec2[1] * vec2[1] + vec2[2] * vec2[2];
+export function lengthSquared(vec3: Readonly<Vec3>) {
+	return vec3[0] * vec3[0] + vec3[1] * vec3[1] + vec3[2] * vec3[2];
 }
 export function add(target: Vec3, other: Readonly<Vec3>) {
 	target[0] += other[0];
