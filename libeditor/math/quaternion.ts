@@ -1,5 +1,4 @@
 import type { NumberArray, NumberArrayConstructor } from "./arraylike.ts";
-import type { Mat3 } from "./mat3.ts";
 import type { Mat4 } from "./mat4.ts";
 import type { Euler } from "./euler.ts";
 import { RotationOrder } from "./euler.ts";

@@ -91,7 +91,6 @@ export function makeIdentity(target: Mat4) {
 	return target;
 }
 
-
 export function mul(target: Mat4, other: Readonly<Mat4>) {
 	const a11 = target[0];
 	const a12 = target[4];
@@ -165,11 +164,11 @@ export function determinant(mat4: Readonly<Mat4>) {
 	const n44 = mat4[15];
 	return (
 		n41 *
-		(+n14 * n23 * n32 - n13 * n24 * n32 - n14 * n22 * n33 + n12 * n24 * n33 + n13 * n22 * n34 - n12 * n23 * n34) +
+			(+n14 * n23 * n32 - n13 * n24 * n32 - n14 * n22 * n33 + n12 * n24 * n33 + n13 * n22 * n34 - n12 * n23 * n34) +
 		n42 *
-		(+n11 * n23 * n34 - n11 * n24 * n33 + n14 * n21 * n33 - n13 * n21 * n34 + n13 * n24 * n31 - n14 * n23 * n31) +
+			(+n11 * n23 * n34 - n11 * n24 * n33 + n14 * n21 * n33 - n13 * n21 * n34 + n13 * n24 * n31 - n14 * n23 * n31) +
 		n43 *
-		(+n11 * n24 * n32 - n11 * n22 * n34 - n14 * n21 * n32 + n12 * n21 * n34 + n14 * n22 * n31 - n12 * n24 * n31) +
+			(+n11 * n24 * n32 - n11 * n22 * n34 - n14 * n21 * n32 + n12 * n21 * n34 + n14 * n22 * n31 - n12 * n24 * n31) +
 		n44 * (-n13 * n22 * n31 - n11 * n23 * n32 + n11 * n22 * n33 + n13 * n21 * n32 - n12 * n21 * n33 + n12 * n23 * n31)
 	);
 }
@@ -306,7 +305,7 @@ export function compose(
 	target: Mat4,
 	position: Readonly<Vec3.Vec3>,
 	rotation: Readonly<Quaternion.Quaternion>,
-	scale: Readonly<Vec3.Vec3>
+	scale: Readonly<Vec3.Vec3>,
 ) {
 	const x = rotation[0];
 	const y = rotation[1];
@@ -438,7 +437,7 @@ export function makeRotationAxis(target: Mat4, axis: Readonly<Vec3.Vec3>, angle:
 		0,
 		0,
 		0,
-		1
+		1,
 	]);
 }
 
@@ -447,7 +446,7 @@ export function makeTranslationFromVec3(target: Mat4, vec3: Readonly<Vec3.Vec3>)
 		target,
 		vec3,
 		Quaternion.IDENTITY,
-		Vec3.ONE
+		Vec3.ONE,
 	);
 }
 
@@ -456,7 +455,7 @@ export function makeRotationFromQuaternion(target: Mat4, quaternion: Readonly<Qu
 		target,
 		Vec3.ZERO,
 		quaternion,
-		Vec3.ONE
+		Vec3.ONE,
 	);
 }
 
@@ -465,7 +464,7 @@ export function makeRotationFromEuler(target: Mat4, euler: Readonly<Euler.Euler>
 		target,
 		Vec3.ZERO,
 		Quaternion.setFromEuler(tq0, euler),
-		Vec3.ONE
+		Vec3.ONE,
 	);
 }
 
@@ -474,7 +473,7 @@ export function makeScaleFromVec3(target: Mat4, vec3: Readonly<Vec3.Vec3>) {
 		target,
 		Vec3.ZERO,
 		Quaternion.IDENTITY,
-		vec3
+		vec3,
 	);
 }
 
@@ -547,7 +546,7 @@ export function lookAt(target: Mat4, origin: Readonly<Vec3.Vec3>, forward: Reado
 	}
 
 	Vec3.normalize(tv0);
-	Vec3.cross(Vec3.copy(tv1, up), tv0)
+	Vec3.cross(Vec3.copy(tv1, up), tv0);
 
 	// up and tv0 are parallel
 	if (Vec3.lengthSquared(tv1) === 0) {

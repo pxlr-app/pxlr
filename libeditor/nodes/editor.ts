@@ -1,5 +1,5 @@
 // import { Node } from "/libpxlr/nodes/node.ts";
-import { Extent2, Mat4, Vec2, Quaternion, Vec3, Euler } from "../math/mod.ts";
+import { Euler, Extent2, Mat4, Quaternion, Vec2, Vec3 } from "../math/mod.ts";
 
 export class EditorNode {
 	#selectedTool: string;
@@ -86,7 +86,7 @@ export class EditorNode {
 				this.#cameraMatrix,
 				e,
 				q,
-				Vec3.ONE
+				Vec3.ONE,
 			);
 
 			this.#cameraDirty = false;

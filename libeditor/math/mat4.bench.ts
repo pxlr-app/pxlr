@@ -1,4 +1,4 @@
-import * as Mat4 from "./mat4.ts"
+import * as Mat4 from "./mat4.ts";
 
 const m = Mat4.create();
 const b = Mat4.create(Float32Array);
