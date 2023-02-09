@@ -119,8 +119,9 @@ export class Document {
 				if (oldNodeSet.has(node)) {
 					return VisitorResult.Skip;
 				}
+				const nodeRegistryEntry = this.workspace.nodeRegistry.get(node.kind);
 				writeObjectPromises.push(
-					this.workspace.repository.writeObject(node.toObject()),
+					this.workspace.repository.writeObject(nodeRegistryEntry.serialize(node)),
 				);
 				return VisitorResult.Continue;
 			},

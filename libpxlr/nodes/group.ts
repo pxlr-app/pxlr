@@ -1,12 +1,11 @@
 import { assertAutoId, AutoId, autoid } from "../autoid.ts";
 import { AddChildCommand, Command, MoveChildCommand, RemoveChildCommand, RenameCommand, ReplaceNodeCommand } from "./commands/mod.ts";
-import { Object } from "../repository/object.ts";
 import { Tree } from "../repository/tree.ts";
 import { Node } from "./node.ts";
 import { NodeRegistryEntry } from "./registry.ts";
 import { UnloadedNode } from "./mod.ts";
 
-export const GroupNodeRegistryEntry = new NodeRegistryEntry(
+export const GroupNodeRegistryEntry = new NodeRegistryEntry<GroupNode>(
 	"group",
 	async ({ object, getNodeByHash, shallow, abortSignal }) => {
 		const tree = await Tree.fromObject(object);
@@ -23,6 +22,20 @@ export const GroupNodeRegistryEntry = new NodeRegistryEntry(
 			children.push(node);
 		}
 		return new GroupNode(tree.hash, tree.id, tree.name, children);
+	},
+	(node) => {
+		return new Tree(
+			node.hash,
+			node.id,
+			"group",
+			node.name,
+			node.children.map((node) => ({
+				hash: node.hash,
+				id: node.id,
+				kind: node.kind,
+				name: node.name,
+			})),
+		).toObject();
 	},
 );
 
@@ -147,21 +160,6 @@ export class GroupNode extends Node {
 			);
 		}
 		return this;
-	}
-
-	toObject(): Object {
-		return new Tree(
-			this.hash,
-			this.id,
-			"group",
-			this.name,
-			this.children.map((node) => ({
-				hash: node.hash,
-				id: node.id,
-				kind: node.kind,
-				name: node.name,
-			})),
-		).toObject();
 	}
 
 	addChild(childNode: Node): AddChildCommand {

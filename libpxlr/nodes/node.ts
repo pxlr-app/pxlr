@@ -1,7 +1,7 @@
 import { assertAutoId, AutoId, autoid } from "../autoid.ts";
 import { Object } from "../repository/object.ts";
 import { Command, RenameCommand } from "./commands/mod.ts";
-import { NodeConstructorOptions } from "./registry.ts";
+import { NodeDeserializerOptions } from "./registry.ts";
 
 export enum NodeIter {
 	Break = "break",
@@ -52,9 +52,9 @@ export abstract class Node {
 		return this.iter();
 	}
 
-	abstract executeCommand(command: Command): Node;
-
-	abstract toObject(): Object;
+	executeCommand(_command: Command): Node {
+		return this;
+	}
 
 	rename(renameTo: string): RenameCommand {
 		return new RenameCommand(autoid(), this.hash, renameTo);
@@ -84,7 +84,7 @@ export class UnloadedNode extends Node {
 	}
 
 	// deno-lint-ignore require-await
-	static async fromObject({ object }: NodeConstructorOptions): Promise<Node> {
+	static async fromObject({ object }: NodeDeserializerOptions): Promise<Node> {
 		return new UnloadedNode(
 			object.hash,
 			object.id,

@@ -2,7 +2,7 @@ import { Node } from "./node.ts";
 import { Object } from "../repository/object.ts";
 import { AutoId } from "../autoid.ts";
 
-export interface NodeConstructorOptions {
+export interface NodeDeserializerOptions {
 	object: Object;
 	getNodeByHash: (
 		hash: AutoId,
@@ -13,64 +13,54 @@ export interface NodeConstructorOptions {
 	abortSignal?: AbortSignal;
 }
 
-export type NodeDeserializer = (
-	options: NodeConstructorOptions,
-) => Promise<Node>;
+export type NodeDeserializer<T extends Node> = (
+	options: NodeDeserializerOptions,
+) => T | Promise<T>;
 
-export class NodeRegistryEntry {
+export type NodeSerializer<T extends Node> = (node: T) => Object;
+
+export class NodeRegistryEntry<T extends Node> {
 	#kind: string;
-	#deserializer: NodeDeserializer;
-	constructor(kind: string, nodeConstructor: NodeDeserializer) {
+	#deserializer: NodeDeserializer<T>;
+	#serializer: NodeSerializer<T>;
+	constructor(kind: string, nodeDeserializer: NodeDeserializer<T>, nodeSerializer: NodeSerializer<T>) {
 		this.#kind = kind;
-		this.#deserializer = nodeConstructor;
+		this.#deserializer = nodeDeserializer;
+		this.#serializer = nodeSerializer;
 	}
 
 	get kind() {
 		return this.#kind;
 	}
 
-	get deserializer() {
+	get deserialize() {
 		return this.#deserializer;
+	}
+
+	get serialize() {
+		return this.#serializer;
 	}
 }
 
 export class NodeRegistry {
-	#entryMap = new Map<string, NodeRegistryEntry>();
-	#entryTreeMap = new Map<string, NodeRegistryEntry>();
+	#entryMap = new Map<string, NodeRegistryEntry<Node>>();
 
-	registerNodeConstructor(entry: NodeRegistryEntry): void {
-		this.#entryMap.set(entry.kind, entry);
+	register<T extends Node>(entry: NodeRegistryEntry<T>): void {
+		// deno-lint-ignore no-explicit-any
+		this.#entryMap.set(entry.kind, entry as any);
 	}
 
-	registerTreeConstructor(entry: NodeRegistryEntry): void {
-		this.#entryTreeMap.set(entry.kind, entry);
-	}
-
-	getNodeConstructor(kind: string): NodeDeserializer {
+	get(kind: string): NodeRegistryEntry<Node> {
 		if (!this.#entryMap.has(kind)) {
-			throw new UnregistedNodeConstructorError(kind);
+			throw new UnregistedNodeRegistryEntryError(kind);
 		}
-		return this.#entryMap.get(kind)!.deserializer;
-	}
-
-	getTreeConstructor(subKind: string): NodeDeserializer {
-		if (!this.#entryTreeMap.has(subKind)) {
-			throw new UnregistedTreeConstructorError(subKind);
-		}
-		return this.#entryTreeMap.get(subKind)!.deserializer;
+		return this.#entryMap.get(kind)!;
 	}
 }
 
-export class UnregistedNodeConstructorError extends Error {
-	public name = "UnregistedNodeConstructorError";
+export class UnregistedNodeRegistryEntryError extends Error {
+	public name = "UnregistedNodeRegistryEntryError";
 	public constructor(kind: string) {
-		super(`Unregisted Node constructor "${kind}".`);
-	}
-}
-
-export class UnregistedTreeConstructorError extends Error {
-	public name = "UnregistedTreeConstructorError";
-	public constructor(kind: string) {
-		super(`Unregisted Tree constructor "${kind}".`);
+		super(`Unregisted Node kind "${kind}".`);
 	}
 }

@@ -4,7 +4,7 @@ import { Object } from "../repository/mod.ts";
 import { Node } from "./node.ts";
 import { NodeRegistryEntry } from "./registry.ts";
 
-export const NoteNodeRegistryEntry = new NodeRegistryEntry(
+export const NoteNodeRegistryEntry = new NodeRegistryEntry<NoteNode>(
 	"note",
 	async ({ object }) => {
 		return new NoteNode(
@@ -12,6 +12,15 @@ export const NoteNodeRegistryEntry = new NodeRegistryEntry(
 			object.id,
 			object.headers.get("name") ?? "",
 			await object.text(),
+		);
+	},
+	(node) => {
+		return new Object(
+			node.hash,
+			node.id,
+			"note",
+			{ name: node.name },
+			node.content,
 		);
 	},
 );
@@ -60,16 +69,6 @@ export class NoteNode extends Node {
 			}
 		}
 		return this;
-	}
-
-	toObject(): Object {
-		return new Object(
-			this.hash,
-			this.id,
-			"note",
-			{ name: this.name },
-			this.content,
-		);
 	}
 
 	setContent(newContent: string): SetContentCommand {

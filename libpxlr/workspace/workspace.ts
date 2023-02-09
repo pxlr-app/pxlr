@@ -1,5 +1,6 @@
 import { assertAutoId, AutoId } from "../autoid.ts";
-import { Node, NodeDeserializer, NodeNotFoundError, NodeRegistry, UnloadedNode } from "../nodes/mod.ts";
+import { Node, NodeNotFoundError, NodeRegistry, UnloadedNode } from "../nodes/mod.ts";
+import { NodeRegistryEntry } from "../nodes/registry.ts";
 import { ReferencePath, Repository, Tree } from "../repository/mod.ts";
 import { Branch } from "./branch.ts";
 import { Document } from "./document.ts";
@@ -68,15 +69,15 @@ export class Workspace {
 				return node;
 			}
 		}
-		let nodeConstructor: NodeDeserializer;
+		let nodeRegistryEntry: NodeRegistryEntry<Node>;
 		const object = await this.#repository.getObject(hash, abortSignal);
 		if (object.kind === "tree") {
 			const tree = await Tree.fromObject(object);
-			nodeConstructor = this.#nodeRegistry.getTreeConstructor(tree.subKind);
+			nodeRegistryEntry = this.#nodeRegistry.get(tree.subKind);
 		} else {
-			nodeConstructor = this.#nodeRegistry.getNodeConstructor(object.kind);
+			nodeRegistryEntry = this.#nodeRegistry.get(object.kind);
 		}
-		const node = await nodeConstructor({
+		const node = await nodeRegistryEntry.deserialize({
 			object,
 			getNodeByHash: this.getNodeByHash.bind(this),
 			shallow,

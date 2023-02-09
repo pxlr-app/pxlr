@@ -5,8 +5,8 @@ import { Workspace } from "./workspace.ts";
 import { autoid } from "../autoid.ts";
 
 const nodeRegistry = new NodeRegistry();
-nodeRegistry.registerNodeConstructor(NoteNodeRegistryEntry);
-nodeRegistry.registerTreeConstructor(GroupNodeRegistryEntry);
+nodeRegistry.register(NoteNodeRegistryEntry);
+nodeRegistry.register(GroupNodeRegistryEntry);
 
 Deno.test("Workspace", async (t) => {
 	await t.step("init", () => {
@@ -77,8 +77,8 @@ Deno.test("Workspace", async (t) => {
 			"",
 		);
 		const reference = new Reference("refs/heads/main", commit.hash);
-		await repository.writeObject(note1.toObject());
-		await repository.writeObject(root1.toObject());
+		await repository.writeObject(NoteNodeRegistryEntry.serialize(note1));
+		await repository.writeObject(GroupNodeRegistryEntry.serialize(root1));
 		await repository.writeTree(tree);
 		await repository.writeCommit(commit);
 		await repository.writeReference(reference);
