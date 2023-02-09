@@ -45,7 +45,7 @@ export class NoteNode extends Node {
 		return new NoteNode(autoid(), autoid(), name, content);
 	}
 
-	executeCommand(command: Command): Node {
+	dispatch(command: Command): Node {
 		if (command.target === this.hash) {
 			if (command instanceof RenameCommand) {
 				if (command.renameTo === this.name) {

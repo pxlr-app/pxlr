@@ -89,8 +89,8 @@ export class Document {
 		}
 	}
 
-	executeCommand(command: Command): Document {
-		const rootNode = this.rootNode.executeCommand(command);
+	dispatch(command: Command): Document {
+		const rootNode = this.rootNode.dispatch(command);
 		if (rootNode !== this.rootNode) {
 			this.#historyRoots.push(rootNode);
 			this.#historyCursor += 1;
@@ -147,4 +147,4 @@ export class Document {
 	}
 }
 
-export class NothingToCommitError extends Error {}
+export class NothingToCommitError extends Error { }

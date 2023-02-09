@@ -9,7 +9,7 @@ nodeRegistry.register(NoteNodeRegistryEntry);
 nodeRegistry.register(GroupNodeRegistryEntry);
 
 Deno.test("Document", async (t) => {
-	await t.step("executeCommand", async () => {
+	await t.step("dispatch", async () => {
 		const fs = new MemoryFilesystem();
 		const repository = new BufferedRepository(fs);
 		const note1 = NoteNode.new("My Note", "...");
@@ -35,7 +35,7 @@ Deno.test("Document", async (t) => {
 		});
 		for (let i = 1_000; --i >= 0;) {
 			const note = document1.getNodeById(note1.id)!;
-			document1.executeCommand(note.rename(`My Note ${i}`));
+			document1.dispatch(note.rename(`My Note ${i}`));
 			if (i % 100 === 0) {
 				await document1.commitChanges(
 					"Test <test@test.local>",

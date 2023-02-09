@@ -52,7 +52,7 @@ export abstract class Node {
 		return this.iter();
 	}
 
-	executeCommand(_command: Command): Node {
+	dispatch(_command: Command): Node {
 		return this;
 	}
 
@@ -75,7 +75,7 @@ export class UnloadedNode extends Node {
 		return new UnloadedNode(autoid(), autoid(), kind, name);
 	}
 
-	executeCommand(_command: Command): Node {
+	dispatch(_command: Command): Node {
 		throw new UnloadedNodeMethodError();
 	}
 

@@ -63,7 +63,7 @@ export class GroupNode extends Node {
 		yield* this.children;
 	}
 
-	executeCommand(command: Command): Node {
+	dispatch(command: Command): Node {
 		if (command.target === this.hash) {
 			if (command instanceof RenameCommand) {
 				if (command.renameTo === this.name) {
@@ -145,7 +145,7 @@ export class GroupNode extends Node {
 		}
 		let mutated = false;
 		const children = this.children.map((node) => {
-			const newNode = node.executeCommand(command);
+			const newNode = node.dispatch(command);
 			if (newNode !== node) {
 				mutated = true;
 			}
