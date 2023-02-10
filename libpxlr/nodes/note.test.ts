@@ -4,7 +4,7 @@ import { NoteNode } from "./note.ts";
 Deno.test("NoteNode", async (t) => {
 	await t.step("immutable structure", () => {
 		const node1 = NoteNode.new("A", "Content");
-		assertEquals(node1.kind, "note");
+		assertEquals(node1.kind, "Note");
 		assertEquals(node1.name, "A");
 		assertEquals(node1.content, "Content");
 	});
@@ -20,9 +20,7 @@ Deno.test("NoteNode", async (t) => {
 
 	await t.step("handles set content command", () => {
 		const node1 = NoteNode.new("A", "Content");
-		const node2 = node1.dispatch(
-			node1.setContent("New content"),
-		) as NoteNode;
+		const node2 = node1.dispatch(node1.setContent("New content")) as NoteNode;
 		assert(node2 !== node1);
 		assertNotEquals(node2.hash, node1.hash);
 		assertEquals(node2.id, node1.id);

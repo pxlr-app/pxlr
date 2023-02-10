@@ -44,7 +44,7 @@ Deno.test("Repository", async (t) => {
 		const object1 = new Object(
 			autoid(),
 			autoid(),
-			"note",
+			"Note",
 			{ name: "README" },
 			"# Hello World",
 		);

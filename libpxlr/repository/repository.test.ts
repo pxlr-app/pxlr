@@ -40,7 +40,7 @@ Deno.test("Repository", async (t) => {
 		const object1 = new Object(
 			autoid(),
 			autoid(),
-			"note",
+			"Note",
 			{ name: "README" },
 			"# Hello World",
 		);
@@ -55,17 +55,17 @@ Deno.test("Repository", async (t) => {
 		const object1 = new Object(
 			autoid(),
 			autoid(),
-			"note",
+			"Note",
 			{ name: "README" },
 			"# Hello World",
 		);
-		const tree1 = new Tree(autoid(), autoid(), "group", "Parent", [{
+		const tree1 = new Tree(autoid(), autoid(), "Group", "Parent", [{
 			hash: object1.hash,
 			id: object1.id,
 			kind: object1.kind,
 			name: object1.headers.get("name")!,
 		}]);
-		const tree2 = new Tree(autoid(), autoid(), "group", "Parent", [{
+		const tree2 = new Tree(autoid(), autoid(), "Group", "Parent", [{
 			hash: tree1.hash,
 			id: tree1.id,
 			kind: "tree",
@@ -87,23 +87,23 @@ Deno.test("Repository", async (t) => {
 		const object1 = new Object(
 			autoid(),
 			autoid(),
-			"note",
+			"Note",
 			{ name: "README" },
 			"# Hello World",
 		);
-		const tree1 = new Tree(autoid(), autoid(), "group", "Parent", [{
+		const tree1 = new Tree(autoid(), autoid(), "Group", "Parent", [{
 			hash: object1.hash,
 			id: object1.id,
 			kind: object1.kind,
 			name: object1.headers.get("name")!,
 		}]);
-		const tree2 = new Tree(autoid(), autoid(), "group", "Parent", [{
+		const tree2 = new Tree(autoid(), autoid(), "Group", "Parent", [{
 			hash: tree1.hash,
 			id: tree1.id,
 			kind: "tree",
 			name: tree1.name,
 		}]);
-		const tree3 = new Tree(autoid(), tree2.id, "group", "Parent2", [{
+		const tree3 = new Tree(autoid(), tree2.id, "Group", "Parent2", [{
 			hash: tree1.hash,
 			id: tree1.id,
 			kind: "tree",

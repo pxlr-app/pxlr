@@ -1,23 +1,9 @@
 {
 	"importMap": "import_map.json",
-	"tasks": {
-		"dev": "DENO_DIR=.deno deno run -A build.ts dev",
-		"build": "DENO_DIR=.deno deno run -A build.ts build",
-		"preview": "DENO_DIR=.deno deno run --allow-net --allow-read https://deno.land/std@0.165.0/http/file_server.ts dist/ --port 8000",
-		"fmt": "DENO_DIR=.deno deno fmt",
-		"lint": "DENO_DIR=.deno deno lint",
-		"cache": "DENO_DIR=.deno deno cache",
-		"info": "DENO_DIR=.deno deno info",
-		"bench": "DENO_DIR=.deno deno bench -A --unstable",
-		"test": "DENO_DIR=.deno deno test --config deno.test.json -A --unstable --parallel"
-	},
 	"compilerOptions": {
 		"jsxFactory": "createElement",
 		"jsxFragmentFactory": "Fragment",
 		"lib": [
-			"esnext",
-			"dom",
-			"dom.iterable",
 			"deno.ns",
 			"deno.window",
 			"deno.url",

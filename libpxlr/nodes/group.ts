@@ -6,7 +6,7 @@ import { NodeRegistryEntry } from "./registry.ts";
 import { UnloadedNode } from "./mod.ts";
 
 export const GroupNodeRegistryEntry = new NodeRegistryEntry<GroupNode>(
-	"group",
+	"Group",
 	async ({ object, getNodeByHash, shallow, abortSignal }) => {
 		const tree = await Tree.fromObject(object);
 		const children: Node[] = [];
@@ -27,7 +27,7 @@ export const GroupNodeRegistryEntry = new NodeRegistryEntry<GroupNode>(
 		return new Tree(
 			node.hash,
 			node.id,
-			"group",
+			"Group",
 			node.name,
 			node.children.map((node) => ({
 				hash: node.hash,
@@ -47,7 +47,7 @@ export class GroupNode extends Node {
 		name: string,
 		children: ReadonlyArray<Node>,
 	) {
-		super(hash, id, "group", name);
+		super(hash, id, "Group", name);
 		this.#children = children;
 	}
 

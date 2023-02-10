@@ -7,7 +7,7 @@ Deno.test("TreeObject", async (t) => {
 		const tree1 = new Tree<{ desc: string }>(
 			autoid(),
 			autoid(),
-			"group",
+			"Group",
 			"Dummy",
 			[
 				{ hash: autoid(), id: autoid(), kind: "blob", name: "a", desc: "aaa" },

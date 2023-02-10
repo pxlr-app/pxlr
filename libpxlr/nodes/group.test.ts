@@ -6,7 +6,7 @@ import { GroupNode } from "./group.ts";
 Deno.test("GroupNode", async (t) => {
 	await t.step("immutable structure", () => {
 		const node1 = GroupNode.new("Name", []);
-		assertEquals(node1.kind, "group");
+		assertEquals(node1.kind, "Group");
 		assertEquals(node1.name, "Name");
 		assertEquals(node1.children, []);
 	});

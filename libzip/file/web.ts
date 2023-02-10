@@ -1,8 +1,5 @@
 import { File, FileClosedError, SeekFrom } from "./file.ts";
 
-// deno-lint-ignore no-explicit-any
-type FileSystemFileHandle = any;
-
 export class WebFile implements File {
 	#fileHandle: FileSystemFileHandle | undefined;
 	#offset: number;
@@ -33,7 +30,7 @@ export class WebFile implements File {
 		const writableStream = await this.#fileHandle.createWritable({
 			keepExistingData: true,
 		});
-		await writableStream.truncate(length);
+		await writableStream.truncate(length ?? 0);
 		await writableStream.close();
 	}
 

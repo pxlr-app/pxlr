@@ -5,7 +5,7 @@ import { Node } from "./node.ts";
 import { NodeRegistryEntry } from "./registry.ts";
 
 export const NoteNodeRegistryEntry = new NodeRegistryEntry<NoteNode>(
-	"note",
+	"Note",
 	async ({ object }) => {
 		return new NoteNode(
 			object.hash,
@@ -18,7 +18,7 @@ export const NoteNodeRegistryEntry = new NodeRegistryEntry<NoteNode>(
 		return new Object(
 			node.hash,
 			node.id,
-			"note",
+			"Note",
 			{ name: node.name },
 			node.content,
 		);
@@ -33,7 +33,7 @@ export class NoteNode extends Node {
 		name: string,
 		content: string,
 	) {
-		super(hash, id, "note", name);
+		super(hash, id, "Note", name);
 		this.#content = content;
 	}
 

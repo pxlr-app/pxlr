@@ -2,13 +2,8 @@ import { BufferedRepository, GroupNodeRegistryEntry, NodeRegistry, NoteNodeRegis
 import { WebFile, Zip } from "/libzip/mod.ts";
 
 const nodeRegistry = new NodeRegistry();
-nodeRegistry.registerNodeConstructor(NoteNodeRegistryEntry);
-nodeRegistry.registerTreeConstructor(GroupNodeRegistryEntry);
-
-// deno-lint-ignore no-explicit-any
-export type FileSystemFileHandle = any;
-// deno-lint-ignore no-explicit-any
-export type FileSystemDirectoryHandle = any;
+nodeRegistry.register(NoteNodeRegistryEntry);
+nodeRegistry.register(GroupNodeRegistryEntry);
 
 export default class EditorState {
 	#workspace?: Workspace;

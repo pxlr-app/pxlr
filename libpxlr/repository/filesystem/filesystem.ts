@@ -16,7 +16,7 @@ export abstract class Filesystem {
 
 export class IOError extends Error {
 	public name = "IOError";
-	public constructor(cause: Error) {
+	public constructor(cause?: Error) {
 		super(`IO Reference, got ${cause}.`);
 		this.cause = cause;
 	}

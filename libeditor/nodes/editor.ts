@@ -1,99 +1,50 @@
-// import { Node } from "/libpxlr/nodes/node.ts";
-import { Euler, Extent2, Mat4, Quaternion, Vec2, Vec3 } from "../math/mod.ts";
+import { Node } from "/libpxlr/nodes/node.ts";
+import { AutoId, autoid } from "/libpxlr/autoid.ts";
+import { ToolNode } from "./tools/tool.ts";
+import { SetActiveToolCommand } from "./commands/set_active_tool.ts";
+import { Document, Workspace } from "/libpxlr/workspace/mod.ts";
+import { SetWorkspaceCommand } from "./commands/set_workspace.ts";
+import { SetDocumentCommand } from "./commands/set_document.ts";
 
-export class EditorNode {
-	#selectedTool: string;
-	#viewportSize: Extent2.Extent2;
-	#viewportZoom: number;
-	#viewportPosition: Vec2.Vec2;
-	#viewportRotation: number;
-	#cameraDirty: boolean;
-	#cameraProjection: Mat4.Mat4;
-	#cameraMatrix: Mat4.Mat4;
+export class EditorNode extends Node {
+	#workspace: Workspace;
+	#document: Document | undefined;
+	#activeTool: ToolNode;
+	#containerElement: WeakRef<HTMLDivElement> | undefined;
 
-	constructor(width = 0, height = width, zoom = 1) {
-		this.#selectedTool = "pointer";
-		this.#viewportSize = new Uint32Array([width, height]);
-		this.#viewportZoom = zoom;
-		this.#viewportPosition = Vec2.create(Int32Array);
-		this.#viewportRotation = 0;
-		this.#cameraProjection = Mat4.create(Float32Array);
-		this.#cameraMatrix = Mat4.create(Float32Array);
-		this.#cameraDirty = true;
-	}
-
-	get width() {
-		return this.#viewportSize[0];
-	}
-	set width(value) {
-		this.#viewportSize[0] = value;
-		this.#cameraDirty = true;
+	public constructor(
+		hash: AutoId,
+		id: AutoId,
+		name: string,
+		workspace: Workspace,
+		activeTool: ToolNode,
+	) {
+		super(hash, id, "Editor", name);
+		this.#workspace = workspace;
+		this.#activeTool = activeTool;
 	}
 
-	get height() {
-		return this.#viewportSize[1];
-	}
-	set height(value) {
-		this.#viewportSize[1] = value;
-		this.#cameraDirty = true;
+	get workspace() {
+		return this.#workspace;
 	}
 
-	get zoom() {
-		return this.#viewportZoom;
-	}
-	set zoom(value) {
-		this.#viewportZoom = value;
-		this.#cameraDirty = true;
+	get document() {
+		return this.#document;
 	}
 
-	get positionX() {
-		return this.#viewportPosition[0];
-	}
-	set positionX(value) {
-		this.#viewportPosition[0] = value;
-		this.#cameraDirty = true;
+	get activeTool() {
+		return this.#activeTool;
 	}
 
-	get positionY() {
-		return this.#viewportPosition[1];
-	}
-	set positionY(value) {
-		this.#viewportPosition[1] = value;
-		this.#cameraDirty = true;
+	setWorkspace(workspace: Workspace): SetWorkspaceCommand {
+		return new SetWorkspaceCommand(autoid(), this.hash, workspace);
 	}
 
-	#updateCameraMatrices() {
-		if (this.#cameraDirty) {
-			const halfWidth = this.#viewportSize[0] / 2;
-			const halfHeight = this.#viewportSize[1] / 2;
-			const left = -halfWidth;
-			const right = +halfWidth;
-			const top = -halfHeight;
-			const bottom = +halfHeight;
-			const dx = (right - left) / (this.#viewportZoom * 2);
-			const dy = (top - bottom) / (this.#viewportZoom * 2);
-			const cx = (right + left) / 2;
-			const cy = (top + bottom) / 2;
-			Mat4.makeOrthographic(this.#cameraProjection, cx - dx, cx + dx, cy + dy, cy - dy, -1, 1);
+	setDocument(document: Document): SetDocumentCommand {
+		return new SetDocumentCommand(autoid(), this.hash, document);
+	}
 
-			e[0] = 0;
-			e[1] = 0;
-			e[2] = this.#viewportRotation;
-			Quaternion.setFromEuler(q, e);
-			Vec2.copy(v3, this.#viewportPosition);
-			v3[2] = 0;
-			Mat4.compose(
-				this.#cameraMatrix,
-				e,
-				q,
-				Vec3.ONE,
-			);
-
-			this.#cameraDirty = false;
-		}
+	setActiveTool(tool: ToolNode): SetActiveToolCommand {
+		return new SetActiveToolCommand(autoid(), this.hash, tool);
 	}
 }
-
-const e = Euler.create(Float32Array);
-const v3 = Vec3.create(Float32Array);
-const q = Quaternion.create(Float32Array);

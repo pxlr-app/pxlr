@@ -147,4 +147,4 @@ export class Document {
 	}
 }
 
-export class NothingToCommitError extends Error { }
+export class NothingToCommitError extends Error {}
