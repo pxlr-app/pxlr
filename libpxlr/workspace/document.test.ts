@@ -1,6 +1,12 @@
 import { assertEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
-import { BufferedRepository, Commit, MemoryFilesystem, Reference, Tree } from "../../librepo/mod.ts";
-import { GroupNode, GroupNodeRegistryEntry, NodeRegistry, NoteNode, NoteNodeRegistryEntry } from "../nodes/mod.ts";
+import { BufferedRepository } from "../../librepo/buffered_repository.ts";
+import { Commit } from "../../librepo/commit.ts";
+import { Tree } from "../../librepo/tree.ts";
+import { Reference } from "../../librepo/reference.ts";
+import { MemoryFilesystem } from "../../librepo/filesystem/memory.ts";
+import { NoteNode, NoteNodeRegistryEntry } from "../nodes/note.ts";
+import { GroupNode, GroupNodeRegistryEntry } from "../nodes/group.ts";
+import { NodeRegistry } from "../nodes/registry.ts";
 import { Workspace } from "./workspace.ts";
 import { autoid } from "../autoid.ts";
 

@@ -1,6 +1,6 @@
 import { AutoId } from "/libpxlr/autoid.ts";
 import { Command } from "/libpxlr/nodes/commands/command.ts";
-import { Document } from "/libpxlr/workspace/mod.ts";
+import { Document } from "/libpxlr/workspace/document.ts";
 
 export class SetDocumentCommand extends Command {
 	#document: Document | undefined;

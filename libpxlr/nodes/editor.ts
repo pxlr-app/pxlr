@@ -10,7 +10,6 @@ export class EditorNode extends Node {
 	#workspace: Workspace;
 	#document: Document | undefined;
 	#activeTool: ToolNode;
-	#containerElement: WeakRef<HTMLDivElement> | undefined;
 
 	public constructor(
 		hash: AutoId,

@@ -79,18 +79,6 @@ export class EndOfCentralDirectoryRecord {
 			this.#dataView = dataView;
 		}
 	}
-	toJSON() {
-		return {
-			numberOfThisDisk: this.numberOfThisDisk,
-			centralDirectoryDiskNumber: this.centralDirectoryDiskNumber,
-			entriesInThisDisk: this.entriesInThisDisk,
-			totalEntries: this.totalEntries,
-			sizeOfCentralDirectory: this.sizeOfCentralDirectory,
-			offsetToCentralDirectory: this.offsetToCentralDirectory,
-			commentLength: this.commentLength,
-			comment: this.comment,
-		};
-	}
 }
 
 export class Zip64EndOfCentralDirectoryLocator {
@@ -134,13 +122,6 @@ export class Zip64EndOfCentralDirectoryLocator {
 	}
 	set totalNumberOfDisk(value: number) {
 		this.#dataView.setUint32(16, value, true);
-	}
-	toJSON() {
-		return {
-			centralDirectoryDiskNumber: this.centralDirectoryDiskNumber,
-			offsetToCentralDirectory: this.offsetToCentralDirectory,
-			totalNumberOfDisk: this.totalNumberOfDisk,
-		};
 	}
 }
 
@@ -253,23 +234,6 @@ export class Zip64EndOfCentralDirectoryRecord {
 			this.#arrayBuffer = arrayBuffer;
 			this.#dataView = dataView;
 		}
-	}
-	toJSON() {
-		return {
-			sizeOfRecord: this.sizeOfRecord,
-			createdZipSpec: this.createdZipSpec,
-			createdOS: this.createdOS,
-			extractedZipSpec: this.extractedZipSpec,
-			extractedOS: this.extractedOS,
-			numberOfThisDisk: this.numberOfThisDisk,
-			centralDirectoryDiskNumber: this.centralDirectoryDiskNumber,
-			entriesInThisDisk: this.entriesInThisDisk,
-			totalEntries: this.totalEntries,
-			sizeOfCentralDirectory: this.sizeOfCentralDirectory,
-			offsetToCentralDirectory: this.offsetToCentralDirectory,
-			commentLength: this.commentLength,
-			comment: this.comment,
-		};
 	}
 }
 
@@ -488,30 +452,6 @@ export class CentralDirectoryFileHeader {
 	set localFileOffset(value: number) {
 		this.#dataView.setUint32(42, value, true);
 	}
-	toJSON() {
-		return {
-			createdZipSpec: this.createdZipSpec,
-			createdOS: this.createdOS,
-			extractedZipSpec: this.extractedZipSpec,
-			extractedOS: this.extractedOS,
-			generalPurposeFlag: this.generalPurposeFlag,
-			compressionMethod: this.compressionMethod,
-			lastModificationDate: this.lastModificationDate,
-			crc: this.crc,
-			compressedLength: this.compressedLength,
-			uncompressedLength: this.uncompressedLength,
-			fileNameLength: this.fileNameLength,
-			fileName: this.fileName,
-			extraLength: this.extraLength,
-			extra: this.extra,
-			commentLength: this.commentLength,
-			comment: this.comment,
-			diskStart: this.diskStart,
-			internalFileAttribute: this.internalFileAttribute,
-			externalFileAttribute: this.externalFileAttribute,
-			localFileOffset: this.localFileOffset,
-		};
-	}
 }
 
 export class LocalFileHeader {
@@ -671,22 +611,6 @@ export class LocalFileHeader {
 		}
 		return compressedSize;
 	}
-	toJSON() {
-		return {
-			extractedZipSpec: this.extractedZipSpec,
-			extractedOS: this.extractedOS,
-			generalPurposeFlag: this.generalPurposeFlag,
-			compressionMethod: this.compressionMethod,
-			lastModificationDate: this.lastModificationDate,
-			crc: this.crc,
-			compressedLength: this.compressedLength,
-			uncompressedLength: this.uncompressedLength,
-			fileNameLength: this.fileNameLength,
-			fileName: this.fileName,
-			extraLength: this.extraLength,
-			extra: this.extra,
-		};
-	}
 }
 
 export class ExtensibleDataFields {
@@ -818,15 +742,6 @@ export class Zip64ExtensibleDataField extends ExtensibleDataField {
 			this.dataView.setUint32(28, value, true);
 		}
 	}
-	toJSON() {
-		return {
-			length: this.length,
-			originalUncompressedData: this.originalUncompressedData,
-			sizeOfCompressedData: this.sizeOfCompressedData,
-			offsetOfLocalHeaderRecord: this.offsetOfLocalHeaderRecord,
-			localHeaderDiskNumber: this.localHeaderDiskNumber,
-		};
-	}
 }
 
 export class DataDescriptor {
@@ -858,13 +773,6 @@ export class DataDescriptor {
 	}
 	set uncompressedLength(value: number) {
 		this.#dataView.setUint32(12, value, true);
-	}
-	toJSON() {
-		return {
-			crc: this.crc,
-			compressedLength: this.compressedLength,
-			uncompressedLength: this.uncompressedLength,
-		};
 	}
 }
 
@@ -898,13 +806,6 @@ export class Zip64DataDescriptor {
 	set uncompressedLength(value: number) {
 		this.#dataView.setBigUint64(16, BigInt(value), true);
 	}
-	toJSON() {
-		return {
-			crc: this.crc,
-			compressedLength: this.compressedLength,
-			uncompressedLength: this.uncompressedLength,
-		};
-	}
 }
 
 export class PxlrHeader {
@@ -932,10 +833,5 @@ export class PxlrHeader {
 	}
 	set sizeOfPadding(value: number) {
 		this.#dataView.setUint32(4, value, true);
-	}
-	toJSON() {
-		return {
-			sizeOfPadding: this.sizeOfPadding,
-		};
 	}
 }

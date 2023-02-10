@@ -1,9 +1,11 @@
 import { assertAutoId, AutoId } from "../autoid.ts";
-import { Node, NodeNotFoundError, NodeRegistry, UnloadedNode } from "../nodes/mod.ts";
-import { NodeRegistryEntry } from "../nodes/registry.ts";
-import { ReferencePath, Repository, Tree } from "../../librepo/mod.ts";
+import { NodeRegistry, NodeRegistryEntry } from "../nodes/registry.ts";
+import { ReferencePath } from "../../librepo/reference.ts";
+import { Repository } from "../../librepo/repository.ts";
+import { Tree } from "../../librepo/tree.ts";
 import { Branch } from "./branch.ts";
 import { Document } from "./document.ts";
+import { Node, NodeNotFoundError, UnloadedNode } from "../nodes/node.ts";
 
 export class Workspace {
 	#nodeCache: Map<AutoId, WeakRef<Node>>;

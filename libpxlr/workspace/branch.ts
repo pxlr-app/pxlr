@@ -1,5 +1,6 @@
 import { AutoId } from "../autoid.ts";
-import { Commit, Reference } from "../../librepo/mod.ts";
+import { Commit } from "../../librepo/commit.ts";
+import { Reference } from "../../librepo/reference.ts";
 import { Workspace } from "./workspace.ts";
 
 export class Branch {

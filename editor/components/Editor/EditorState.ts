@@ -1,5 +1,12 @@
-import { BufferedRepository, GroupNodeRegistryEntry, NodeRegistry, NoteNodeRegistryEntry, WebFileSystem, Workspace, ZipFilesystem } from "/libpxlr/mod.ts";
-import { WebFile, Zip } from "/libzip/mod.ts";
+import { BufferedRepository } from "/librepo/buffered_repository.ts";
+import { GroupNodeRegistryEntry } from "/libpxlr/nodes/group.ts";
+import { NodeRegistry } from "/libpxlr/nodes/registry.ts";
+import { NoteNodeRegistryEntry } from "/libpxlr/nodes/note.ts";
+import { WebFileSystem } from "/librepo/filesystem/web.ts";
+import { Workspace } from "/libpxlr/workspace/workspace.ts";
+import { ZipFilesystem } from "/librepo/filesystem/zip.ts";
+import { Zip } from "/libzip/zip.ts";
+import { WebFile } from "/libzip/file/web.ts";
 
 const nodeRegistry = new NodeRegistry();
 nodeRegistry.register(NoteNodeRegistryEntry);

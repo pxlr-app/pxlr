@@ -1,9 +1,14 @@
 import { assertAutoId, AutoId, autoid } from "../autoid.ts";
-import { AddChildCommand, Command, MoveChildCommand, RemoveChildCommand, RenameCommand, ReplaceNodeCommand } from "./commands/mod.ts";
+import { AddChildCommand } from "./commands/add_child.ts";
+import { Command } from "./commands/command.ts";
+import { MoveChildCommand } from "./commands/move_child.ts";
+import { RemoveChildCommand } from "./commands/remove_child.ts";
+import { RenameCommand } from "./commands/rename.ts";
+import { ReplaceNodeCommand } from "./commands/replace_node.ts";
 import { Tree } from "../../librepo/tree.ts";
 import { Node } from "./node.ts";
 import { NodeRegistryEntry } from "./registry.ts";
-import { UnloadedNode } from "./mod.ts";
+import { UnloadedNode } from "./node.ts";
 
 export const GroupNodeRegistryEntry = new NodeRegistryEntry<GroupNode>(
 	"Group",

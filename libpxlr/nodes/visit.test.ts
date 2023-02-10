@@ -1,5 +1,7 @@
 import { assertEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
-import { GroupNode, Node, NoteNode } from "./mod.ts";
+import { Node } from "./node.ts";
+import { NoteNode } from "./note.ts";
+import { GroupNode } from "./group.ts";
 import { visit, VisitorResult } from "./visit.ts";
 
 Deno.test("visit", async (t) => {

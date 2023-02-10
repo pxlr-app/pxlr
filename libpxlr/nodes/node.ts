@@ -1,6 +1,7 @@
 import { assertAutoId, AutoId, autoid } from "../autoid.ts";
 import { Object } from "../../librepo/object.ts";
-import { Command, RenameCommand } from "./commands/mod.ts";
+import { Command } from "./commands/command.ts";
+import { RenameCommand } from "./commands/rename.ts";
 import { NodeDeserializerOptions } from "./registry.ts";
 
 export enum NodeIter {

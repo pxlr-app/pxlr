@@ -1,6 +1,10 @@
 import { assertAutoId, AutoId, autoid } from "../autoid.ts";
-import { Command, GroupNode, Node, visit, VisitorResult } from "../nodes/mod.ts";
-import { Commit, Reference } from "../../librepo/mod.ts";
+import { Node } from "../nodes/node.ts";
+import { visit, VisitorResult } from "../nodes/visit.ts";
+import { GroupNode } from "../nodes/group.ts";
+import { Command } from "../nodes/commands/command.ts";
+import { Commit } from "../../librepo/commit.ts";
+import { Reference } from "../../librepo/reference.ts";
 import { Workspace } from "./workspace.ts";
 
 export class Document {

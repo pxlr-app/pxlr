@@ -1,5 +1,5 @@
 import { AutoId } from "/libpxlr/autoid.ts";
-import { ToolNode } from "../tools/mod.ts";
+import { ToolNode } from "../tools/tool.ts";
 import { Command } from "/libpxlr/nodes/commands/command.ts";
 
 export class SetActiveToolCommand extends Command {

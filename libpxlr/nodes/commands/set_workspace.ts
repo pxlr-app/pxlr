@@ -1,6 +1,6 @@
 import { AutoId } from "/libpxlr/autoid.ts";
 import { Command } from "/libpxlr/nodes/commands/command.ts";
-import { Workspace } from "/libpxlr/workspace/mod.ts";
+import { Workspace } from "/libpxlr/workspace/workspace.ts";
 
 export class SetWorkspaceCommand extends Command {
 	#workspace: Workspace;
