@@ -3,7 +3,7 @@ import { Commit } from "./commit.ts";
 import { Object } from "./object.ts";
 import { Tree } from "./tree.ts";
 import { assertReferencePath, Reference, ReferencePath } from "./reference.ts";
-import { assertAutoId, AutoId } from "../autoid.ts";
+import { assertAutoId, AutoId } from "../libpxlr/autoid.ts";
 
 export class Repository {
 	#fs: Filesystem;

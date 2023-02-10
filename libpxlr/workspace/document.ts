@@ -1,6 +1,6 @@
 import { assertAutoId, AutoId, autoid } from "../autoid.ts";
 import { Command, GroupNode, Node, visit, VisitorResult } from "../nodes/mod.ts";
-import { Commit, Reference } from "../repository/mod.ts";
+import { Commit, Reference } from "../../librepo/mod.ts";
 import { Workspace } from "./workspace.ts";
 
 export class Document {
@@ -147,4 +147,4 @@ export class Document {
 	}
 }
 
-export class NothingToCommitError extends Error {}
+export class NothingToCommitError extends Error { }

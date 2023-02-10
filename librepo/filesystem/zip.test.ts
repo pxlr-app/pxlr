@@ -1,7 +1,7 @@
 import { assertEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
 import { ZipFilesystem } from "./zip.ts";
-import { Zip } from "../../../libzip/mod.ts";
-import { DenoFile } from "../../../libzip/file/deno.ts";
+import { Zip } from "../../libzip/mod.ts";
+import { DenoFile } from "../../libzip/file/deno.ts";
 
 Deno.test("ZipFilesystem", async (t) => {
 	const textEncoder = new TextEncoder();

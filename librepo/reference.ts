@@ -1,4 +1,4 @@
-import { assertAutoId, AutoId } from "../autoid.ts";
+import { assertAutoId, AutoId } from "../libpxlr/autoid.ts";
 import { deserializeObjectLike } from "./object.ts";
 
 export type ReferencePath = string;

@@ -1,7 +1,7 @@
 import { assertAutoId, AutoId } from "../autoid.ts";
 import { Node, NodeNotFoundError, NodeRegistry, UnloadedNode } from "../nodes/mod.ts";
 import { NodeRegistryEntry } from "../nodes/registry.ts";
-import { ReferencePath, Repository, Tree } from "../repository/mod.ts";
+import { ReferencePath, Repository, Tree } from "../../librepo/mod.ts";
 import { Branch } from "./branch.ts";
 import { Document } from "./document.ts";
 

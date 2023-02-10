@@ -1,4 +1,4 @@
-import { assertAutoId, AutoId } from "../autoid.ts";
+import { assertAutoId, AutoId } from "../libpxlr/autoid.ts";
 
 const textDecoder = new TextDecoder("utf-8");
 const textEncoder = new TextEncoder();

@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
-import { autoid } from "../autoid.ts";
+import { autoid } from "../libpxlr/autoid.ts";
 import { Commit } from "./commit.ts";
 import { MemoryFilesystem, Object, Repository } from "./mod.ts";
 import { Reference } from "./reference.ts";

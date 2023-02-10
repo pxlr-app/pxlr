@@ -1,7 +1,11 @@
 {
 	"imports": {
 		"/editor/": "./editor/",
+		"/libeditor/": "./libeditor/",
 		"/libpxlr/": "./libpxlr/",
-		"/libzip/": "./libzip/"
+		"/libzip/": "./libzip/",
+		"/libmath/": "./libmath/",
+		"/librepo/": "./librepo/",
+		"/librenderer/": "./librenderer/"
 	}
 }

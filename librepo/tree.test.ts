@@ -1,5 +1,5 @@
 import { assertEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
-import { autoid } from "../autoid.ts";
+import { autoid } from "../libpxlr/autoid.ts";
 import { Tree } from "./tree.ts";
 
 Deno.test("TreeObject", async (t) => {

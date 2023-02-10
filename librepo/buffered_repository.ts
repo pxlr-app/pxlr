@@ -1,4 +1,4 @@
-import { assertAutoId, AutoId } from "../autoid.ts";
+import { assertAutoId, AutoId } from "../libpxlr/autoid.ts";
 import { Filesystem } from "./filesystem/filesystem.ts";
 import { assertReferencePath, Reference, ReferencePath } from "./reference.ts";
 import { Repository } from "./repository.ts";

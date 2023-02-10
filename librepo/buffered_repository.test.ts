@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertFalse } from "https://deno.land/std@0.158.0/testing/asserts.ts";
 import { BufferedRepository, MemoryFilesystem, Object, Reference } from "./mod.ts";
-import { autoid } from "../autoid.ts";
+import { autoid } from "../libpxlr/autoid.ts";
 
 Deno.test("Repository", async (t) => {
 	await t.step("set/get reference", async () => {

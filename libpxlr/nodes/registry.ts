@@ -1,5 +1,5 @@
 import { Node } from "./node.ts";
-import { Object } from "../repository/object.ts";
+import { Object } from "../../librepo/object.ts";
 import { AutoId } from "../autoid.ts";
 
 export interface NodeDeserializerOptions {

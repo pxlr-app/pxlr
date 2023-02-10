@@ -1,6 +1,6 @@
 import { assertAutoId, AutoId, autoid } from "../autoid.ts";
 import { AddChildCommand, Command, MoveChildCommand, RemoveChildCommand, RenameCommand, ReplaceNodeCommand } from "./commands/mod.ts";
-import { Tree } from "../repository/tree.ts";
+import { Tree } from "../../librepo/tree.ts";
 import { Node } from "./node.ts";
 import { NodeRegistryEntry } from "./registry.ts";
 import { UnloadedNode } from "./mod.ts";

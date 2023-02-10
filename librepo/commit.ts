@@ -1,4 +1,4 @@
-import { assertAutoId, AutoId } from "../autoid.ts";
+import { assertAutoId, AutoId } from "../libpxlr/autoid.ts";
 import { Object } from "./object.ts";
 
 export class Commit {

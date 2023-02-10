@@ -12,6 +12,6 @@
 		"*.css": "${capture}.css.map",
 		"*.ts": "${capture}.test.ts, ${capture}.bench.ts, ${capture}.css",
 		"*.tsx": "${capture}.test.tsx, ${capture}.bench.tsx, ${capture}.css, ${capture}.html",
-		"deno.json": "deno.lock, import_map.json, build.ts, .gitignore, .prettierrc"
+		"deno.json": "deno.test.json, deno.lock, import_map.json, build.ts, .gitignore, .prettierrc"
 	}
 }

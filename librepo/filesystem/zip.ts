@@ -1,5 +1,5 @@
 import { Filesystem } from "./filesystem.ts";
-import { Zip } from "../../../libzip/mod.ts";
+import { Zip } from "../../libzip/mod.ts";
 
 export class ZipFilesystem extends Filesystem {
 	#zip: Zip;

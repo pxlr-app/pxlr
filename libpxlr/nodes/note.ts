@@ -1,6 +1,6 @@
 import { AutoId, autoid } from "../autoid.ts";
 import { Command, RenameCommand, ReplaceNodeCommand, SetContentCommand } from "./commands/mod.ts";
-import { Object } from "../repository/mod.ts";
+import { Object } from "../../librepo/mod.ts";
 import { Node } from "./node.ts";
 import { NodeRegistryEntry } from "./registry.ts";
 

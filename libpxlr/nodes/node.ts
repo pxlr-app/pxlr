@@ -1,5 +1,5 @@
 import { assertAutoId, AutoId, autoid } from "../autoid.ts";
-import { Object } from "../repository/object.ts";
+import { Object } from "../../librepo/object.ts";
 import { Command, RenameCommand } from "./commands/mod.ts";
 import { NodeDeserializerOptions } from "./registry.ts";
 
