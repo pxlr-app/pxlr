@@ -49,7 +49,7 @@ export class WebFileSystem extends Filesystem {
 	async read(path: string): Promise<ReadableStream<Uint8Array>> {
 		const fileHandle = await this.#getFileSystemHandleAtPath(path);
 		if (!(fileHandle instanceof FileSystemFileHandle)) {
-			throw new IOError()
+			throw new IOError();
 		}
 		const file = await fileHandle.getFile();
 		return file.stream();
