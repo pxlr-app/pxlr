@@ -1,7 +1,7 @@
 import { Node } from "/libpxlr/nodes/node.ts";
 import { AutoId, autoid } from "/libpxlr/autoid.ts";
 import { ToolNode } from "./tools/tool.ts";
-import { SetActiveToolCommand } from "./commands/set_active_tool.ts";
+import { SetActiveToolCommand } from "../commands/set_active_tool.ts";
 
 export class EditorNode extends Node {
 	#activeTool: ToolNode;

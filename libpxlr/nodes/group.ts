@@ -1,10 +1,10 @@
 import { assertAutoId, AutoId, autoid } from "../autoid.ts";
-import { AddChildCommand } from "./commands/add_child.ts";
-import { Command } from "./commands/command.ts";
-import { MoveChildCommand } from "./commands/move_child.ts";
-import { RemoveChildCommand } from "./commands/remove_child.ts";
-import { RenameCommand } from "./commands/rename.ts";
-import { ReplaceNodeCommand } from "./commands/replace_node.ts";
+import { AddChildCommand } from "../commands/add_child.ts";
+import { Command } from "../commands/command.ts";
+import { MoveChildCommand } from "../commands/move_child.ts";
+import { RemoveChildCommand } from "../commands/remove_child.ts";
+import { RenameCommand } from "../commands/rename.ts";
+import { ReplaceNodeCommand } from "../commands/replace_node.ts";
 import { Tree } from "../../librepo/tree.ts";
 import { Node } from "./node.ts";
 import { NodeRegistryEntry } from "./registry.ts";

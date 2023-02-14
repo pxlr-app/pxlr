@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertNotEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
 import { autoid } from "../autoid.ts";
-import { RenameCommand } from "./commands/rename.ts";
+import { RenameCommand } from "../commands/rename.ts";
 import { GroupNode } from "./group.ts";
 
 Deno.test("GroupNode", async (t) => {
