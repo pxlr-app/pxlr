@@ -55,14 +55,14 @@ export class NoteNode extends Node {
 					return this;
 				}
 				return new NoteNode(
-					autoid(command.target + this.hash),
+					autoid(),
 					this.id,
 					command.renameTo,
 					this.content,
 				);
 			} else if (command instanceof SetContentCommand) {
 				return new NoteNode(
-					autoid(command.target + this.hash),
+					autoid(),
 					this.id,
 					this.name,
 					command.newContent,

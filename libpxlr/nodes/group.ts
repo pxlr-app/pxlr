@@ -75,7 +75,7 @@ export class GroupNode extends Node {
 					return this;
 				}
 				return new GroupNode(
-					autoid(command.target + this.hash),
+					autoid(),
 					this.id,
 					command.renameTo,
 					this.children,
@@ -96,7 +96,7 @@ export class GroupNode extends Node {
 					new Set(this.children.concat(command.childNode)),
 				);
 				return new GroupNode(
-					autoid(command.target + this.hash),
+					autoid(),
 					this.id,
 					this.name,
 					children,
@@ -111,7 +111,7 @@ export class GroupNode extends Node {
 					...this.children.slice(childIndex + 1),
 				];
 				return new GroupNode(
-					autoid(command.target + this.hash),
+					autoid(),
 					this.id,
 					this.name,
 					children,
@@ -129,7 +129,7 @@ export class GroupNode extends Node {
 					children.splice(command.position, 0, child);
 				}
 				return new GroupNode(
-					autoid(command.target + this.hash),
+					autoid(),
 					this.id,
 					this.name,
 					children,
@@ -158,7 +158,7 @@ export class GroupNode extends Node {
 		});
 		if (mutated) {
 			return new GroupNode(
-				command instanceof ReplaceNodeCommand ? this.hash : autoid(command.target + this.hash),
+				command instanceof ReplaceNodeCommand ? this.hash : autoid(),
 				this.id,
 				this.name,
 				children,
