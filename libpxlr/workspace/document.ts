@@ -2,7 +2,7 @@ import { assertAutoId, AutoId, autoid } from "../autoid.ts";
 import { Node } from "../nodes/node.ts";
 import { visit, VisitorResult } from "../nodes/visit.ts";
 import { GroupNode } from "../nodes/group.ts";
-import { Command } from "../nodes/commands/command.ts";
+import { Command } from "../commands/command.ts";
 import { Commit } from "../../librepo/commit.ts";
 import { Reference } from "../../librepo/reference.ts";
 import { Workspace } from "./workspace.ts";

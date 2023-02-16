@@ -1,5 +1,5 @@
-import { AutoId } from "../../autoid.ts";
-import { Node } from "../node.ts";
+import { AutoId } from "../autoid.ts";
+import { Node } from "../nodes/node.ts";
 import { Command } from "./command.ts";
 
 export class ReplaceNodeCommand extends Command {

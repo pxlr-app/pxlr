@@ -1,4 +1,4 @@
-import { assertAutoId, AutoId } from "../../autoid.ts";
+import { assertAutoId, AutoId } from "../autoid.ts";
 import { Command } from "./command.ts";
 
 export class MoveChildCommand extends Command {

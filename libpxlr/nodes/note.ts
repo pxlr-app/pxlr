@@ -3,7 +3,7 @@ import { Command } from "../commands/command.ts";
 import { RenameCommand } from "../commands/rename.ts";
 import { ReplaceNodeCommand } from "../commands/replace_node.ts";
 import { SetContentCommand } from "../commands/set_content.ts";
-import { Object } from "../../librepo/object.ts";
+import { Object } from "/librepo/object.ts";
 import { Node } from "./node.ts";
 import { NodeRegistryEntry } from "./registry.ts";
 

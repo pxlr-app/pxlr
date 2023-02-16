@@ -1,4 +1,4 @@
-import { AutoId } from "../../autoid.ts";
+import { AutoId } from "../autoid.ts";
 import { Command } from "./command.ts";
 
 export class RenameCommand extends Command {
