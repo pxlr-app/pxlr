@@ -1,14 +1,14 @@
 import { assertEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
-import { BufferedRepository } from "../../librepo/buffered_repository.ts";
-import { Commit } from "../../librepo/commit.ts";
-import { Tree } from "../../librepo/tree.ts";
-import { Reference } from "../../librepo/reference.ts";
-import { MemoryFilesystem } from "../../librepo/filesystem/memory.ts";
+import { Commit } from "/librepo/commit.ts";
+import { Tree } from "/librepo/tree.ts";
+import { Reference } from "/librepo/reference.ts";
+import { MemoryFilesystem } from "/librepo/filesystem/memory.ts";
 import { NoteNode, NoteNodeRegistryEntry } from "../nodes/note.ts";
 import { GroupNode, GroupNodeRegistryEntry } from "../nodes/group.ts";
 import { NodeRegistry } from "../nodes/registry.ts";
 import { Workspace } from "./workspace.ts";
 import { autoid } from "../autoid.ts";
+import { Repository } from "/librepo/repository.ts";
 
 const nodeRegistry = new NodeRegistry();
 nodeRegistry.register(NoteNodeRegistryEntry);
@@ -17,7 +17,7 @@ nodeRegistry.register(GroupNodeRegistryEntry);
 Deno.test("Document", async (t) => {
 	await t.step("dispatch", async () => {
 		const fs = new MemoryFilesystem();
-		const repository = new BufferedRepository(fs);
+		const repository = new Repository(fs);
 		const note1 = NoteNode.new("My Note", "...");
 		const root1 = GroupNode.new("", [note1]);
 		const tree = new Tree(autoid(), autoid(), "Group", "", []);
@@ -30,8 +30,8 @@ Deno.test("Document", async (t) => {
 			"init",
 		);
 		const reference = new Reference("refs/heads/main", commit.hash);
-		await repository.writeObject(NoteNodeRegistryEntry.serialize(note1));
-		await repository.writeObject(GroupNodeRegistryEntry.serialize(root1));
+		// await repository.writeObject(NoteNodeRegistryEntry.serialize(note1));
+		// await repository.writeObject(GroupNodeRegistryEntry.serialize(root1));
 		await repository.writeTree(tree);
 		await repository.writeCommit(commit);
 		await repository.writeReference(reference);
@@ -65,8 +65,6 @@ Deno.test("Document", async (t) => {
 		// assertEquals((await iterHistory.next()).value.message, "Rename My Note");
 		// assertEquals((await iterHistory.next()).value.message, "init");
 		// assertEquals((await iterHistory.next()).done, true);
-
-		await repository.flushToFilesystem();
 
 		const workspace2 = new Workspace({ repository, nodeRegistry });
 		const document2 = await workspace2.checkoutDocumentAtBranch("main", {

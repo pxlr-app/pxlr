@@ -5,8 +5,6 @@ const AutoIdChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456
 const AutoIdCharsLength = AutoIdChars.length;
 const AutoIdRegExp = new RegExp(`^[${AutoIdChars}]{${AutoIdSize}}$`);
 
-const textEncoder = new TextEncoder();
-
 /**
  * Generate an AutoId
  * @param seed The seed for the AutoId

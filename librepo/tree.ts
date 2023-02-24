@@ -1,5 +1,5 @@
 import { assertAutoId, AutoId } from "../libpxlr/autoid.ts";
-import { Object } from "./object.ts";
+import { BaseObject, deserializeBaseObject, serializeBaseObject } from "./object.ts";
 
 export interface TreeItem {
 	hash: AutoId;
@@ -8,18 +8,18 @@ export interface TreeItem {
 	name: string;
 }
 
-export class Tree<T extends Record<string, string> = Record<never, never>> {
+export class Tree {
 	#hash: AutoId;
 	#id: AutoId;
 	#subKind: string;
 	#name: string;
-	#items: ReadonlyArray<T & TreeItem>;
+	#items: ReadonlyArray<TreeItem>;
 	public constructor(
 		hash: AutoId,
 		id: AutoId,
 		subKind: string,
 		name: string,
-		items: ReadonlyArray<T & TreeItem>,
+		items: ReadonlyArray<TreeItem>,
 	) {
 		assertAutoId(hash);
 		assertAutoId(id);
@@ -49,55 +49,38 @@ export class Tree<T extends Record<string, string> = Record<never, never>> {
 		return this.#items;
 	}
 
-	toObject(otherFieldOrder: (keyof T)[] = []): Object {
-		return new Object(
-			this.#hash,
-			this.id,
-			"tree",
-			{
-				"sub-kind": this.subKind,
-				name: this.name,
-			},
-			this.items.map((item) => {
-				const { kind, hash, id, name, ...rest } = item;
-				assertAutoId(hash);
-				assertAutoId(id);
-				const other = otherFieldOrder.reduce((other, name) => {
-					other.push(encodeURIComponent(rest[name as string]));
-					return other;
-				}, [] as string[]);
-				return `${encodeURIComponent(kind)} ${hash} ${id} ${encodeURIComponent(name)} ${other.join(" ")}`;
-			}).join(`\n`),
-		);
-	}
-
-	static async fromObject<
-		T extends Record<string, string> = Record<never, never>,
-	>(object: Object, otherFieldOrder: (keyof T)[] = []): Promise<Tree<T>> {
-		const itemLines = await object.text();
-		const items = itemLines.split(`\n`).filter((l) => l.length).map((line) => {
-			const [kind, hash, id, name, ...rest] = line.split(" ");
+	static async readFromStream(hash: AutoId, readableStream: ReadableStream<Uint8Array>) {
+		const obj = await deserializeBaseObject(readableStream);
+		const itemLines = await obj.text();
+		const items = itemLines.split(`\r\n`).filter((l) => l.length).map((line) => {
+			const [kind, hash, id, name] = line.split(" ");
 			assertAutoId(hash);
 			assertAutoId(id);
-			const other = otherFieldOrder.reduce((other, name, i) => {
-				other[name] = decodeURIComponent(rest[i] ?? "") as T[keyof T];
-				return other;
-			}, {} as T);
 			return {
 				kind: decodeURIComponent(kind),
 				hash,
 				id,
 				name: decodeURIComponent(name),
-				...other,
 			};
 		});
 		return new Tree(
-			object.hash,
-			object.id,
-			object.headers.get("sub-kind") ?? "",
-			object.headers.get("name") ?? "",
+			hash,
+			obj.headers.get("id") ?? "",
+			obj.headers.get("sub-kind") ?? "",
+			obj.headers.get("name") ?? "",
 			items,
 		);
+	}
+
+	async writeToStream(writableStream: WritableStream<Uint8Array>) {
+		const items = this.items.map((item) => {
+			const { kind, hash, id, name } = item;
+			assertAutoId(hash);
+			assertAutoId(id);
+			return `${encodeURIComponent(kind)} ${hash} ${id} ${encodeURIComponent(name)}}`;
+		}).join(`\r\n`);
+		const obj = new BaseObject({ id: this.id, subKind: this.subKind, name: this.name }, items);
+		await serializeBaseObject(obj, writableStream);
 	}
 }
 

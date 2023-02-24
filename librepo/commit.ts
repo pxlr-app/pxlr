@@ -1,5 +1,5 @@
 import { assertAutoId, AutoId } from "../libpxlr/autoid.ts";
-import { Object } from "./object.ts";
+import { BaseObject, deserializeBaseObject, serializeBaseObject } from "./object.ts";
 
 export class Commit {
 	#hash: AutoId;
@@ -49,24 +49,21 @@ export class Commit {
 		return this.#message;
 	}
 
-	toObject(): Object {
-		return new Object(this.hash, this.hash, "commit", {
-			parent: this.parent,
-			tree: this.tree,
-			commiter: this.commiter,
-			date: this.date.toISOString(),
-		}, this.message);
+	static async readFromStream(hash: AutoId, readableStream: ReadableStream<Uint8Array>) {
+		const obj = await deserializeBaseObject(readableStream);
+		return new Commit(
+			hash,
+			obj.headers.get("parent") ?? "",
+			obj.headers.get("tree") ?? "",
+			obj.headers.get("commiter") ?? "",
+			new Date(obj.headers.get("date") ?? ""),
+			await obj.text(),
+		);
 	}
 
-	static async fromObject(object: Object): Promise<Commit> {
-		return new Commit(
-			object.hash,
-			object.headers.get("parent") ?? "",
-			object.headers.get("tree") ?? "",
-			object.headers.get("commiter") ?? "",
-			new Date(object.headers.get("date") ?? ""),
-			await object.text().catch((_) => ""),
-		);
+	async writeToStream(writableStream: WritableStream<Uint8Array>) {
+		const obj = new BaseObject({ parent: this.parent, tree: this.tree, commiter: this.commiter, date: this.date.toISOString() }, this.message);
+		await serializeBaseObject(obj, writableStream);
 	}
 }
 

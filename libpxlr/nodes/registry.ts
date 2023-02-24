@@ -1,9 +1,14 @@
 import { Node } from "./node.ts";
-import { Object } from "../../librepo/object.ts";
 import { AutoId } from "../autoid.ts";
 
 export interface NodeDeserializerOptions {
-	object: Object;
+	item: {
+		hash: AutoId;
+		id: AutoId;
+		kind: string;
+		name: string;
+	};
+	stream: ReadableStream<Uint8Array>;
 	getNodeByHash: (
 		hash: AutoId,
 		shallow: boolean,
@@ -17,7 +22,7 @@ export type NodeDeserializer<T extends Node> = (
 	options: NodeDeserializerOptions,
 ) => T | Promise<T>;
 
-export type NodeSerializer<T extends Node> = (node: T) => Object;
+export type NodeSerializer<T extends Node> = (node: T, writableStream: WritableStream<Uint8Array>) => void | Promise<void>;
 
 export class NodeRegistryEntry<T extends Node> {
 	#kind: string;

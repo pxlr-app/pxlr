@@ -3,28 +3,23 @@ import { Command } from "../commands/command.ts";
 import { RenameCommand } from "../commands/rename.ts";
 import { ReplaceNodeCommand } from "../commands/replace_node.ts";
 import { SetContentCommand } from "../commands/set_content.ts";
-import { Object } from "/librepo/object.ts";
 import { Node } from "./node.ts";
 import { NodeRegistryEntry } from "./registry.ts";
 
 export const NoteNodeRegistryEntry = new NodeRegistryEntry<NoteNode>(
 	"Note",
-	async ({ object }) => {
+	async ({ item, stream }) => {
 		return new NoteNode(
-			object.hash,
-			object.id,
-			object.headers.get("name") ?? "",
-			await object.text(),
+			item.hash,
+			item.id,
+			item.name,
+			await new Response(stream).text()
 		);
 	},
-	(node) => {
-		return new Object(
-			node.hash,
-			node.id,
-			"Note",
-			{ name: node.name },
-			node.content,
-		);
+	async (node, writableStream) => {
+		const writer = writableStream.getWriter();
+		await writer.write(new TextEncoder().encode(node.content));
+		await writer.close();
 	},
 );
 

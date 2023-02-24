@@ -1,40 +1,18 @@
-import { assertAutoId, AutoId } from "../libpxlr/autoid.ts";
-
 const textDecoder = new TextDecoder("utf-8");
 const textEncoder = new TextEncoder();
 
-export class Object {
-	#hash: AutoId;
-	#id: AutoId;
-	#kind: string;
+export class BaseObject {
 	#headers: ReadonlyMap<string, string>;
 	#body?: ReadableStream | ArrayBuffer | string | undefined;
 
 	constructor(
-		hash: AutoId,
-		id: AutoId,
-		kind: string,
 		headers: Record<string, string> | Map<string, string> = {},
 		body?: ReadableStream | ArrayBuffer | string | undefined,
 	) {
-		assertAutoId(hash);
-		assertAutoId(id);
-		this.#hash = hash;
-		this.#id = id;
-		this.#kind = kind;
 		this.#headers = headers instanceof Map ? headers : new Map(globalThis.Object.entries(headers));
 		this.#body = body;
 	}
 
-	get hash() {
-		return this.#hash;
-	}
-	get id() {
-		return this.#id;
-	}
-	get kind() {
-		return this.#kind;
-	}
 	get headers() {
 		return this.#headers;
 	}
@@ -44,30 +22,6 @@ export class Object {
 
 	private set body(value) {
 		this.#body = value;
-	}
-
-	async serialize(stream: WritableStream<Uint8Array>) {
-		const encoder = new TextEncoder();
-		const writer = stream.getWriter();
-		await writer.write(encoder.encode(`hash ${this.hash}\n`));
-		await writer.write(encoder.encode(`id ${this.id}\n`));
-		await writer.write(encoder.encode(`kind ${this.kind}\n`));
-		for (const [key, value] of this.headers) {
-			await writer.write(
-				encoder.encode(
-					`${encodeURIComponent(key)} ${encodeURIComponent(value)}\n`,
-				),
-			);
-		}
-		await writer.write(encoder.encode(`\n`));
-		if (this.body instanceof ReadableStream) {
-			await this.body.pipeTo(stream);
-		} else if (this.body instanceof ArrayBuffer) {
-			await writer.write(new Uint8Array(this.body));
-		} else if (typeof this.body === "string") {
-			await writer.write(encoder.encode(this.body));
-		}
-		await writer.close();
 	}
 
 	async arrayBuffer() {
@@ -95,24 +49,30 @@ export class Object {
 		}
 		throw new TypeError(`Object's body is undefined.`);
 	}
-
-	static async deserialize(
-		stream: ReadableStream<Uint8Array>,
-	): Promise<Object> {
-		const { headers, body } = await deserializeObjectLike(stream);
-		const hash = headers.get("hash") ?? "";
-		headers.delete("hash");
-		assertAutoId(hash);
-		const id = headers.get("id") ?? "";
-		headers.delete("id");
-		assertAutoId(id);
-		const kind = headers.get("kind") ?? "";
-		headers.delete("kind");
-		return new Object(hash, id, kind, headers, body);
-	}
 }
 
-export async function deserializeObjectLike(
+export async function serializeBaseObject(object: BaseObject, stream: WritableStream<Uint8Array>) {
+	const encoder = new TextEncoder();
+	const writer = stream.getWriter();
+	for (const [key, value] of object.headers) {
+		await writer.write(
+			encoder.encode(
+				`${encodeURIComponent(key)}: ${encodeURIComponent(value)}\r\n`,
+			),
+		);
+	}
+	await writer.write(encoder.encode(`\r\n`));
+	if (object.body instanceof ReadableStream) {
+		await object.body.pipeTo(stream);
+	} else if (object.body instanceof ArrayBuffer) {
+		await writer.write(new Uint8Array(object.body));
+	} else if (typeof object.body === "string") {
+		await writer.write(encoder.encode(object.body));
+	}
+	await writer.close();
+}
+
+export async function deserializeBaseObject(
 	stream: ReadableStream<Uint8Array>,
 ) {
 	const decoder = new TextDecoder();
@@ -131,21 +91,23 @@ export async function deserializeObjectLike(
 		}
 		const chunk = decoder.decode(value);
 		for (let i = 0, l = chunk.length; i < l; ++i) {
-			if (chunk.at(i) === " " && inKey) {
+			if (chunk.at(i) === ":" && chunk.at(i + 1) === " " && inKey) {
 				key = tmp;
 				tmp = "";
 				inKey = false;
 				inValue = true;
-			} else if (chunk.at(i) === `\n`) {
+				i += 1;
+			} else if (chunk.at(i) === `\r` && chunk.at(i + 1) === `\n`) {
 				if (inValue) {
 					headers.set(decodeURIComponent(key), decodeURIComponent(tmp));
 					tmp = "";
 					inKey = true;
 					inValue = false;
+					i += 1;
 				} else if (inKey) {
 					body = new ReadableStream({
 						start(controller) {
-							controller.enqueue(value.slice(i + 1));
+							controller.enqueue(value.slice(i + 2));
 						},
 						async pull(controller) {
 							const { done, value } = await reader.read();
@@ -164,5 +126,5 @@ export async function deserializeObjectLike(
 		}
 	}
 
-	return { headers, body };
+	return new BaseObject(headers, body);
 }

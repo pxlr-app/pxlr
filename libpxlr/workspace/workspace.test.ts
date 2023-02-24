@@ -1,5 +1,5 @@
 import { assertEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
-// import { BufferedRepository, Commit, MemoryFilesystem, Reference, Tree } from "../../librepo/mod.ts";
+// import { Repository, Commit, MemoryFilesystem, Reference, Tree } from "../../librepo/mod.ts";
 // import { GroupNode, GroupNodeRegistryEntry, NodeRegistry, NoteNode, NoteNodeRegistryEntry } from "../nodes/mod.ts";
 import { Workspace } from "./workspace.ts";
 import { autoid } from "../autoid.ts";
@@ -7,10 +7,10 @@ import { NodeRegistry } from "../nodes/registry.ts";
 import { NoteNode, NoteNodeRegistryEntry } from "../nodes/note.ts";
 import { GroupNode, GroupNodeRegistryEntry } from "../nodes/group.ts";
 import { MemoryFilesystem } from "../../librepo/filesystem/memory.ts";
-import { BufferedRepository } from "../../librepo/buffered_repository.ts";
 import { Reference } from "../../librepo/reference.ts";
 import { Tree } from "../../librepo/tree.ts";
 import { Commit } from "../../librepo/commit.ts";
+import { Repository } from "../../librepo/repository.ts";
 
 const nodeRegistry = new NodeRegistry();
 nodeRegistry.register(NoteNodeRegistryEntry);
@@ -19,13 +19,13 @@ nodeRegistry.register(GroupNodeRegistryEntry);
 Deno.test("Workspace", async (t) => {
 	await t.step("init", () => {
 		const fs = new MemoryFilesystem();
-		const repository = new BufferedRepository(fs);
+		const repository = new Repository(fs);
 		const _workspace = new Workspace({ repository, nodeRegistry });
 	});
 
 	await t.step("listBranches", async () => {
 		const fs = new MemoryFilesystem();
-		const repository = new BufferedRepository(fs);
+		const repository = new Repository(fs);
 		await repository.writeReference(new Reference("refs/heads/main", autoid()));
 		await repository.writeReference(
 			new Reference("refs/heads/fix/hero", autoid()),
@@ -39,7 +39,7 @@ Deno.test("Workspace", async (t) => {
 
 	await t.step("getBranch", async () => {
 		const fs = new MemoryFilesystem();
-		const repository = new BufferedRepository(fs);
+		const repository = new Repository(fs);
 		const root = new Tree(autoid(), autoid(), "Group", "", []);
 		const commit = new Commit(
 			autoid(),
@@ -72,7 +72,7 @@ Deno.test("Workspace", async (t) => {
 		// await zip.open();
 		// const fs = new ZipFilesystem(zip);
 		const fs = new MemoryFilesystem();
-		const repository = new BufferedRepository(fs);
+		const repository = new Repository(fs);
 		const note1 = NoteNode.new("My Note", "...");
 		const root1 = GroupNode.new("", [note1]);
 		const tree = new Tree(autoid(), autoid(), "Group", "", []);

@@ -1,5 +1,5 @@
-import { assertAutoId, AutoId } from "../libpxlr/autoid.ts";
-import { deserializeObjectLike } from "./object.ts";
+import { AutoId } from "/libpxlr/autoid.ts";
+import { BaseObject, deserializeBaseObject, serializeBaseObject } from "./object.ts";
 
 export type ReferencePath = string;
 
@@ -50,27 +50,13 @@ export class Reference {
 		return this.#message;
 	}
 
-	async serialize(stream: WritableStream<Uint8Array>) {
-		const encoder = new TextEncoder();
-		const writer = stream.getWriter();
-		await writer.write(encoder.encode(`ref ${this.ref}\n`));
-		await writer.write(encoder.encode(`commit ${this.commit}\n`));
-		await writer.write(encoder.encode(`\n`));
-		await writer.write(encoder.encode(this.message));
-		await writer.close();
+	static async readFromStream(ref: ReferencePath, readableStream: ReadableStream<Uint8Array>) {
+		const obj = await deserializeBaseObject(readableStream);
+		return new Reference(ref, obj.headers.get("commit") ?? "", await obj.text());
 	}
 
-	static async deserialize(
-		stream: ReadableStream<Uint8Array>,
-	): Promise<Reference> {
-		const { headers, body } = await deserializeObjectLike(stream);
-		const ref = headers.get("ref") ?? "";
-		headers.delete("ref");
-		assertReferencePath(ref);
-		const commit = headers.get("commit") ?? "";
-		headers.delete("commit");
-		assertAutoId(commit);
-		const message = await new Response(body).text();
-		return new Reference(ref, commit, message);
+	async writeToStream(writableStream: WritableStream<Uint8Array>) {
+		const obj = new BaseObject({ commit: this.commit }, this.message);
+		await serializeBaseObject(obj, writableStream);
 	}
 }
