@@ -1,5 +1,5 @@
 import { assertAutoId, AutoId } from "../libpxlr/autoid.ts";
-import { BaseObject, deserializeBaseObject, serializeBaseObject } from "./object.ts";
+import { ResponseReaderStream, ResponseWriterStream } from "./response.ts";
 
 export interface TreeItem {
 	hash: AutoId;
@@ -49,9 +49,19 @@ export class Tree {
 		return this.#items;
 	}
 
-	static async readFromStream(hash: AutoId, readableStream: ReadableStream<Uint8Array>) {
-		const obj = await deserializeBaseObject(readableStream);
-		const itemLines = await obj.text();
+	static async fromStream(hash: AutoId, stream: ReadableStream<Uint8Array>) {
+		const decoder = new TextDecoder();
+		const headers = new Map<string, string>();
+		let itemLines = "";
+		const transformer = new ResponseWriterStream();
+		stream.pipeThrough(transformer);
+		for await (const chunk of transformer.readable) {
+			if (chunk.type === "header") {
+				headers.set(chunk.key, chunk.value);
+			} else {
+				itemLines += decoder.decode(chunk.data);
+			}
+		}
 		const items = itemLines.split(`\r\n`).filter((l) => l.length).map((line) => {
 			const [kind, hash, id, name] = line.split(" ");
 			assertAutoId(hash);
@@ -65,22 +75,29 @@ export class Tree {
 		});
 		return new Tree(
 			hash,
-			obj.headers.get("id") ?? "",
-			obj.headers.get("sub-kind") ?? "",
-			obj.headers.get("name") ?? "",
+			headers.get("id") ?? "",
+			headers.get("sub-kind") ?? "",
+			headers.get("name") ?? "",
 			items,
 		);
 	}
 
-	async writeToStream(writableStream: WritableStream<Uint8Array>) {
+	toStream() {
 		const items = this.items.map((item) => {
 			const { kind, hash, id, name } = item;
 			assertAutoId(hash);
 			assertAutoId(id);
 			return `${encodeURIComponent(kind)} ${hash} ${id} ${encodeURIComponent(name)}}`;
 		}).join(`\r\n`);
-		const obj = new BaseObject({ id: this.id, subKind: this.subKind, name: this.name }, items);
-		await serializeBaseObject(obj, writableStream);
+		const transformer = new ResponseReaderStream();
+		const writer = transformer.writable.getWriter();
+		writer.write({ type: "header", key: "sub-kind", value: this.subKind });
+		writer.write({
+			type: "body",
+			data: new TextEncoder().encode(items),
+		});
+		writer.close();
+		return transformer.readable;
 	}
 }
 

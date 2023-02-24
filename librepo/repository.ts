@@ -23,7 +23,7 @@ export class Repository {
 		assertReferencePath(ref);
 		try {
 			const readableStream = await this.fs.read(ref, abortSignal);
-			return await Reference.readFromStream(ref, readableStream);
+			return await Reference.fromStream(ref, readableStream);
 		} catch (error) {
 			throw new IOError(error);
 		}
@@ -35,7 +35,7 @@ export class Repository {
 	): Promise<void> {
 		try {
 			const writableStream = await this.fs.write(reference.ref, abortSignal);
-			await reference.writeToStream(writableStream);
+			await reference.toStream().pipeTo(writableStream);
 		} catch (error) {
 			throw new IOError(error);
 		}
@@ -51,26 +51,6 @@ export class Repository {
 		}
 	}
 
-	private decompressStream(readableStream: ReadableStream<Uint8Array>, abortSignal?: AbortSignal) {
-		const decompressStream = new DecompressionStream("gzip");
-		return readableStream.pipeThrough(decompressStream, { signal: abortSignal });
-	}
-
-	private compressStream(writableStream: WritableStream<Uint8Array>, abortSignal?: AbortSignal) {
-		const compressStream = new CompressionStream("gzip");
-		const pipeline = compressStream.readable.pipeTo(writableStream, { signal: abortSignal });
-		const writer = compressStream.writable.getWriter();
-		return new WritableStream({
-			write: async (chunk) => {
-				await writer.write(chunk);
-			},
-			close: async () => {
-				await writer.close();
-				await pipeline;
-			},
-		});
-	}
-
 	async getObject(hash: AutoId, abortSignal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
 		assertAutoId(hash);
 		try {
@@ -78,19 +58,19 @@ export class Repository {
 				`objects/${hash[0]}/${hash[1]}/${hash}`,
 				abortSignal,
 			);
-			return this.decompressStream(readableStream, abortSignal);
+			return readableStream.pipeThrough(new DecompressionStream("gzip"), { signal: abortSignal });
 		} catch (error) {
 			throw new IOError(error);
 		}
 	}
 
-	async writeObject(hash: AutoId, abortSignal?: AbortSignal): Promise<WritableStream<Uint8Array>> {
+	async writeObject(hash: AutoId, stream: ReadableStream<Uint8Array>, abortSignal?: AbortSignal): Promise<void> {
 		try {
 			const writableStream = await this.fs.write(
 				`objects/${hash[0]}/${hash[1]}/${hash}`,
 				abortSignal,
 			);
-			return this.compressStream(writableStream, abortSignal);
+			await stream.pipeThrough(new CompressionStream("gzip")).pipeTo(writableStream);
 		} catch (error) {
 			throw new IOError(error);
 		}
@@ -114,8 +94,8 @@ export class Repository {
 	async getCommit(hash: AutoId, abortSignal?: AbortSignal): Promise<Commit> {
 		try {
 			const readableStream = await this.fs.read(`objects/${hash[0]}/${hash[1]}/${hash}`, abortSignal);
-			const decompressStream = this.decompressStream(readableStream, abortSignal);
-			return await Commit.readFromStream(hash, decompressStream);
+			const decompressStream = readableStream.pipeThrough(new DecompressionStream("gzip"), { signal: abortSignal });
+			return await Commit.fromStream(hash, decompressStream);
 		} catch (error) {
 			throw new IOError(error);
 		}
@@ -123,20 +103,20 @@ export class Repository {
 
 	async writeCommit(commit: Commit, abortSignal?: AbortSignal): Promise<void> {
 		const writableStream = await this.fs.write(`objects/${commit.hash[0]}/${commit.hash[1]}/${commit.hash}`, abortSignal);
-		const compressStream = this.compressStream(writableStream, abortSignal);
-		await commit.writeToStream(compressStream);
+		const compressStream = new CompressionStream("gzip");
+		await commit.toStream().pipeThrough(compressStream).pipeTo(writableStream);
 	}
 
 	async getTree<T extends Record<string, string> = Record<never, never>>(hash: AutoId, abortSignal?: AbortSignal): Promise<Tree> {
 		const readableStream = await this.fs.read(`objects/${hash[0]}/${hash[1]}/${hash}`, abortSignal);
-		const decompressStream = this.decompressStream(readableStream, abortSignal);
-		return await Tree.readFromStream(hash, decompressStream);
+		const decompressStream = new DecompressionStream("gzip");
+		return await Tree.fromStream(hash, readableStream.pipeThrough(decompressStream));
 	}
 
 	async writeTree<T extends Record<string, string> = Record<never, never>>(tree: Tree, abortSignal?: AbortSignal): Promise<void> {
 		const writableStream = await this.fs.write(`objects/${tree.hash[0]}/${tree.hash[1]}/${tree.hash}`, abortSignal);
-		const compressStream = this.compressStream(writableStream, abortSignal);
-		await tree.writeToStream(compressStream);
+		const compressStream = new CompressionStream("gzip");
+		await tree.toStream().pipeThrough(compressStream).pipeTo(writableStream);
 	}
 
 	async *iterTree(

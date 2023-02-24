@@ -1,5 +1,5 @@
 import { assertAutoId, AutoId } from "../libpxlr/autoid.ts";
-import { BaseObject, deserializeBaseObject, serializeBaseObject } from "./object.ts";
+import { ResponseReaderStream, ResponseWriterStream } from "./response.ts";
 
 export class Commit {
 	#hash: AutoId;
@@ -49,21 +49,35 @@ export class Commit {
 		return this.#message;
 	}
 
-	static async readFromStream(hash: AutoId, readableStream: ReadableStream<Uint8Array>) {
-		const obj = await deserializeBaseObject(readableStream);
-		return new Commit(
-			hash,
-			obj.headers.get("parent") ?? "",
-			obj.headers.get("tree") ?? "",
-			obj.headers.get("commiter") ?? "",
-			new Date(obj.headers.get("date") ?? ""),
-			await obj.text(),
-		);
+	static async fromStream(hash: AutoId, stream: ReadableStream<Uint8Array>) {
+		const decoder = new TextDecoder();
+		const headers = new Map<string, string>();
+		let message = "";
+		const transformer = new ResponseWriterStream();
+		stream.pipeThrough(transformer);
+		for await (const chunk of transformer.readable) {
+			if (chunk.type === "header") {
+				headers.set(chunk.key, chunk.value);
+			} else {
+				message += decoder.decode(chunk.data);
+			}
+		}
+		return new Commit(hash, headers.get("parent") ?? "", headers.get("tree") ?? "", headers.get("commiter") ?? "", new Date(headers.get("date") ?? ""), message);
 	}
 
-	async writeToStream(writableStream: WritableStream<Uint8Array>) {
-		const obj = new BaseObject({ parent: this.parent, tree: this.tree, commiter: this.commiter, date: this.date.toISOString() }, this.message);
-		await serializeBaseObject(obj, writableStream);
+	toStream() {
+		const transformer = new ResponseReaderStream();
+		const writer = transformer.writable.getWriter();
+		writer.write({ type: "header", key: "parent", value: this.parent });
+		writer.write({ type: "header", key: "tree", value: this.tree });
+		writer.write({ type: "header", key: "commiter", value: this.commiter });
+		writer.write({ type: "header", key: "date", value: this.date.toISOString() });
+		writer.write({
+			type: "body",
+			data: new TextEncoder().encode(this.message),
+		});
+		writer.close();
+		return transformer.readable;
 	}
 }
 

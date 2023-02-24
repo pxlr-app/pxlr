@@ -1,5 +1,5 @@
+import { ResponseReaderStream, ResponseWriterStream } from "./response.ts";
 import { AutoId } from "/libpxlr/autoid.ts";
-import { BaseObject, deserializeBaseObject, serializeBaseObject } from "./object.ts";
 
 export type ReferencePath = string;
 
@@ -50,13 +50,31 @@ export class Reference {
 		return this.#message;
 	}
 
-	static async readFromStream(ref: ReferencePath, readableStream: ReadableStream<Uint8Array>) {
-		const obj = await deserializeBaseObject(readableStream);
-		return new Reference(ref, obj.headers.get("commit") ?? "", await obj.text());
+	static async fromStream(hash: AutoId, stream: ReadableStream<Uint8Array>) {
+		const decoder = new TextDecoder();
+		const headers = new Map<string, string>();
+		let message = "";
+		const transformer = new ResponseWriterStream();
+		stream.pipeThrough(transformer);
+		for await (const chunk of transformer.readable) {
+			if (chunk.type === "header") {
+				headers.set(chunk.key, chunk.value);
+			} else {
+				message += decoder.decode(chunk.data);
+			}
+		}
+		return new Reference(hash, headers.get("commit") ?? "", message);
 	}
 
-	async writeToStream(writableStream: WritableStream<Uint8Array>) {
-		const obj = new BaseObject({ commit: this.commit }, this.message);
-		await serializeBaseObject(obj, writableStream);
+	toStream() {
+		const transformer = new ResponseReaderStream();
+		const writer = transformer.writable.getWriter();
+		writer.write({ type: "header", key: "commicommitter", value: this.commit });
+		writer.write({
+			type: "body",
+			data: new TextEncoder().encode(this.message),
+		});
+		writer.close();
+		return transformer.readable;
 	}
 }
