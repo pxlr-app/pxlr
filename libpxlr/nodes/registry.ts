@@ -22,7 +22,7 @@ export type NodeDeserializer<T extends Node> = (
 	options: NodeDeserializerOptions,
 ) => T | Promise<T>;
 
-export type NodeSerializer<T extends Node> = (node: T, writableStream: WritableStream<Uint8Array>) => void | Promise<void>;
+export type NodeSerializer<T extends Node> = (node: T) => ReadableStream<Uint8Array>;
 
 export class NodeRegistryEntry<T extends Node> {
 	#kind: string;

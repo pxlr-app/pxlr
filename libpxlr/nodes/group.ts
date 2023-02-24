@@ -13,7 +13,7 @@ import { UnloadedNode } from "./node.ts";
 export const GroupNodeRegistryEntry = new NodeRegistryEntry<GroupNode>(
 	"Group",
 	async ({ item, stream, getNodeByHash, shallow, abortSignal }) => {
-		const tree = await Tree.readFromStream(item.hash, stream);
+		const tree = await Tree.fromStream(item.hash, stream);
 		const children: Node[] = [];
 		for (const item of tree.items) {
 			let node: Node;
@@ -26,21 +26,19 @@ export const GroupNodeRegistryEntry = new NodeRegistryEntry<GroupNode>(
 			}
 			children.push(node);
 		}
-		return new GroupNode(tree.hash, tree.id, tree.name, children);
+		return new GroupNode(tree.hash, item.id, item.name, children);
 	},
-	(node, writableStream) => {
+	(node) => {
 		return new Tree(
 			node.hash,
-			node.id,
 			"Group",
-			node.name,
 			node.children.map((node) => ({
 				hash: node.hash,
 				id: node.id,
 				kind: node.kind,
 				name: node.name,
 			})),
-		).writeToStream(writableStream)
+		).toStream();
 	},
 );
 

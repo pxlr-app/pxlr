@@ -10,40 +10,27 @@ export interface TreeItem {
 
 export class Tree {
 	#hash: AutoId;
-	#id: AutoId;
 	#subKind: string;
-	#name: string;
 	#items: ReadonlyArray<TreeItem>;
 	public constructor(
 		hash: AutoId,
-		id: AutoId,
 		subKind: string,
-		name: string,
 		items: ReadonlyArray<TreeItem>,
 	) {
 		assertAutoId(hash);
-		assertAutoId(id);
 		if (subKind === "") {
 			throw new InvalidTreeError();
 		}
 		this.#hash = hash;
-		this.#id = id;
 		this.#subKind = subKind;
-		this.#name = name;
 		this.#items = items;
 	}
 
 	get hash() {
 		return this.#hash;
 	}
-	get id() {
-		return this.#id;
-	}
 	get subKind() {
 		return this.#subKind;
-	}
-	get name() {
-		return this.#name;
 	}
 	get items() {
 		return this.#items;
@@ -75,9 +62,7 @@ export class Tree {
 		});
 		return new Tree(
 			hash,
-			headers.get("id") ?? "",
-			headers.get("sub-kind") ?? "",
-			headers.get("name") ?? "",
+			headers.get("subkind") ?? "",
 			items,
 		);
 	}
@@ -91,7 +76,7 @@ export class Tree {
 		}).join(`\r\n`);
 		const transformer = new ResponseReaderStream();
 		const writer = transformer.writable.getWriter();
-		writer.write({ type: "header", key: "sub-kind", value: this.subKind });
+		writer.write({ type: "header", key: "subkind", value: this.subKind });
 		writer.write({
 			type: "body",
 			data: new TextEncoder().encode(items),

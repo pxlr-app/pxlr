@@ -1,5 +1,4 @@
 import { assertAutoId, AutoId, autoid } from "../autoid.ts";
-import { Object } from "../../librepo/object.ts";
 import { Command } from "../commands/command.ts";
 import { RenameCommand } from "../commands/rename.ts";
 import { NodeDeserializerOptions } from "./registry.ts";
@@ -78,20 +77,6 @@ export class UnloadedNode extends Node {
 
 	dispatch(_command: Command): Node {
 		throw new UnloadedNodeMethodError();
-	}
-
-	toObject(): Object {
-		throw new UnloadedNodeMethodError();
-	}
-
-	// deno-lint-ignore require-await
-	static async fromObject({ object }: NodeDeserializerOptions): Promise<Node> {
-		return new UnloadedNode(
-			object.hash,
-			object.id,
-			object.kind,
-			object.headers.get("name") ?? "(unnamed)",
-		);
 	}
 }
 

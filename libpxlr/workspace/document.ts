@@ -125,7 +125,7 @@ export class Document {
 				}
 				const nodeRegistryEntry = this.workspace.nodeRegistry.get(node.kind);
 				writeObjectPromises.push(
-					this.workspace.repository.writeObject(nodeRegistryEntry.serialize(node)),
+					this.workspace.repository.writeObject(node.hash, nodeRegistryEntry.serialize(node)),
 				);
 				return VisitorResult.Continue;
 			},
@@ -151,4 +151,4 @@ export class Document {
 	}
 }
 
-export class NothingToCommitError extends Error {}
+export class NothingToCommitError extends Error { }

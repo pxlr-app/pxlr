@@ -40,9 +40,8 @@ Deno.test("Repository", async (t) => {
 		const fs = new MemoryFilesystem();
 		const repo = new Repository(fs);
 		const id1 = autoid();
-		const obj1 = new Buffer(new TextEncoder().encode("Foo"));
-		const ws1 = await repo.writeObject(id1);
-		await obj1.readable.pipeTo(ws1);
+		const buf1 = new Buffer(new TextEncoder().encode("Foo"));
+		await repo.writeObject(id1, buf1.readable);
 		const obj2 = new Buffer();
 		const rs1 = await repo.getObject(id1);
 		await rs1.pipeTo(obj2.writable);

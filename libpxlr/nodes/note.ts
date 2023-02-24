@@ -13,13 +13,11 @@ export const NoteNodeRegistryEntry = new NodeRegistryEntry<NoteNode>(
 			item.hash,
 			item.id,
 			item.name,
-			await new Response(stream).text()
+			await new Response(stream).text(),
 		);
 	},
-	async (node, writableStream) => {
-		const writer = writableStream.getWriter();
-		await writer.write(new TextEncoder().encode(node.content));
-		await writer.close();
+	(node) => {
+		return new Response(node.content).body!;
 	},
 );
 
