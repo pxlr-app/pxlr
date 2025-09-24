@@ -1,7 +1,7 @@
 import { NumberArray, NumberArrayConstructor } from "./arraylike.ts";
 
 export class Mat3 {
-	static IDENTITY: Readonly<Mat3> = new Mat3().makeIdentity();
+	static IDENTITY: ReadonlyMat3 = new Mat3().makeIdentity();
 
 	#buffer: NumberArray;
 	constructor(buffer: NumberArray);
@@ -37,7 +37,7 @@ export class Mat3 {
 		return this;
 	}
 
-	copy(other: Readonly<Mat3>) {
+	copy(other: ReadonlyMat3) {
 		return this.set(
 			other.buffer[0],
 			other.buffer[1],
@@ -51,7 +51,7 @@ export class Mat3 {
 		);
 	}
 
-	mul(other: Readonly<Mat3>) {
+	mul(other: ReadonlyMat3) {
 		const a11 = this.#buffer[0];
 		const a12 = this.#buffer[1];
 		const a13 = this.#buffer[2];
@@ -179,3 +179,8 @@ export class Mat3 {
 		return this;
 	}
 }
+
+export type ReadonlyMat3 = Pick<
+	Mat3,
+	"buffer" | "determinant"
+>;

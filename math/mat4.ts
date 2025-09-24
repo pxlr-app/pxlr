@@ -1,10 +1,10 @@
 import { NumberArray, NumberArrayConstructor } from "./arraylike.ts";
-import type { Euler } from "./euler.ts";
-import { Quaternion } from "./quaternion.ts";
-import { Vec3 } from "./vec3.ts";
+import type { ReadonlyEuler } from "./euler.ts";
+import { Quaternion, ReadonlyQuaternion } from "./quaternion.ts";
+import { ReadonlyVec3, Vec3 } from "./vec3.ts";
 
 export class Mat4 {
-	static IDENTITY: Readonly<Mat4> = new Mat4().makeIdentity();
+	static IDENTITY: ReadonlyMat4 = new Mat4().makeIdentity();
 
 	#buffer: NumberArray;
 
@@ -65,7 +65,7 @@ export class Mat4 {
 		return this;
 	}
 
-	copy(other: Readonly<Mat4>) {
+	copy(other: ReadonlyMat4) {
 		return this.set(
 			other.buffer[0],
 			other.buffer[1],
@@ -86,7 +86,7 @@ export class Mat4 {
 		);
 	}
 
-	mul(other: Readonly<Mat4>) {
+	mul(other: ReadonlyMat4) {
 		const a11 = this.#buffer[0];
 		const a12 = this.#buffer[4];
 		const a13 = this.#buffer[8];
@@ -191,14 +191,14 @@ export class Mat4 {
 		return this;
 	}
 
-	position(position: Readonly<Vec3>) {
+	position(position: ReadonlyVec3) {
 		this.#buffer[12] = position.x;
 		this.#buffer[13] = position.y;
 		this.#buffer[14] = position.z;
 		return this;
 	}
 
-	scale(scale: Readonly<Vec3>) {
+	scale(scale: ReadonlyVec3) {
 		this.#buffer[0] *= scale.x;
 		this.#buffer[4] *= scale.y;
 		this.#buffer[8] *= scale.z;
@@ -234,7 +234,7 @@ export class Mat4 {
 		return this;
 	}
 
-	inverse(other: Readonly<Mat4>) {
+	inverse(other: ReadonlyMat4) {
 		const n11 = other.buffer[0];
 		const n21 = other.buffer[4];
 		const n31 = other.buffer[8];
@@ -297,9 +297,9 @@ export class Mat4 {
 	}
 
 	compose(
-		position: Readonly<Vec3>,
-		rotation: Readonly<Quaternion>,
-		scale: Readonly<Vec3>,
+		position: ReadonlyVec3,
+		rotation: ReadonlyQuaternion,
+		scale: ReadonlyVec3,
 	) {
 		const x = rotation.x;
 		const y = rotation.y;
@@ -348,7 +348,7 @@ export class Mat4 {
 		return this;
 	}
 
-	decompose(position: Vec3, rotation: Quaternion, scale: Vec3, mat4: Readonly<Mat4>) {
+	decompose(position: Vec3, rotation: Quaternion, scale: Vec3, mat4: ReadonlyMat4) {
 		const det = mat4.determinant();
 
 		const sx = tv0.set(mat4.buffer[0], mat4.buffer[1], mat4.buffer[2]).length() * (det < 0 ? -1 : 1);
@@ -406,7 +406,7 @@ export class Mat4 {
 		return this.set(c, -s, 0, 0, s, c, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
 	}
 
-	makeRotationAxis(axis: Readonly<Vec3>, angle: number) {
+	makeRotationAxis(axis: ReadonlyVec3, angle: number) {
 		const c = Math.cos(angle);
 		const s = Math.sin(angle);
 		const t = 1 - c;
@@ -435,19 +435,19 @@ export class Mat4 {
 		);
 	}
 
-	makeTranslationFromVec3(vec3: Readonly<Vec3>) {
+	makeTranslationFromVec3(vec3: ReadonlyVec3) {
 		return this.compose(vec3, Quaternion.IDENTITY, Vec3.ONE);
 	}
 
-	makeRotationFromQuaternion(quaternion: Readonly<Quaternion>) {
+	makeRotationFromQuaternion(quaternion: ReadonlyQuaternion) {
 		return this.compose(Vec3.ZERO, quaternion, Vec3.ONE);
 	}
 
-	makeRotationFromEuler(euler: Readonly<Euler>) {
+	makeRotationFromEuler(euler: ReadonlyEuler) {
 		return this.compose(Vec3.ZERO, tq0.setFromEuler(euler), Vec3.ONE);
 	}
 
-	makeScaleFromVec3(vec3: Readonly<Vec3>) {
+	makeScaleFromVec3(vec3: ReadonlyVec3) {
 		return this.compose(Vec3.ZERO, Quaternion.IDENTITY, vec3);
 	}
 
@@ -511,7 +511,7 @@ export class Mat4 {
 		return this;
 	}
 
-	lookAt(origin: Readonly<Vec3>, forward: Readonly<Vec3>, up: Readonly<Vec3>) {
+	lookAt(origin: ReadonlyVec3, forward: ReadonlyVec3, up: ReadonlyVec3) {
 		tv0.copy(origin).sub(forward);
 
 		// origin and forward are in the same position
@@ -544,6 +544,11 @@ export class Mat4 {
 		return this;
 	}
 }
+
+export type ReadonlyMat4 = Pick<
+	Mat4,
+	"buffer" | "determinant" | "decompose"
+>;
 
 const tv0: Vec3 = new Vec3();
 const tv1: Vec3 = new Vec3();

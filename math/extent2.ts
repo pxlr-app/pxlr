@@ -40,3 +40,8 @@ export class Extent2 {
 		return this;
 	}
 }
+
+export type ReadonlyExtent2 = Pick<
+	Extent2,
+	"x" | "y"
+>;

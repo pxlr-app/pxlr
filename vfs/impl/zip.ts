@@ -25,12 +25,22 @@ export class ZipFolder extends Folder {
 	}
 
 	async *list(abortSignal?: AbortSignal): AsyncIterableIterator<File | Folder> {
-		const prefix = this.#fullPath;
+		const prefix = this.#fullPath.split("/").filter(Boolean);
+		const folders = new Set<string>();
 		for (const entry of this.#storage.iterCentralDirectoryFileHeader()) {
-			// TODO: Find a better way to check for direct children only
-			if (entry.fileName.substring(0, prefix.length + 1) === prefix + "/") {
-				yield new ZipFile(entry.fileName, this.#storage);
+			abortSignal?.throwIfAborted();
+			const parts = entry.fileName.split("/").filter(Boolean);
+			if (prefix.every((part, i) => part === parts[i])) {
+				if (parts.length === prefix.length + 1) {
+					yield new ZipFile(entry.fileName, this.#storage);
+				} else {
+					folders.add(parts.slice(0, prefix.length + 1).join("/"));
+				}
 			}
+		}
+		for (const folder of folders) {
+			abortSignal?.throwIfAborted();
+			yield new ZipFolder(folder, this.#storage);
 		}
 	}
 

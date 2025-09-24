@@ -1,9 +1,9 @@
 import type { NumberArray, NumberArrayConstructor } from "./arraylike.ts";
-import { Mat4 } from "./mat4.ts";
-import { Euler, RotationOrder } from "./euler.ts";
+import { Mat4, ReadonlyMat4 } from "./mat4.ts";
+import { Euler, ReadonlyEuler, RotationOrder } from "./euler.ts";
 
 export class Quaternion {
-	static IDENTITY: Readonly<Quaternion> = new Quaternion(0, 0, 0, 1);
+	static IDENTITY: ReadonlyQuaternion = new Quaternion(0, 0, 0, 1);
 
 	#buffer: NumberArray;
 	constructor(buffer: NumberArray);
@@ -62,11 +62,11 @@ export class Quaternion {
 		return this;
 	}
 
-	copy(other: Readonly<Quaternion>) {
+	copy(other: ReadonlyQuaternion) {
 		return this.set(other.buffer[0], other.buffer[1], other.buffer[2], other.buffer[3]);
 	}
 
-	setFromEuler(euler: Readonly<Euler>) {
+	setFromEuler(euler: ReadonlyEuler) {
 		const c1 = Math.cos(euler.x / 2);
 		const c2 = Math.cos(euler.y / 2);
 		const c3 = Math.cos(euler.z / 2);
@@ -108,7 +108,7 @@ export class Quaternion {
 		return this;
 	}
 
-	setFromRotationMat4(mat4: Readonly<Mat4>) {
+	setFromRotationMat4(mat4: ReadonlyMat4) {
 		const m11 = mat4.buffer[0];
 		const m12 = mat4.buffer[4];
 		const m13 = mat4.buffer[8];
@@ -192,12 +192,12 @@ export class Quaternion {
 		return this;
 	}
 
-	dot(other: Readonly<Quaternion>) {
+	dot(other: ReadonlyQuaternion) {
 		return this.#buffer[0] * other.buffer[0] + this.#buffer[1] * other.buffer[1] + this.#buffer[2] * other.buffer[2] +
 			this.#buffer[3] * other.buffer[3];
 	}
 
-	mul(other: Readonly<Quaternion>) {
+	mul(other: ReadonlyQuaternion) {
 		const qax = this.#buffer[0];
 		const qay = this.#buffer[1];
 		const qaz = this.#buffer[2];
@@ -263,10 +263,7 @@ export class Quaternion {
 		return target;
 	}
 
-	toEuler(
-		order = RotationOrder.XYZ,
-		target: Euler = new Euler(0, 0, 0, RotationOrder.XYZ, this.#buffer.constructor as NumberArrayConstructor),
-	) {
+	toEuler(target: Euler, order = RotationOrder.XYZ) {
 		// deno-fmt-ignore
 		const x = this.#buffer[0], y = this.#buffer[1], z = this.#buffer[2], w = this.#buffer[3];
 		const x2 = x + x, y2 = y + y, z2 = z + z;
@@ -341,3 +338,8 @@ export class Quaternion {
 		return target;
 	}
 }
+
+export type ReadonlyQuaternion = Pick<
+	Quaternion,
+	"buffer" | "dot" | "length" | "lengthSquared" | "x" | "y" | "z" | "w"
+>;

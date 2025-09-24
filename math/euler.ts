@@ -1,7 +1,7 @@
 import type { NumberArray, NumberArrayConstructor } from "./arraylike.ts";
-import { Mat4 } from "./mat4.ts";
-import { Quaternion } from "./quaternion.ts";
-import { Vec3 } from "./vec3.ts";
+import { Mat4, ReadonlyMat4 } from "./mat4.ts";
+import { Quaternion, ReadonlyQuaternion } from "./quaternion.ts";
+import type { ReadonlyVec3 } from "./vec3.ts";
 import { clamp } from "./utils.ts";
 
 export enum RotationOrder {
@@ -105,7 +105,7 @@ export class Euler {
 		return this;
 	}
 
-	copy(other: Readonly<Euler>) {
+	copy(other: ReadonlyEuler) {
 		this.#buffer[0] = other.buffer[0];
 		this.#buffer[1] = other.buffer[1];
 		this.#buffer[2] = other.buffer[2];
@@ -113,7 +113,7 @@ export class Euler {
 		return this;
 	}
 
-	setFromRotationMatrix(mat4: Readonly<Mat4>, order = this.#order) {
+	setFromRotationMatrix(mat4: ReadonlyMat4, order = this.#order) {
 		const m11 = mat4.buffer[0];
 		const m12 = mat4.buffer[4];
 		const m13 = mat4.buffer[8];
@@ -189,11 +189,11 @@ export class Euler {
 		return this;
 	}
 
-	setFromQuaternion(quaternion: Readonly<Quaternion>, order: RotationOrder = this.#buffer[3]) {
+	setFromQuaternion(quaternion: ReadonlyQuaternion, order: RotationOrder = this.#buffer[3]) {
 		return this.setFromRotationMatrix(new Mat4().makeRotationFromQuaternion(quaternion), order);
 	}
 
-	setFromVec3(vec3: Readonly<Vec3>, order: RotationOrder = this.#order) {
+	setFromVec3(vec3: ReadonlyVec3, order: RotationOrder = this.#order) {
 		return this.set(vec3.x, vec3.y, vec3.z, order);
 	}
 
@@ -201,6 +201,11 @@ export class Euler {
 		return this.setFromQuaternion(new Quaternion().setFromEuler(this), order);
 	}
 }
+
+export type ReadonlyEuler = Pick<
+	Euler,
+	"buffer" | "order" | "x" | "y" | "z"
+>;
 
 // const m0: Mat4 = new Mat4();
 // const q0: Quaternion = new Quaternion();

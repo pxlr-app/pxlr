@@ -1,11 +1,11 @@
 import type { NumberArray, NumberArrayConstructor } from "./arraylike.ts";
-import type { Mat3 } from "./mat3.ts";
+import type { ReadonlyMat3 } from "./mat3.ts";
 
 export class Vec2 {
-	static ZERO: Readonly<Vec2> = new Vec2(0, 0);
-	static ONE: Readonly<Vec2> = new Vec2(1, 1);
-	static RIGHT: Readonly<Vec2> = new Vec2(1, 0);
-	static UP: Readonly<Vec2> = new Vec2(0, 1);
+	static ZERO: ReadonlyVec2 = new Vec2(0, 0);
+	static ONE: ReadonlyVec2 = new Vec2(1, 1);
+	static RIGHT: ReadonlyVec2 = new Vec2(1, 0);
+	static UP: ReadonlyVec2 = new Vec2(0, 1);
 
 	#buffer: NumberArray;
 
@@ -47,7 +47,7 @@ export class Vec2 {
 		return this;
 	}
 
-	copy(other: Readonly<Vec2>) {
+	copy(other: ReadonlyVec2) {
 		return this.set(other.buffer[0], other.buffer[1]);
 	}
 
@@ -59,19 +59,19 @@ export class Vec2 {
 		return this.#buffer[0] * this.#buffer[0] + this.#buffer[1] * this.#buffer[1];
 	}
 
-	add(other: Readonly<Vec2>) {
+	add(other: ReadonlyVec2) {
 		this.#buffer[0] += other.buffer[0];
 		this.#buffer[1] += other.buffer[1];
 		return this;
 	}
 
-	sub(other: Readonly<Vec2>) {
+	sub(other: ReadonlyVec2) {
 		this.#buffer[0] -= other.buffer[0];
 		this.#buffer[1] -= other.buffer[1];
 		return this;
 	}
 
-	mul(other: Readonly<Vec2>) {
+	mul(other: ReadonlyVec2) {
 		this.#buffer[0] *= other.buffer[0];
 		this.#buffer[1] *= other.buffer[1];
 		return this;
@@ -83,7 +83,7 @@ export class Vec2 {
 		return this;
 	}
 
-	mulMat3(mat3: Readonly<Mat3>) {
+	mulMat3(mat3: ReadonlyMat3) {
 		const x = this.#buffer[0];
 		const y = this.#buffer[1];
 		this.#buffer[0] = mat3.buffer[0] * x + mat3.buffer[3] * y + mat3.buffer[6];
@@ -91,7 +91,7 @@ export class Vec2 {
 		return this;
 	}
 
-	div(other: Readonly<Vec2>) {
+	div(other: ReadonlyVec2) {
 		this.#buffer[0] /= other.buffer[0];
 		this.#buffer[1] /= other.buffer[1];
 		return this;
@@ -103,7 +103,7 @@ export class Vec2 {
 		return this;
 	}
 
-	dot(other: Readonly<Vec2>) {
+	dot(other: ReadonlyVec2) {
 		return this.#buffer[0] * other.buffer[0] + this.#buffer[1] * other.buffer[1];
 	}
 
@@ -113,7 +113,7 @@ export class Vec2 {
 		return this;
 	}
 
-	cross(other: Readonly<Vec2>) {
+	cross(other: ReadonlyVec2) {
 		return this.#buffer[0] * other.buffer[1] - this.#buffer[1] * other.buffer[0];
 	}
 
@@ -121,19 +121,19 @@ export class Vec2 {
 		return this.divScalar(this.length() || 1);
 	}
 
-	min(other: Readonly<Vec2>) {
+	min(other: ReadonlyVec2) {
 		this.#buffer[0] = Math.min(this.#buffer[0], other.buffer[0]);
 		this.#buffer[1] = Math.min(this.#buffer[1], other.buffer[1]);
 		return this;
 	}
 
-	max(other: Readonly<Vec2>) {
+	max(other: ReadonlyVec2) {
 		this.#buffer[0] = Math.max(this.#buffer[0], other.buffer[0]);
 		this.#buffer[1] = Math.max(this.#buffer[1], other.buffer[1]);
 		return this;
 	}
 
-	clamp(lower: Readonly<Vec2>, upper: Readonly<Vec2>) {
+	clamp(lower: ReadonlyVec2, upper: ReadonlyVec2) {
 		return this.max(lower).min(upper);
 	}
 
@@ -142,26 +142,31 @@ export class Vec2 {
 		return this.mulScalar(Math.max(lower, Math.min(upper, len)) / (len || 1));
 	}
 
-	project(normal: Readonly<Vec2>) {
+	project(normal: ReadonlyVec2) {
 		return this.mulScalar(this.dot(normal) / (normal.lengthSquared() || 1));
 	}
 
-	reflect(normal: Readonly<Vec2>) {
+	reflect(normal: ReadonlyVec2) {
 		return this.sub(tv0.copy(normal).mulScalar(2 * this.dot(normal)));
 	}
 
-	angleTo(other: Readonly<Vec2>) {
+	angleTo(other: ReadonlyVec2) {
 		const theta = this.dot(other) / Math.sqrt(this.lengthSquared() * other.lengthSquared());
 		return Math.acos(Math.min(1, Math.max(-1, theta)));
 	}
 
-	distanceToSquared(other: Readonly<Vec2>) {
+	distanceToSquared(other: ReadonlyVec2) {
 		return this.copy(other).sub(this).lengthSquared();
 	}
 
-	distanceTo(other: Readonly<Vec2>) {
+	distanceTo(other: ReadonlyVec2) {
 		return Math.sqrt(this.distanceToSquared(other));
 	}
 }
+
+export type ReadonlyVec2 = Pick<
+	Vec2,
+	"angleTo" | "buffer" | "distanceTo" | "distanceToSquared" | "dot" | "length" | "lengthSquared" | "x" | "y"
+>;
 
 const tv0 = new Vec2();

@@ -1,0 +1,71 @@
+import { Node } from "./node.ts";
+import { ID } from "./id.ts";
+
+export interface NodeDeserializerOptions {
+	item: {
+		hash: ID;
+		id: ID;
+		kind: string;
+		name: string;
+	};
+	stream: ReadableStream<Uint8Array>;
+	getNodeByHash: (
+		hash: ID,
+		shallow: boolean,
+		abortSignal?: AbortSignal,
+	) => Promise<Node>;
+	shallow: boolean;
+	abortSignal?: AbortSignal;
+}
+
+export type NodeDeserializer<T extends Node> = (
+	options: NodeDeserializerOptions,
+) => T | Promise<T>;
+
+export type NodeSerializer<T extends Node> = (node: T) => ReadableStream<Uint8Array>;
+
+export class NodeRegistryEntry<T extends Node> {
+	#kind: string;
+	#deserializer: NodeDeserializer<T>;
+	#serializer: NodeSerializer<T>;
+	constructor(kind: string, nodeDeserializer: NodeDeserializer<T>, nodeSerializer: NodeSerializer<T>) {
+		this.#kind = kind;
+		this.#deserializer = nodeDeserializer;
+		this.#serializer = nodeSerializer;
+	}
+
+	get kind() {
+		return this.#kind;
+	}
+
+	get deserialize() {
+		return this.#deserializer;
+	}
+
+	get serialize() {
+		return this.#serializer;
+	}
+}
+
+export class NodeRegistry {
+	#entryMap = new Map<string, NodeRegistryEntry<Node>>();
+
+	register<T extends Node>(entry: NodeRegistryEntry<T>): void {
+		// deno-lint-ignore no-explicit-any
+		this.#entryMap.set(entry.kind, entry as any);
+	}
+
+	get(kind: string): NodeRegistryEntry<Node> {
+		if (!this.#entryMap.has(kind)) {
+			throw new UnregistedNodeRegistryEntryError(kind);
+		}
+		return this.#entryMap.get(kind)!;
+	}
+}
+
+export class UnregistedNodeRegistryEntryError extends Error {
+	override name = "UnregistedNodeRegistryEntryError";
+	public constructor(kind: string) {
+		super(`Unregisted Node kind "${kind}".`);
+	}
+}

@@ -1,17 +1,19 @@
 import { File, Folder, IOError } from "../mod.ts";
 import { join, parse } from "@std/path";
 
+const storageSymbol = Symbol("storage");
+
 type StorageEntry =
 	| { type: "file"; content: Uint8Array<ArrayBuffer> }
 	| { type: "folder" };
 
 export class MemoryFolder extends Folder {
-	#storage: Map<string, StorageEntry>;
+	[storageSymbol]: Map<string, StorageEntry>;
 	#fullPath: string;
 	constructor(fullPath: string, storage: Map<string, StorageEntry>) {
 		super();
 		this.#fullPath = fullPath;
-		this.#storage = storage ?? new Map();
+		this[storageSymbol] = storage ?? new Map();
 	}
 
 	get base() {
@@ -19,18 +21,22 @@ export class MemoryFolder extends Folder {
 	}
 
 	async exists(abortSignal?: AbortSignal): Promise<boolean> {
-		return this.#storage.has(this.#fullPath);
+		return this[storageSymbol].has(this.#fullPath);
 	}
 
 	async *list(abortSignal?: AbortSignal): AsyncIterableIterator<File | Folder> {
-		const prefix = this.#fullPath;
-		for (const [path, entry] of this.#storage.entries()) {
-			// TODO: Find a better way to check for direct children only
-			if (path.substring(0, prefix.length) === prefix) {
+		const prefix = this.#fullPath.split("/").filter(Boolean);
+		for (const [path, entry] of this[storageSymbol].entries()) {
+			abortSignal?.throwIfAborted();
+			const parts = path.split("/").filter(Boolean);
+			if (
+				prefix.every((part, i) => part === parts[i]) &&
+				parts.length === prefix.length + 1
+			) {
 				if (entry.type === "file") {
-					yield new MemoryFile(path, this.#storage);
+					yield new MemoryFile(path, this[storageSymbol]);
 				} else {
-					yield new MemoryFolder(path, this.#storage);
+					yield new MemoryFolder(path, this[storageSymbol]);
 				}
 			}
 		}
@@ -38,29 +44,83 @@ export class MemoryFolder extends Folder {
 
 	async open(name: string, abortSignal?: AbortSignal): Promise<File> {
 		const fullPath = join(this.#fullPath, name);
-		return new MemoryFile(fullPath, this.#storage);
+		return new MemoryFile(fullPath, this[storageSymbol]);
 	}
 
 	async openDir(path: string, abortSignal?: AbortSignal): Promise<Folder> {
 		const fullPath = join(this.#fullPath, path);
-		return new MemoryFolder(fullPath, this.#storage);
+		return new MemoryFolder(fullPath, this[storageSymbol]);
 	}
 
 	async mkdir(name: string, abortSignal?: AbortSignal): Promise<Folder> {
 		const fullPath = join(this.#fullPath, name);
-		this.#storage.set(fullPath, { type: "folder" });
-		return new MemoryFolder(fullPath, this.#storage);
+		this[storageSymbol].set(fullPath, { type: "folder" });
+		return new MemoryFolder(fullPath, this[storageSymbol]);
 	}
 
 	async rmdir(name: string, abortSignal?: AbortSignal): Promise<void> {
 		const fullPath = join(this.#fullPath, name);
-		this.#storage.delete(fullPath);
+		this[storageSymbol].delete(fullPath);
 	}
 }
 
 export class MemoryRootFolder extends MemoryFolder {
-	constructor() {
-		super("", new Map());
+	constructor(storage: Map<string, StorageEntry> = new Map()) {
+		super("", storage);
+	}
+
+	get storage() {
+		return this[storageSymbol];
+	}
+
+	static fromArrayBuffer(buffer: ArrayBuffer) {
+		const storage = new Map<string, StorageEntry>();
+		const data = new Uint8Array(buffer);
+		let offset = 0;
+		while (offset < data.byteLength) {
+			const nullIndex = data.indexOf(0, offset);
+			if (nullIndex === -1) {
+				break;
+			}
+			const header = new TextDecoder().decode(data.subarray(offset, nullIndex));
+			const [type, path, lengthStr] = header.split(" ");
+			const length = parseInt(lengthStr, 10) || 0;
+			offset = nullIndex + 1;
+			if (type === "file") {
+				const content = data.subarray(offset, offset + length);
+				storage.set(decodeURIComponent(path), { type: "file", content: new Uint8Array(content) });
+				offset += length;
+			} else if (type === "folder") {
+				storage.set(decodeURIComponent(path), { type: "folder" });
+			} else {
+				throw new IOError(`Unknown entry type: ${type}`);
+			}
+		}
+		return new MemoryRootFolder(storage);
+	}
+
+	toArrayBuffer(): ArrayBuffer {
+		const entries = Array.from(this.storage.entries());
+		const maxByteLength = entries.reduce((acc, [path, entry]) => {
+			return acc + 1024 + (entry.type === "file" ? entry.content.byteLength : 0);
+		}, 0);
+
+		const data = entries
+			.reduce((acc, [path, entry]) => {
+				const header = entry.type === "file"
+					? `file ${encodeURIComponent(path)} ${entry.content.byteLength}\0`
+					: `folder ${encodeURIComponent(path)}\0`;
+				const headerData = new TextEncoder().encode(header);
+				const offset = acc.byteLength;
+				acc.buffer.resize(acc.byteLength + headerData.byteLength + (entry.type === "file" ? entry.content.byteLength : 0));
+				acc.set(headerData, offset);
+				if (entry.type === "file") {
+					acc.set(entry.content, offset + headerData.byteLength);
+				}
+				return acc;
+			}, new Uint8Array(new ArrayBuffer(0, { maxByteLength })));
+
+		return data.buffer;
 	}
 }
 
