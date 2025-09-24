@@ -1,5 +1,5 @@
-import { assertEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
-import { Buffer } from "https://deno.land/std@0.158.0/streams/mod.ts";
+import { assertEquals } from "@std/assert";
+import { Buffer } from "@std/streams";
 import { ResponseReaderStream, ResponseWriterStream } from "./response.ts";
 
 Deno.test("ResponseReaderStream", async () => {

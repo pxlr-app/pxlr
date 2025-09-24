@@ -1,23 +1,21 @@
-import { assertAutoId, AutoId } from "../libpxlr/autoid.ts";
 import { ResponseReaderStream, ResponseWriterStream } from "./response.ts";
 
 export interface TreeItem {
-	hash: AutoId;
-	id: AutoId;
+	hash: string;
+	id: string;
 	kind: string;
 	name: string;
 }
 
 export class Tree {
-	#hash: AutoId;
+	#hash: ID;
 	#subKind: string;
 	#items: ReadonlyArray<TreeItem>;
 	public constructor(
-		hash: AutoId,
+		hash: string,
 		subKind: string,
 		items: ReadonlyArray<TreeItem>,
 	) {
-		assertAutoId(hash);
 		if (subKind === "") {
 			throw new InvalidTreeError();
 		}
@@ -36,7 +34,7 @@ export class Tree {
 		return this.#items;
 	}
 
-	static async fromStream(hash: AutoId, stream: ReadableStream<Uint8Array>) {
+	static async fromStream(hash: ID, stream: ReadableStream<Uint8Array>) {
 		const decoder = new TextDecoder();
 		const headers = new Map<string, string>();
 		let itemLines = "";
@@ -51,8 +49,8 @@ export class Tree {
 		}
 		const items = itemLines.split(`\r\n`).filter((l) => l.length).map((line) => {
 			const [kind, hash, id, name] = line.split(" ");
-			assertAutoId(hash);
-			assertAutoId(id);
+			assertID(hash);
+			assertID(id);
 			return {
 				kind: decodeURIComponent(kind),
 				hash,
@@ -70,8 +68,8 @@ export class Tree {
 	toStream() {
 		const items = this.items.map((item) => {
 			const { kind, hash, id, name } = item;
-			assertAutoId(hash);
-			assertAutoId(id);
+			assertID(hash);
+			assertID(id);
 			return `${encodeURIComponent(kind)} ${hash} ${id} ${encodeURIComponent(name)}}`;
 		}).join(`\r\n`);
 		const transformer = new ResponseReaderStream();
@@ -87,5 +85,5 @@ export class Tree {
 }
 
 export class InvalidTreeError extends Error {
-	public name = "InvalidTreeError";
+	public override name = "InvalidTreeError";
 }

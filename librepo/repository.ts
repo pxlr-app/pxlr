@@ -1,8 +1,9 @@
-import { Filesystem, IOError } from "./filesystem/filesystem.ts";
+import { Filesystem, IOError } from "@pxlr/vfs";
 import { Commit } from "./commit.ts";
 import { Tree } from "./tree.ts";
 import { assertReferencePath, Reference, ReferencePath } from "./reference.ts";
-import { assertAutoId, AutoId } from "../libpxlr/autoid.ts";
+import { assertID, ID } from "./id.ts";
+import { assert } from "@std/assert/assert";
 
 export class Repository {
 	#fs: Filesystem;
@@ -24,8 +25,8 @@ export class Repository {
 		try {
 			const readableStream = await this.fs.read(ref, abortSignal);
 			return await Reference.fromStream(ref, readableStream);
-		} catch (error) {
-			throw new IOError(error);
+		} catch (_cause) {
+			throw new IOError();
 		}
 	}
 
@@ -36,8 +37,8 @@ export class Repository {
 		try {
 			const writableStream = await this.fs.write(reference.ref, abortSignal);
 			await reference.toStream().pipeTo(writableStream);
-		} catch (error) {
-			throw new IOError(error);
+		} catch (_cause) {
+			throw new IOError();
 		}
 	}
 
@@ -51,36 +52,37 @@ export class Repository {
 		}
 	}
 
-	async getObject(hash: AutoId, abortSignal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
-		assertAutoId(hash);
+	async getObject(hash: ID, abortSignal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
+		assertID(hash);
 		try {
 			const readableStream = await this.fs.read(
 				`objects/${hash[0]}/${hash[1]}/${hash}`,
 				abortSignal,
 			);
-			return readableStream.pipeThrough(new DecompressionStream("gzip"), { signal: abortSignal });
-		} catch (error) {
-			throw new IOError(error);
+			return readableStream.pipeThrough(new DecompressionStream("gzip") as any, { signal: abortSignal });
+		} catch (_cause) {
+			throw new IOError();
 		}
 	}
 
-	async writeObject(hash: AutoId, stream: ReadableStream<Uint8Array>, abortSignal?: AbortSignal): Promise<void> {
+	async writeObject(hash: ID, stream: ReadableStream<Uint8Array>, abortSignal?: AbortSignal): Promise<void> {
+		assertID(hash);
 		try {
 			const writableStream = await this.fs.write(
 				`objects/${hash[0]}/${hash[1]}/${hash}`,
 				abortSignal,
 			);
-			await stream.pipeThrough(new CompressionStream("gzip")).pipeTo(writableStream);
-		} catch (error) {
-			throw new IOError(error);
+			await stream.pipeThrough(new CompressionStream("gzip") as any).pipeTo(writableStream);
+		} catch (_cause) {
+			throw new IOError();
 		}
 	}
 
 	async objectExists(
-		hash: AutoId,
+		hash: ID,
 		abortSignal?: AbortSignal,
 	): Promise<boolean> {
-		assertAutoId(hash);
+		assertID(hash);
 		try {
 			return await this.fs.exists(
 				`objects/${hash[0]}/${hash[1]}/${hash}`,
@@ -91,39 +93,42 @@ export class Repository {
 		}
 	}
 
-	async getCommit(hash: AutoId, abortSignal?: AbortSignal): Promise<Commit> {
+	async getCommit(hash: ID, abortSignal?: AbortSignal): Promise<Commit> {
+		assertID(hash);
 		try {
 			const readableStream = await this.fs.read(`objects/${hash[0]}/${hash[1]}/${hash}`, abortSignal);
-			const decompressStream = readableStream.pipeThrough(new DecompressionStream("gzip"), { signal: abortSignal });
-			return await Commit.fromStream(hash, decompressStream);
-		} catch (error) {
-			throw new IOError(error);
+			const decompressStream = readableStream.pipeThrough(new DecompressionStream("gzip") as any, { signal: abortSignal });
+			return await Commit.fromStream(hash, decompressStream as any);
+		} catch (_cause) {
+			throw new IOError();
 		}
 	}
 
 	async writeCommit(commit: Commit, abortSignal?: AbortSignal): Promise<void> {
 		const writableStream = await this.fs.write(`objects/${commit.hash[0]}/${commit.hash[1]}/${commit.hash}`, abortSignal);
 		const compressStream = new CompressionStream("gzip");
-		await commit.toStream().pipeThrough(compressStream).pipeTo(writableStream);
+		await commit.toStream().pipeThrough(compressStream as any).pipeTo(writableStream);
 	}
 
-	async getTree<T extends Record<string, string> = Record<never, never>>(hash: AutoId, abortSignal?: AbortSignal): Promise<Tree> {
+	async getTree(hash: ID, abortSignal?: AbortSignal): Promise<Tree> {
+		assertID(hash);
 		const readableStream = await this.fs.read(`objects/${hash[0]}/${hash[1]}/${hash}`, abortSignal);
 		const decompressStream = new DecompressionStream("gzip");
-		return await Tree.fromStream(hash, readableStream.pipeThrough(decompressStream));
+		return await Tree.fromStream(hash, readableStream.pipeThrough(decompressStream as any));
 	}
 
-	async writeTree<T extends Record<string, string> = Record<never, never>>(tree: Tree, abortSignal?: AbortSignal): Promise<void> {
+	async writeTree(tree: Tree, abortSignal?: AbortSignal): Promise<void> {
 		const writableStream = await this.fs.write(`objects/${tree.hash[0]}/${tree.hash[1]}/${tree.hash}`, abortSignal);
 		const compressStream = new CompressionStream("gzip");
-		await tree.toStream().pipeThrough(compressStream).pipeTo(writableStream);
+		await tree.toStream().pipeThrough(compressStream as any).pipeTo(writableStream);
 	}
 
 	async *iterTree(
-		rootHash: AutoId,
+		rootHash: ID,
 		abortSignal?: AbortSignal,
 	): AsyncIterableIterator<Tree> {
-		const queue: AutoId[] = [rootHash];
+		assertID(rootHash);
+		const queue: ID[] = [rootHash];
 		for (let hash = queue.shift(); hash; hash = queue.shift()) {
 			if (abortSignal?.aborted === true) {
 				break;
@@ -139,14 +144,18 @@ export class Repository {
 	}
 
 	async *iterHistory(
-		commitHash: AutoId,
+		commitHash: ID,
 		abortSignal?: AbortSignal,
 	): AsyncIterableIterator<Commit> {
+		assertID(commitHash);
 		while (commitHash) {
 			if (abortSignal?.aborted === true) {
 				break;
 			}
 			const commit = await this.getCommit(commitHash, abortSignal);
+			if (!commit.parent) {
+				break;
+			}
 			commitHash = commit.parent;
 			yield commit;
 		}

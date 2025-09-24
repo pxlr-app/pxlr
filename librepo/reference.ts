@@ -1,5 +1,5 @@
 import { ResponseReaderStream, ResponseWriterStream } from "./response.ts";
-import { AutoId } from "/libpxlr/autoid.ts";
+import { assertID, ID } from "./id.ts";
 
 export type ReferencePath = string;
 
@@ -19,7 +19,7 @@ export function assertReferencePath(
 }
 
 export class InvalidReferencePathError extends Error {
-	public name = "InvalidReferencePathError";
+	public override name = "InvalidReferencePathError";
 	public constructor(value: unknown) {
 		super(`Invalid ReferencePath, got ${value}.`);
 	}
@@ -27,11 +27,11 @@ export class InvalidReferencePathError extends Error {
 
 export class Reference {
 	#ref: ReferencePath;
-	#commit: AutoId;
+	#commit: ID;
 	#message: string;
 	constructor(
 		ref: ReferencePath,
-		commitId: AutoId,
+		commitId: ID,
 		message?: string,
 	) {
 		assertReferencePath(ref);
@@ -50,7 +50,7 @@ export class Reference {
 		return this.#message;
 	}
 
-	static async fromStream(hash: AutoId, stream: ReadableStream<Uint8Array>) {
+	static async fromStream(ref: ReferencePath, stream: ReadableStream<Uint8Array>) {
 		const decoder = new TextDecoder();
 		const headers = new Map<string, string>();
 		let message = "";
@@ -63,13 +63,15 @@ export class Reference {
 				message += decoder.decode(chunk.data);
 			}
 		}
-		return new Reference(hash, headers.get("commit") ?? "", message);
+		const commitId = headers.get("commit");
+		assertID(commitId);
+		return new Reference(ref, commitId, message);
 	}
 
 	toStream() {
 		const transformer = new ResponseReaderStream();
 		const writer = transformer.writable.getWriter();
-		writer.write({ type: "header", key: "commicommitter", value: this.commit });
+		writer.write({ type: "header", key: "commit", value: this.commit });
 		writer.write({
 			type: "body",
 			data: new TextEncoder().encode(this.message),

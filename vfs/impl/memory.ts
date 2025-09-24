@@ -1,0 +1,175 @@
+import { File, Folder, IOError } from "../mod.ts";
+import { join, parse } from "@std/path";
+
+type StorageEntry =
+	| { type: "file"; content: Uint8Array<ArrayBuffer> }
+	| { type: "folder" };
+
+export class MemoryFolder extends Folder {
+	#storage: Map<string, StorageEntry>;
+	#fullPath: string;
+	constructor(fullPath: string, storage: Map<string, StorageEntry>) {
+		super();
+		this.#fullPath = fullPath;
+		this.#storage = storage ?? new Map();
+	}
+
+	get base() {
+		return parse(this.#fullPath).base;
+	}
+
+	async exists(abortSignal?: AbortSignal): Promise<boolean> {
+		return this.#storage.has(this.#fullPath);
+	}
+
+	async *list(abortSignal?: AbortSignal): AsyncIterableIterator<File | Folder> {
+		const prefix = this.#fullPath;
+		for (const [path, entry] of this.#storage.entries()) {
+			// TODO: Find a better way to check for direct children only
+			if (path.substring(0, prefix.length) === prefix) {
+				if (entry.type === "file") {
+					yield new MemoryFile(path, this.#storage);
+				} else {
+					yield new MemoryFolder(path, this.#storage);
+				}
+			}
+		}
+	}
+
+	async open(name: string, abortSignal?: AbortSignal): Promise<File> {
+		const fullPath = join(this.#fullPath, name);
+		return new MemoryFile(fullPath, this.#storage);
+	}
+
+	async openDir(path: string, abortSignal?: AbortSignal): Promise<Folder> {
+		const fullPath = join(this.#fullPath, path);
+		return new MemoryFolder(fullPath, this.#storage);
+	}
+
+	async mkdir(name: string, abortSignal?: AbortSignal): Promise<Folder> {
+		const fullPath = join(this.#fullPath, name);
+		this.#storage.set(fullPath, { type: "folder" });
+		return new MemoryFolder(fullPath, this.#storage);
+	}
+
+	async rmdir(name: string, abortSignal?: AbortSignal): Promise<void> {
+		const fullPath = join(this.#fullPath, name);
+		this.#storage.delete(fullPath);
+	}
+}
+
+export class MemoryRootFolder extends MemoryFolder {
+	constructor() {
+		super("", new Map());
+	}
+}
+
+export class MemoryFile extends File {
+	#storage: Map<string, StorageEntry>;
+	#fullPath: string;
+	constructor(fullPath: string, storage: Map<string, StorageEntry>) {
+		super();
+		this.#fullPath = fullPath;
+		this.#storage = storage;
+	}
+
+	get base() {
+		return parse(this.#fullPath).base;
+	}
+
+	async exists(abortSignal?: AbortSignal): Promise<boolean> {
+		return this.#storage.has(this.#fullPath);
+	}
+
+	async size(abortSignal?: AbortSignal): Promise<number> {
+		const entry = this.#storage.get(this.#fullPath);
+		return entry?.type === "file" ? entry.content.byteLength : 0;
+	}
+
+	async arrayBuffer(abortSignal?: AbortSignal): Promise<ArrayBuffer> {
+		const entry = this.#storage.get(this.#fullPath);
+		if (entry?.type !== "file") {
+			throw new IOError();
+		}
+		return entry.content.buffer;
+	}
+
+	async text(abortSignal?: AbortSignal): Promise<string> {
+		return new TextDecoder().decode(await this.arrayBuffer(abortSignal));
+	}
+
+	async json(abortSignal?: AbortSignal): Promise<unknown> {
+		return JSON.parse(await this.text(abortSignal));
+	}
+
+	async read(buffer: Uint8Array<ArrayBuffer>, offset?: number, abortSignal?: AbortSignal): Promise<number | null>;
+	async read(size: number, offset?: number, abortSignal?: AbortSignal): Promise<ReadableStream<Uint8Array<ArrayBuffer>>>;
+	async read(
+		buffer_or_size: Uint8Array<ArrayBuffer> | number,
+		offset?: number,
+		abortSignal?: AbortSignal,
+	): Promise<number | null | ReadableStream<Uint8Array<ArrayBuffer>>> {
+		const entry = this.#storage.get(this.#fullPath);
+		if (entry?.type !== "file") {
+			throw new IOError();
+		}
+		offset ??= 0;
+		if (buffer_or_size instanceof Uint8Array) {
+			const slice = entry.content.subarray(offset, offset + buffer_or_size.byteLength);
+			buffer_or_size.set(slice);
+			return slice.byteLength;
+		} else {
+			const size = buffer_or_size;
+			return new Response(entry.content.subarray(offset, offset + size)).body;
+		}
+	}
+
+	async write(buffer: Uint8Array<ArrayBuffer>, offset?: number, abortSignal?: AbortSignal): Promise<number>;
+	async write(offset?: number, abortSignal?: AbortSignal): Promise<WritableStream<Uint8Array<ArrayBuffer>>>;
+	async write(
+		buffer_or_offset?: Uint8Array<ArrayBuffer> | number,
+		offset_or_abortSignal?: number | AbortSignal,
+		abortSignal?: AbortSignal,
+	): Promise<number | WritableStream<Uint8Array<ArrayBuffer>>> {
+		let entry = this.#storage.get(this.#fullPath);
+		if (entry?.type === "folder") {
+			throw new IOError();
+		}
+		if (buffer_or_offset instanceof Uint8Array) {
+			const buffer = buffer_or_offset;
+			const offset = offset_or_abortSignal as number | undefined ?? 0;
+			return writeAt(this.#fullPath, buffer, offset, this.#storage);
+		} else {
+			let offset = offset_or_abortSignal as number | undefined ?? 0;
+			return Promise.resolve(
+				new WritableStream<Uint8Array>({
+					write: (chunk) => {
+						offset += writeAt(this.#fullPath, chunk, offset, this.#storage);
+					},
+				}),
+			);
+		}
+
+		function writeAt(fullPath: string, buffer: Uint8Array, offset: number, storage: Map<string, StorageEntry>): number {
+			if (entry?.type === "folder") {
+				throw new IOError();
+			}
+			const oldBuffer = entry?.content;
+			const newBuffer = new Uint8Array(Math.max(oldBuffer?.byteLength ?? 0, buffer.byteLength + offset));
+			oldBuffer && newBuffer.set(oldBuffer, 0);
+			newBuffer.set(buffer, offset);
+			storage.set(fullPath, { type: "file", content: newBuffer });
+			return buffer.byteLength;
+		}
+	}
+
+	async truncate(length?: number, offset?: number, abortSignal?: AbortSignal): Promise<void> {
+		const entry = this.#storage.get(this.#fullPath);
+		if (entry?.type !== "file") {
+			throw new IOError();
+		}
+		const buffer = new Uint8Array(length ?? offset ?? 0);
+		buffer.set(entry.content.subarray(0, buffer.byteLength));
+		entry.content = buffer;
+	}
+}

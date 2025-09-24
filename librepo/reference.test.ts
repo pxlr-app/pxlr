@@ -1,4 +1,4 @@
-import { assertThrows } from "https://deno.land/std@0.158.0/testing/asserts.ts";
+import { assertThrows } from "@std/assert";
 import { assertReferencePath } from "./reference.ts";
 
 Deno.test("Reference", async (t) => {

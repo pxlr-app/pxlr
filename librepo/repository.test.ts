@@ -1,8 +1,8 @@
-import { assert, assertEquals } from "https://deno.land/std@0.158.0/testing/asserts.ts";
-import { Buffer } from "https://deno.land/std@0.158.0/streams/mod.ts";
-import { autoid } from "/libpxlr/autoid.ts";
+import { assert, assertEquals } from "@std/assert";
+import { Buffer } from "@std/streams";
+import { id } from "./id.ts";
 // import { Commit } from "./commit.ts";
-import { MemoryFilesystem } from "./filesystem/memory.ts";
+import { MemoryFilesystem } from "@pxlr/vfs/memory";
 import { Repository } from "./repository.ts";
 import { Reference } from "./reference.ts";
 // import { Tree } from "./tree.ts";
@@ -11,7 +11,7 @@ Deno.test("Repository", async (t) => {
 	await t.step("set/get reference", async () => {
 		const fs = new MemoryFilesystem();
 		const repo = new Repository(fs);
-		const ref1 = new Reference("refs/heads/main", autoid());
+		const ref1 = new Reference("refs/heads/main", id());
 		await repo.writeReference(ref1);
 		assert(fs.entries.has("refs/heads/main"));
 		const ref2 = await repo.getReference("refs/heads/main");
@@ -22,13 +22,13 @@ Deno.test("Repository", async (t) => {
 	await t.step("list reference", async () => {
 		const fs = new MemoryFilesystem();
 		const repo = new Repository(fs);
-		await repo.writeReference(new Reference("refs/heads/main", autoid()));
+		await repo.writeReference(new Reference("refs/heads/main", id()));
 
 		const iterReference1 = repo.listReferencePath("refs/heads");
 		assert((await iterReference1.next()).value === "refs/heads/main");
 		assert((await iterReference1.next()).done === true);
 
-		await repo.writeReference(new Reference("refs/heads/fix-hero", autoid()));
+		await repo.writeReference(new Reference("refs/heads/fix-hero", id()));
 
 		const iterReference3 = repo.listReferencePath("refs/heads");
 		assert((await iterReference3.next()).value === "refs/heads/fix-hero");
@@ -39,7 +39,7 @@ Deno.test("Repository", async (t) => {
 	await t.step("set/get object", async () => {
 		const fs = new MemoryFilesystem();
 		const repo = new Repository(fs);
-		const id1 = autoid();
+		const id1 = id();
 		const buf1 = new Buffer(new TextEncoder().encode("Foo"));
 		await repo.writeObject(id1, buf1.readable);
 		const obj2 = new Buffer();
@@ -52,19 +52,19 @@ Deno.test("Repository", async (t) => {
 	// 	const fs = new MemoryFilesystem();
 	// 	const repo = new Repository(fs);
 	// 	const object1 = new Object(
-	// 		autoid(),
-	// 		autoid(),
+	// 		id(),
+	// 		id(),
 	// 		"Note",
 	// 		{ name: "README" },
 	// 		"# Hello World",
 	// 	);
-	// 	const tree1 = new Tree(autoid(), autoid(), "Group", "Parent", [{
+	// 	const tree1 = new Tree(id(), id(), "Group", "Parent", [{
 	// 		hash: object1.hash,
 	// 		id: object1.id,
 	// 		kind: object1.kind,
 	// 		name: object1.headers.get("name")!,
 	// 	}]);
-	// 	const tree2 = new Tree(autoid(), autoid(), "Group", "Parent", [{
+	// 	const tree2 = new Tree(id(), id(), "Group", "Parent", [{
 	// 		hash: tree1.hash,
 	// 		id: tree1.id,
 	// 		kind: "tree",
@@ -84,32 +84,32 @@ Deno.test("Repository", async (t) => {
 	// 	const fs = new MemoryFilesystem();
 	// 	const repo = new Repository(fs);
 	// 	const object1 = new Object(
-	// 		autoid(),
-	// 		autoid(),
+	// 		id(),
+	// 		id(),
 	// 		"Note",
 	// 		{ name: "README" },
 	// 		"# Hello World",
 	// 	);
-	// 	const tree1 = new Tree(autoid(), autoid(), "Group", "Parent", [{
+	// 	const tree1 = new Tree(id(), id(), "Group", "Parent", [{
 	// 		hash: object1.hash,
 	// 		id: object1.id,
 	// 		kind: object1.kind,
 	// 		name: object1.headers.get("name")!,
 	// 	}]);
-	// 	const tree2 = new Tree(autoid(), autoid(), "Group", "Parent", [{
+	// 	const tree2 = new Tree(id(), id(), "Group", "Parent", [{
 	// 		hash: tree1.hash,
 	// 		id: tree1.id,
 	// 		kind: "tree",
 	// 		name: tree1.name,
 	// 	}]);
-	// 	const tree3 = new Tree(autoid(), tree2.id, "Group", "Parent2", [{
+	// 	const tree3 = new Tree(id(), tree2.id, "Group", "Parent2", [{
 	// 		hash: tree1.hash,
 	// 		id: tree1.id,
 	// 		kind: "tree",
 	// 		name: tree1.name,
 	// 	}]);
 	// 	const commit1 = new Commit(
-	// 		autoid(),
+	// 		id(),
 	// 		"",
 	// 		tree2.hash,
 	// 		"Test <test@test.local>",
@@ -117,7 +117,7 @@ Deno.test("Repository", async (t) => {
 	// 		"",
 	// 	);
 	// 	const commit2 = new Commit(
-	// 		autoid(),
+	// 		id(),
 	// 		commit1.hash,
 	// 		tree3.hash,
 	// 		"Test <test@test.local>",

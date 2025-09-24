@@ -1,0 +1,17 @@
+{
+	"name": "@pxlr/zip",
+	"version": "0.1.0-rc.1",
+	"exports": {
+		".": "./prelude.ts"
+	},
+	"publish": {
+		"include": [
+			"LICENSE",
+			"**/*.ts"
+		],
+		"exclude": [
+			"*.test.ts",
+			"*.bench.ts"
+		]
+	}
+}

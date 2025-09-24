@@ -5,7 +5,7 @@ export interface ResponseChunkHeader {
 }
 export interface ResponseChunkBody {
 	type: "body";
-	data: ArrayBuffer;
+	data: Uint8Array;
 }
 export type ResponseChunk = ResponseChunkHeader | ResponseChunkBody;
 export class ResponseReaderStream extends TransformStream<ResponseChunk, Uint8Array> {
