@@ -1,4 +1,4 @@
-import { File, Folder, IOError } from "../mod.ts";
+import { File, FileAlreadyOpenedError, FileNotFoundError, FileNotOpenedError, FileOpenOptions, Folder, IOError } from "../mod.ts";
 import { join, parse } from "@std/path";
 
 export class DenoFolder extends Folder {
@@ -34,12 +34,12 @@ export class DenoFolder extends Folder {
 		}
 	}
 
-	async open(name: string, abortSignal?: AbortSignal): Promise<File> {
+	async getFile(name: string, abortSignal?: AbortSignal): Promise<File> {
 		const fullPath = join(this.#fullPath, name);
 		return new DenoFile(fullPath);
 	}
 
-	async openDir(path: string, abortSignal?: AbortSignal): Promise<Folder> {
+	async getDir(path: string, abortSignal?: AbortSignal): Promise<Folder> {
 		const fullPath = join(this.#fullPath, path);
 		return new DenoFolder(fullPath);
 	}
@@ -58,6 +58,7 @@ export class DenoFolder extends Folder {
 
 export class DenoFile extends File {
 	#fullPath: string;
+	#handle: Deno.FsFile | null = null;
 	constructor(fullPath: string) {
 		super();
 		this.#fullPath = fullPath;
@@ -65,6 +66,31 @@ export class DenoFile extends File {
 
 	get base() {
 		return parse(this.#fullPath).base;
+	}
+
+	async open(options: FileOpenOptions, abortSignal?: AbortSignal): Promise<void> {
+		if (this.isOpen) {
+			throw new FileAlreadyOpenedError();
+		}
+		try {
+			this.#handle = await Deno.open(this.#fullPath, options);
+		} catch (cause) {
+			if (cause instanceof Deno.errors.NotFound) {
+				throw new FileNotFoundError();
+			}
+			throw cause;
+		}
+	}
+
+	async close(abortSignal?: AbortSignal): Promise<void> {
+		if (this.#handle) {
+			this.#handle.close();
+			this.#handle = null;
+		}
+	}
+
+	get isOpen(): boolean {
+		return this.#handle !== null;
 	}
 
 	async exists(abortSignal?: AbortSignal): Promise<boolean> {
@@ -89,6 +115,9 @@ export class DenoFile extends File {
 	}
 
 	async arrayBuffer(abortSignal?: AbortSignal): Promise<ArrayBuffer> {
+		if (!this.isOpen) {
+			throw new FileNotOpenedError();
+		}
 		const uint8Array = await Deno.readFile(this.#fullPath);
 		return uint8Array.buffer;
 	}
@@ -108,22 +137,19 @@ export class DenoFile extends File {
 		offset?: number,
 		abortSignal?: AbortSignal,
 	): Promise<number | null | ReadableStream<Uint8Array<ArrayBuffer>>> {
-		const file = await Deno.open(this.#fullPath, { read: true });
-		await file.seek(offset ?? 0, Deno.SeekMode.Start);
+		if (!this.isOpen) {
+			throw new FileNotOpenedError();
+		}
+		await this.#handle!.seek(offset ?? 0, Deno.SeekMode.Start);
 		if (buffer_or_size instanceof Uint8Array) {
-			try {
-				return file.read(buffer_or_size);
-			} finally {
-				file.close();
-			}
+			return this.#handle!.read(buffer_or_size);
 		} else {
 			const size = buffer_or_size;
 			let offset = 0;
 			return new ReadableStream({
 				pull: async (controller) => {
-					if (offset >= size || !file) {
+					if (offset >= size || !this.#handle!) {
 						controller.close();
-						file.close();
 						return;
 					}
 					const chunkSize = Math.min(
@@ -131,10 +157,9 @@ export class DenoFile extends File {
 						size - offset,
 					);
 					const buffer = new Uint8Array(chunkSize);
-					const bytesRead = await file.read(buffer);
+					const bytesRead = await this.#handle!.read(buffer);
 					if (bytesRead === null) {
 						controller.close();
-						file.close();
 						return;
 					}
 					if (bytesRead > 0) {
@@ -143,7 +168,6 @@ export class DenoFile extends File {
 					}
 				},
 				cancel: () => {
-					file.close();
 				},
 			});
 		}
@@ -156,34 +180,30 @@ export class DenoFile extends File {
 		offset_or_abortSignal?: number | AbortSignal,
 		abortSignal?: AbortSignal,
 	): Promise<number | WritableStream<Uint8Array<ArrayBuffer>>> {
-		const file = await Deno.open(this.#fullPath, { write: true, create: true });
+		if (!this.isOpen) {
+			throw new FileNotOpenedError();
+		}
 		if (buffer_or_offset instanceof Uint8Array) {
-			try {
-				const offset = offset_or_abortSignal as number | undefined;
-				await file.seek(offset ?? 0, Deno.SeekMode.Start);
-				return await file.write(buffer_or_offset);
-			} finally {
-				file.close();
-			}
+			const offset = offset_or_abortSignal as number | undefined;
+			await this.#handle!.seek(offset ?? 0, Deno.SeekMode.Start);
+			return await this.#handle!.write(buffer_or_offset);
 		} else {
 			const offset = buffer_or_offset as number | undefined;
 			const abortSignal = offset_or_abortSignal as AbortSignal | undefined;
-			await file.seek(offset ?? 0, Deno.SeekMode.Start);
+			await this.#handle!.seek(offset ?? 0, Deno.SeekMode.Start);
 			return new WritableStream<Uint8Array>({
 				write: async (chunk, _controller) => {
-					await file.write(chunk);
-				},
-				close: () => {
-					file.close();
+					await this.#handle!.write(chunk);
 				},
 			});
 		}
 	}
 
 	async truncate(length?: number, offset?: number, abortSignal?: AbortSignal): Promise<void> {
-		const file = await Deno.open(this.#fullPath, { write: true });
-		await file.seek(offset ?? 0, Deno.SeekMode.Start);
-		await file.truncate(length);
-		file.close();
+		if (!this.isOpen) {
+			throw new FileNotOpenedError();
+		}
+		await this.#handle!.seek(offset ?? 0, Deno.SeekMode.Start);
+		await this.#handle!.truncate(length);
 	}
 }

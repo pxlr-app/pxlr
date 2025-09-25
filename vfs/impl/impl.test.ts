@@ -6,11 +6,12 @@ export async function testFilesystemImpl(
 	ctx: Deno.TestContext,
 ): Promise<void> {
 	await ctx.step("open file", async () => {
-		const file = await root.open("a.txt");
+		await using file = await root.getFile("a.txt");
 		assertEquals(file.base, "a.txt");
 		assertEquals(await file.exists(), false);
 		assertEquals(await file.size(), 0);
 
+		await file.open({ write: true, create: true });
 		const written = await file.write(new TextEncoder().encode("Hello, world!"));
 		assertEquals(written, 13);
 		assertEquals(await file.exists(), true);

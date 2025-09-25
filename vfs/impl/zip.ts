@@ -1,4 +1,4 @@
-import { File, Folder, IOError } from "../mod.ts";
+import { File, FileOpenOptions, Folder, IOError } from "../mod.ts";
 import { join, parse } from "@std/path";
 import { Zip, Zip64ExtensibleDataField } from "@pxlr/zip";
 
@@ -44,12 +44,12 @@ export class ZipFolder extends Folder {
 		}
 	}
 
-	async open(name: string, abortSignal?: AbortSignal): Promise<File> {
+	async getFile(name: string, abortSignal?: AbortSignal): Promise<File> {
 		const fullPath = join(this.#fullPath, name);
 		return new ZipFile(fullPath, this.#storage);
 	}
 
-	async openDir(path: string, abortSignal?: AbortSignal): Promise<Folder> {
+	async getDir(path: string, abortSignal?: AbortSignal): Promise<Folder> {
 		const fullPath = join(this.#fullPath, path);
 		return new ZipFolder(fullPath, this.#storage);
 	}
@@ -72,14 +72,28 @@ export class ZipRootFolder extends ZipFolder {
 export class ZipFile extends File {
 	#storage: Zip;
 	#fullPath: string;
+	#open: boolean;
 	constructor(fullPath: string, storage: Zip) {
 		super();
 		this.#fullPath = fullPath;
 		this.#storage = storage;
+		this.#open = false;
 	}
 
 	get base() {
 		return parse(this.#fullPath).base;
+	}
+
+	async open(options: FileOpenOptions, abortSignal?: AbortSignal): Promise<void> {
+		this.#open = true;
+	}
+
+	async close(abortSignal?: AbortSignal): Promise<void> {
+		this.#open = true;
+	}
+
+	get isOpen(): boolean {
+		return this.#open;
 	}
 
 	async exists(abortSignal?: AbortSignal): Promise<boolean> {

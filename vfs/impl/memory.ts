@@ -1,4 +1,4 @@
-import { File, Folder, IOError } from "../mod.ts";
+import { File, FileNotFoundError, FileOpenOptions, Folder, IOError } from "../mod.ts";
 import { join, parse } from "@std/path";
 
 const storageSymbol = Symbol("storage");
@@ -42,12 +42,12 @@ export class MemoryFolder extends Folder {
 		}
 	}
 
-	async open(name: string, abortSignal?: AbortSignal): Promise<File> {
+	async getFile(name: string, abortSignal?: AbortSignal): Promise<File> {
 		const fullPath = join(this.#fullPath, name);
 		return new MemoryFile(fullPath, this[storageSymbol]);
 	}
 
-	async openDir(path: string, abortSignal?: AbortSignal): Promise<Folder> {
+	async getDir(path: string, abortSignal?: AbortSignal): Promise<Folder> {
 		const fullPath = join(this.#fullPath, path);
 		return new MemoryFolder(fullPath, this[storageSymbol]);
 	}
@@ -127,14 +127,36 @@ export class MemoryRootFolder extends MemoryFolder {
 export class MemoryFile extends File {
 	#storage: Map<string, StorageEntry>;
 	#fullPath: string;
+	#open: boolean;
 	constructor(fullPath: string, storage: Map<string, StorageEntry>) {
 		super();
 		this.#fullPath = fullPath;
 		this.#storage = storage;
+		this.#open = false;
 	}
 
 	get base() {
 		return parse(this.#fullPath).base;
+	}
+
+	async open(options: FileOpenOptions, abortSignal?: AbortSignal): Promise<void> {
+		let entry = this.#storage.get(this.#fullPath);
+		if (!entry && options.create) {
+			entry = { type: "file", content: new Uint8Array(new ArrayBuffer(0, { maxByteLength: 1024 * 1024 * 1024 })) };
+			this.#storage.set(this.#fullPath, entry);
+		}
+		if (!entry) {
+			throw new FileNotFoundError();
+		}
+		this.#open = true;
+	}
+
+	async close(abortSignal?: AbortSignal): Promise<void> {
+		this.#open = false;
+	}
+
+	get isOpen(): boolean {
+		return this.#open;
 	}
 
 	async exists(abortSignal?: AbortSignal): Promise<boolean> {

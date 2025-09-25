@@ -8,8 +8,9 @@ Deno.test("Zip", async (t) => {
 	const textDecoder = new TextDecoder();
 
 	await t.step("open", async () => {
-		const denoFile = new DenoFile(fromFileUrl(import.meta.resolve("./fixtures/libzip-store.zip")));
-		const zip = new Zip(denoFile);
+		await using file = new DenoFile(fromFileUrl(import.meta.resolve("./fixtures/libzip-store.zip")));
+		await file.open({ read: true });
+		const zip = new Zip(file);
 		await zip.open();
 
 		const fooFH = zip.getCentralDirectoryFileHeader("foobar/foo.txt");
@@ -19,19 +20,22 @@ Deno.test("Zip", async (t) => {
 	});
 
 	await t.step("open zip64", async () => {
-		const denoFile = new DenoFile(fromFileUrl(import.meta.resolve("./fixtures/libzip-store64.zip")));
-		const zip = new Zip(denoFile);
+		await using file = new DenoFile(fromFileUrl(import.meta.resolve("./fixtures/libzip-store64.zip")));
+		await file.open({ read: true });
+		const zip = new Zip(file);
 		await zip.open();
 
 		const fooFH = zip.getCentralDirectoryFileHeader("foobar/foo.txt");
 		assertEquals(fooFH.crc, 1996459178);
 
 		await zip.close();
+		await file.close();
 	});
 
 	await t.step("get", async () => {
-		const denoFile = new DenoFile(fromFileUrl(import.meta.resolve("./fixtures/libzip-store64.zip")));
-		const zip = new Zip(denoFile);
+		await using file = new DenoFile(fromFileUrl(import.meta.resolve("./fixtures/libzip-store64.zip")));
+		await file.open({ read: true });
+		const zip = new Zip(file);
 		await zip.open();
 
 		const fooContent = textDecoder.decode(await zip.get("foobar/foo.txt"));
@@ -41,8 +45,9 @@ Deno.test("Zip", async (t) => {
 	});
 
 	await t.step("getStream", async () => {
-		const denoFile = new DenoFile(fromFileUrl(import.meta.resolve("./fixtures/libzip-store64.zip")));
-		const zip = new Zip(denoFile);
+		await using file = new DenoFile(fromFileUrl(import.meta.resolve("./fixtures/libzip-store64.zip")));
+		await file.open({ read: true });
+		const zip = new Zip(file);
 		await zip.open();
 
 		const fooContent = await new Response(await zip.getStream("foobar/foo.txt"))
@@ -55,8 +60,9 @@ Deno.test("Zip", async (t) => {
 	await t.step("put", async () => {
 		const tmpFile = await Deno.makeTempFile({ suffix: ".zip" });
 		{
-			const denoFile = new DenoFile(tmpFile);
-			const zip = new Zip(denoFile);
+			await using file = new DenoFile(tmpFile);
+			await file.open({ write: true });
+			const zip = new Zip(file);
 			await zip.open();
 
 			assertEquals(
@@ -67,8 +73,9 @@ Deno.test("Zip", async (t) => {
 			await zip.close();
 		}
 		{
-			const denoFile = new DenoFile(tmpFile);
-			const zip = new Zip(denoFile);
+			await using file = new DenoFile(tmpFile);
+			await file.open({ read: true });
+			const zip = new Zip(file);
 			await zip.open();
 
 			const fooContent = textDecoder.decode(await zip.get("foobar.txt"));
@@ -81,8 +88,9 @@ Deno.test("Zip", async (t) => {
 	await t.step("putStream", async () => {
 		const tmpFile = await Deno.makeTempFile({ suffix: ".zip" });
 		{
-			const denoFile = new DenoFile(tmpFile);
-			const zip = new Zip(denoFile);
+			await using file = new DenoFile(tmpFile);
+			await file.open({ write: true });
+			const zip = new Zip(file);
 			await zip.open();
 
 			const stream = await zip.putStream("foobar.txt");
@@ -93,8 +101,9 @@ Deno.test("Zip", async (t) => {
 			await zip.close();
 		}
 		{
-			const denoFile = new DenoFile(tmpFile);
-			const zip = new Zip(denoFile);
+			await using file = new DenoFile(tmpFile);
+			await file.open({ read: true });
+			const zip = new Zip(file);
 			await zip.open();
 
 			const fooContent = await new Response(await zip.getStream("foobar.txt"))

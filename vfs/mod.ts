@@ -2,14 +2,25 @@ export abstract class Folder {
 	abstract readonly base: string;
 	abstract exists(abortSignal?: AbortSignal): Promise<boolean>;
 	abstract list(abortSignal?: AbortSignal): AsyncIterableIterator<File | Folder>;
-	abstract open(name: string, abortSignal?: AbortSignal): Promise<File>;
-	abstract openDir(name: string, abortSignal?: AbortSignal): Promise<Folder>;
+	abstract getFile(name: string, abortSignal?: AbortSignal): Promise<File>;
+	abstract getDir(name: string, abortSignal?: AbortSignal): Promise<Folder>;
 	abstract mkdir(name: string, abortSignal?: AbortSignal): Promise<Folder>;
 	abstract rmdir(name: string, abortSignal?: AbortSignal): Promise<void>;
 }
 
+export interface FileOpenOptions {
+	read?: boolean;
+	write?: boolean;
+	create?: boolean;
+	append?: boolean;
+	truncate?: boolean;
+}
+
 export abstract class File {
 	abstract readonly base: string;
+	abstract open(options: FileOpenOptions, abortSignal?: AbortSignal): Promise<void>;
+	abstract close(abortSignal?: AbortSignal): Promise<void>;
+	abstract readonly isOpen: boolean;
 	abstract exists(abortSignal?: AbortSignal): Promise<boolean>;
 	abstract size(abortSignal?: AbortSignal): Promise<number>;
 	abstract arrayBuffer(abortSignal?: AbortSignal): Promise<ArrayBuffer>;
@@ -20,6 +31,12 @@ export abstract class File {
 	abstract write(buffer: Uint8Array<ArrayBuffer>, offset?: number, abortSignal?: AbortSignal): Promise<number>;
 	abstract write(offset?: number, abortSignal?: AbortSignal): Promise<WritableStream<Uint8Array<ArrayBuffer>>>;
 	abstract truncate(length?: number, offset?: number, abortSignal?: AbortSignal): Promise<void>;
+	[Symbol.asyncDispose](): Promise<void> {
+		if (this.isOpen) {
+			return this.close();
+		}
+		return Promise.resolve();
+	}
 }
 
 export const SeekFrom = {
@@ -39,6 +56,9 @@ export class FileExt {
 	}
 
 	async seek(offset: number, from: SeekFrom): Promise<number> {
+		if (!this.#file.isOpen) {
+			throw new FileNotOpenedError();
+		}
 		if (from === SeekFrom.Start) {
 			this.#offset = offset;
 		} else if (from === SeekFrom.Current) {
@@ -56,6 +76,9 @@ export class FileExt {
 		buffer_or_size: Uint8Array<ArrayBuffer> | number,
 		abortSignal?: AbortSignal,
 	): Promise<number | null | ReadableStream<Uint8Array<ArrayBuffer>>> {
+		if (!this.#file.isOpen) {
+			throw new FileNotOpenedError();
+		}
 		if (buffer_or_size instanceof Uint8Array) {
 			const bytesRead = await this.#file.read(buffer_or_size, this.#offset, abortSignal);
 			this.#offset += bytesRead ?? 0;
@@ -89,6 +112,9 @@ export class FileExt {
 		buffer_or_abortSignal?: Uint8Array<ArrayBuffer> | AbortSignal,
 		abortSignal?: AbortSignal,
 	): Promise<number | WritableStream<Uint8Array<ArrayBuffer>>> {
+		if (!this.#file.isOpen) {
+			throw new FileNotOpenedError();
+		}
 		if (buffer_or_abortSignal instanceof Uint8Array) {
 			const bytesWritten = await this.#file.write(buffer_or_abortSignal, this.#offset, abortSignal);
 			this.#offset += bytesWritten;
@@ -112,6 +138,9 @@ export class FileExt {
 	}
 
 	async truncate(length?: number, abortSignal?: AbortSignal): Promise<void> {
+		if (!this.#file.isOpen) {
+			throw new FileNotOpenedError();
+		}
 		await this.#file.truncate(length, this.#offset, abortSignal);
 		this.#offset = length ?? 0;
 	}
@@ -119,4 +148,16 @@ export class FileExt {
 
 export class IOError extends Error {
 	public override name = "IOError";
+}
+
+export class FileNotOpenedError extends Error {
+	public override name = "FileNotOpenedError";
+}
+
+export class FileAlreadyOpenedError extends Error {
+	public override name = "FileAlreadyOpenedError";
+}
+
+export class FileNotFoundError extends Error {
+	public override name = "FileNotFoundError";
 }

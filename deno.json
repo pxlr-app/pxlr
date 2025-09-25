@@ -1,5 +1,6 @@
 {
 	"workspace": [
+		"./collection",
 		"./math",
 		"./pxlr",
 		"./vfs",

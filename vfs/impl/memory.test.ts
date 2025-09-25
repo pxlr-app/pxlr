@@ -7,10 +7,13 @@ Deno.test("Memory filesystem", async (t) => {
 
 	await t.step("fromArrayBuffer", async () => {
 		const rootA = new MemoryRootFolder();
-		const fileA = await rootA.open("a.txt");
+		const fileA = await rootA.getFile("a.txt");
 		const folderA = await rootA.mkdir("folderA");
-		const fileB = await folderA.open("b.txt");
-		const fileC = await folderA.open("c.txt");
+		const fileB = await folderA.getFile("b.txt");
+		const fileC = await folderA.getFile("c.txt");
+		await fileA.open({ write: true, create: true });
+		await fileB.open({ write: true, create: true });
+		await fileC.open({ write: true, create: true });
 		await fileA.write(new TextEncoder().encode("Hello A"), 0);
 		await fileB.write(new TextEncoder().encode("Hello B"), 0);
 		await fileC.write(new TextEncoder().encode("Hello C"), 0);
