@@ -115,7 +115,7 @@ export class Rect {
 		}
 	}
 
-	intersects(other: ReadonlyRect) {
+	overlaps(other: ReadonlyRect) {
 		return this.left < other.right && this.right > other.left && this.top < other.bottom && this.bottom > other.top;
 	}
 
@@ -133,5 +133,5 @@ export class Rect {
 
 export type ReadonlyRect = Pick<
 	Rect,
-	"buffer" | "bottom" | "contains" | "intersects" | "height" | "left" | "right" | "top" | "width" | "x" | "y"
+	"buffer" | "bottom" | "contains" | "overlaps" | "height" | "left" | "right" | "top" | "width" | "x" | "y"
 >;
