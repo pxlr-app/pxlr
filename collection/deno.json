@@ -1,8 +1,7 @@
 {
-	"name": "@pxlr/math",
+	"name": "@pxlr/collection",
 	"version": "0.1.0-rc.1",
 	"exports": {
-		".": "./mod.ts"
 	},
 	"publish": {
 		"include": [
