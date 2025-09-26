@@ -1,24 +1,37 @@
 import { assertEquals } from "@std/assert";
 import { Rect } from "@pxlr/math";
-import { KDLayeredTree, KDTree } from "./kd_tree.ts";
+import { KDLayeredTree2, KDTree2 } from "./kdtree2.ts";
 
-Deno.test("KDTree", async (t) => {
+class Data extends Rect {
+	#data: string;
+
+	constructor(x: number, y: number, width: number, height: number, data: string) {
+		super(x, y, width, height);
+		this.#data = data;
+	}
+
+	get data() {
+		return this.#data;
+	}
+}
+
+Deno.test("KDTree2", async (t) => {
 	await t.step("insert", () => {
-		const tree = new KDTree<string>();
-		tree.insert(new Rect(0, 0, 10, 10), "A");
-		tree.insert(new Rect(0, 0, 5, 5), "B");
-		tree.insert(new Rect(5, 5, 5, 5), "C");
+		const tree = new KDTree2<Data>();
+		tree.insert(new Data(0, 0, 10, 10, "A"));
+		tree.insert(new Data(0, 0, 5, 5, "B"));
+		tree.insert(new Data(5, 5, 5, 5, "C"));
 
 		const nodes = Array.from(tree);
 		assertEquals(nodes.length, 3);
 	});
 
 	await t.step("search", () => {
-		const tree = new KDTree<string>();
-		tree.insert(new Rect(0, 0, 10, 10), "A");
-		tree.insert(new Rect(0, 0, 5, 5), "B");
-		tree.insert(new Rect(5, 5, 5, 5), "C");
-		tree.insert(new Rect(8, 8, 5, 5), "D");
+		const tree = new KDTree2<Data>();
+		tree.insert(new Data(0, 0, 10, 10, "A"));
+		tree.insert(new Data(0, 0, 5, 5, "B"));
+		tree.insert(new Data(5, 5, 5, 5, "C"));
+		tree.insert(new Data(8, 8, 5, 5, "D"));
 
 		const result1 = Array.from(tree.search(new Rect(1, 1, 1, 1)));
 		assertEquals(result1.length, 2);
@@ -36,14 +49,14 @@ Deno.test("KDTree", async (t) => {
 	});
 });
 
-Deno.test("KDLayeredTree", async (t) => {
+Deno.test("KDLayeredTree2", async (t) => {
 	await t.step("search", () => {
-		const tree = new KDLayeredTree<string>();
-		tree.insert(new Rect(0, 0, 10, 10), "A"); // A
-		tree.insert(new Rect(0, 0, 5, 5), "B"); // Edits on A
-		tree.insert(new Rect(5, 5, 5, 5), "C"); // Edits on A
-		tree.insert(new Rect(8, 8, 5, 5), "D"); // Edits on C & new content on A
-		tree.insert(new Rect(20, 20, 5, 5), "E"); // New content far away
+		const tree = new KDLayeredTree2<Data>();
+		tree.insert(new Data(0, 0, 10, 10, "A")); // A
+		tree.insert(new Data(0, 0, 5, 5, "B")); // Edits on A
+		tree.insert(new Data(5, 5, 5, 5, "C")); // Edits on A
+		tree.insert(new Data(8, 8, 5, 5, "D")); // Edits on C & new content on A
+		tree.insert(new Data(20, 20, 5, 5, "E")); // New content far away
 
 		const query = new Rect(8, 8, 1, 1); // Somewhere on D, but within the bounds of A and C
 		const result1 = Array.from(tree.forwardSearch(query)).map((n) => n.data);

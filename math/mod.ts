@@ -1,5 +1,7 @@
 export * from "./arraylike.ts";
 export * from "./euler.ts";
+export * from "./extent2.ts";
+export * from "./extent3.ts";
 export * from "./mat3.ts";
 export * from "./mat4.ts";
 export * from "./quaternion.ts";
