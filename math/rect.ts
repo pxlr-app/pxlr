@@ -1,5 +1,6 @@
 import { NumberArray, NumberArrayConstructor } from "./arraylike.ts";
-import { ReadonlyVec2 } from "./vec2.ts";
+import { ReadonlyVec2, Vec2 } from "./vec2.ts";
+import { Extent2, ReadonlyExtent2 } from "./extent2.ts";
 
 export class Rect {
 	#buffer: NumberArray;
@@ -91,6 +92,10 @@ export class Rect {
 		return this;
 	}
 
+	copy(rect: ReadonlyRect) {
+		return this.set(rect.x, rect.y, rect.width, rect.height);
+	}
+
 	union(rect: Rect) {
 		const x1 = Math.min(this.left, rect.left);
 		const y1 = Math.min(this.top, rect.top);
@@ -107,12 +112,42 @@ export class Rect {
 		return this.set(x1, y1, Math.max(0, x2 - x1), Math.max(0, y2 - y1));
 	}
 
-	contains(other: ReadonlyVec2 | ReadonlyRect) {
+	difference(rect: Rect) {
+		if (!this.overlaps(rect)) {
+			return this;
+		}
+
+		t0.copy(this).intersection(rect);
+
+		const leftArea = (t0.left - this.left) * this.height;
+		const rightArea = (this.right - t0.right) * this.height;
+		const topArea = this.width * (t0.top - this.top);
+		const bottomArea = this.width * (this.bottom - t0.bottom);
+
+		const maxArea = Math.max(leftArea, rightArea, topArea, bottomArea);
+
+		if (maxArea === leftArea && leftArea > 0) {
+			return this.set(this.left, this.top, t0.left - this.left, this.height);
+		} else if (maxArea === rightArea && rightArea > 0) {
+			return this.set(t0.right, this.top, this.right - t0.right, this.height);
+		} else if (maxArea === topArea && topArea > 0) {
+			return this.set(this.left, this.top, this.width, t0.top - this.top);
+		} else if (maxArea === bottomArea && bottomArea > 0) {
+			return this.set(this.left, t0.bottom, this.width, this.bottom - t0.bottom);
+		} else {
+			return this.set(0, 0, 0, 0);
+		}
+	}
+
+	contains(other: ReadonlyVec2 | ReadonlyRect | ReadonlyExtent2) {
 		if (other instanceof Rect) {
 			return this.left <= other.left && this.right >= other.right && this.top <= other.top && this.bottom >= other.bottom;
-		} else {
+		} else if (other instanceof Vec2) {
 			return this.left <= other.x && this.right >= other.x && this.top <= other.y && this.bottom >= other.y;
+		} else if (other instanceof Extent2) {
+			return this.width >= other.width && this.height >= other.height;
 		}
+		return false;
 	}
 
 	overlaps(other: ReadonlyRect) {
@@ -135,3 +170,5 @@ export type ReadonlyRect = Pick<
 	Rect,
 	"buffer" | "bottom" | "contains" | "overlaps" | "height" | "left" | "right" | "top" | "width" | "x" | "y"
 >;
+
+const t0 = new Rect();

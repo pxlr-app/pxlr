@@ -11,41 +11,59 @@ class Node<TData extends Rect> {
 	#right: Node<TData> | null;
 	#axis: Axis;
 
-	constructor(data: TData, ctor: NumberArrayConstructor = Array) {
+	constructor(data: TData, axis = Axis.X) {
 		this.#content = data;
 		this.#left = null;
 		this.#right = null;
-		this.#axis = Axis.X;
+		this.#axis = axis;
 	}
 
 	get content() {
 		return this.#content;
 	}
 
-	insert(node: Node<TData>) {
-		const compareValue = this.#axis === Axis.X ? node.content.x + node.content.width / 2 : node.content.y + node.content.height / 2;
+	insert(data: TData): void {
+		const compareValue = this.#axis === Axis.X ? data.x + data.width / 2 : data.y + data.height / 2;
 		const thisValue = this.#axis === Axis.X ? this.content.x + this.content.width / 2 : this.content.y + this.content.height / 2;
-
-		const childAxis = this.#axis === Axis.X ? Axis.Y : Axis.X;
-		node.#axis = childAxis;
+		const node = new Node(data, this.#axis === Axis.X ? Axis.Y : Axis.X);
 
 		if (compareValue < thisValue) {
 			if (this.#left === null) {
 				this.#left = node;
 			} else {
-				this.#left.insert(node);
+				this.#left.insert(data);
 			}
 		} else {
 			if (this.#right === null) {
 				this.#right = node;
 			} else {
-				this.#right.insert(node);
+				this.#right.insert(data);
 			}
 		}
 	}
 
-	*[Symbol.iterator](): IterableIterator<Node<TData>> {
-		yield this;
+	remove(data: TData): Node<TData> | null {
+		if (this.#content === data) {
+			const children = [this.#left, this.#right].filter(Boolean);
+			const left = children.shift() ?? null;
+			const right = children.shift() ?? null;
+			if (left) {
+				const node = new Node(left.content, this.#axis);
+				node.#left = right;
+				return node;
+			} else if (right) {
+				return right;
+			} else {
+				return null;
+			}
+		}
+		this.#left = this.#left?.remove(data) ?? null;
+		this.#right = this.#right?.remove(data) ?? null;
+		return this;
+	}
+
+	*[Symbol.iterator](): IterableIterator<TData> {
+		yield this.content;
 
 		if (this.#left) {
 			yield* this.#left;
@@ -83,17 +101,22 @@ export class KDTree2<TData extends Rect> extends Rect {
 		super(0, 0, 0, 0);
 	}
 
-	insert(data: TData) {
-		const node = new Node(data);
+	insert(data: TData): void {
 		if (this.#root === null) {
-			this.#root = node;
+			this.#root = new Node(data);
 		} else {
-			this.#root.insert(node);
+			this.#root.insert(data);
 		}
 		if (this.width === 0 && this.height === 0) {
 			this.set(data.x, data.y, data.width, data.height);
 		} else {
 			this.union(data);
+		}
+	}
+
+	remove(data: TData): void {
+		if (this.#root !== null) {
+			this.#root = this.#root.remove(data);
 		}
 	}
 
@@ -106,7 +129,7 @@ export class KDTree2<TData extends Rect> extends Rect {
 		}
 	}
 
-	*[Symbol.iterator](): IterableIterator<Node<TData>> {
+	*[Symbol.iterator](): IterableIterator<TData> {
 		if (this.#root) {
 			yield* this.#root;
 		}
