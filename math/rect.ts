@@ -112,31 +112,38 @@ export class Rect {
 		return this.set(x1, y1, Math.max(0, x2 - x1), Math.max(0, y2 - y1));
 	}
 
-	difference(rect: Rect) {
+	difference(rect: Rect): Rect[] {
+		// If no overlap, return this rectangle unchanged
 		if (!this.overlaps(rect)) {
-			return this;
+			return [new Rect(this.x, this.y, this.width, this.height)];
 		}
 
+		// Calculate intersection bounds
 		t0.copy(this).intersection(rect);
 
-		const leftArea = (t0.left - this.left) * this.height;
-		const rightArea = (this.right - t0.right) * this.height;
-		const topArea = this.width * (t0.top - this.top);
-		const bottomArea = this.width * (this.bottom - t0.bottom);
+		const result: Rect[] = [];
 
-		const maxArea = Math.max(leftArea, rightArea, topArea, bottomArea);
-
-		if (maxArea === leftArea && leftArea > 0) {
-			return this.set(this.left, this.top, t0.left - this.left, this.height);
-		} else if (maxArea === rightArea && rightArea > 0) {
-			return this.set(t0.right, this.top, this.right - t0.right, this.height);
-		} else if (maxArea === topArea && topArea > 0) {
-			return this.set(this.left, this.top, this.width, t0.top - this.top);
-		} else if (maxArea === bottomArea && bottomArea > 0) {
-			return this.set(this.left, t0.bottom, this.width, this.bottom - t0.bottom);
-		} else {
-			return this.set(0, 0, 0, 0);
+		// Left rectangle (if exists)
+		if (t0.left > this.left) {
+			result.push(new Rect(this.left, this.top, t0.left - this.left, this.height));
 		}
+
+		// Right rectangle (if exists)
+		if (t0.right < this.right) {
+			result.push(new Rect(t0.right, this.top, this.right - t0.right, this.height));
+		}
+
+		// Top rectangle (if exists)
+		if (t0.top > this.top) {
+			result.push(new Rect(t0.left, this.top, t0.right - t0.left, t0.top - this.top));
+		}
+
+		// Bottom rectangle (if exists)
+		if (t0.bottom < this.bottom) {
+			result.push(new Rect(t0.left, t0.bottom, t0.right - t0.left, this.bottom - t0.bottom));
+		}
+
+		return result;
 	}
 
 	contains(other: ReadonlyVec2 | ReadonlyRect | ReadonlyExtent2) {

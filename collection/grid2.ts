@@ -35,20 +35,20 @@ export class Grid2<TData extends Extent2> extends Extent2 {
 		this.#tree.insert(root);
 	}
 
-	percetageUsed() {
+	percetageUsed(): number {
 		const totalArea = this.width * this.height;
 		const unusedArea = Array.from(this.#emptyCells).reduce((sum, cell) => sum + (cell.isEmpty ? cell.width * cell.height : 0), 0);
 		return (totalArea - unusedArea) / totalArea;
 	}
 
-	insert(data: TData) {
+	insert(data: TData): false | Vec2 {
 		for (const cell of this.#emptyCells) {
 			if (cell.isEmpty) {
 				if (cell.width === data.width && cell.height === data.height) {
 					// Perfect fit
 					cell.content = data;
 					this.#emptyCells.delete(cell);
-					return true;
+					return new Vec2(cell.x, cell.y);
 				} else if (cell.contains(data)) {
 					// Within cell, split it
 					this.#tree.remove(cell);
@@ -68,7 +68,7 @@ export class Grid2<TData extends Extent2> extends Extent2 {
 						this.#emptyCells.add(cellC);
 						this.#tree.insert(cellC);
 					}
-					return true;
+					return new Vec2(cellA.x, cellA.y);
 				} else {
 					// Try to merge empty cells to fit
 					const query = new Rect(cell.x, cell.y, data.width, data.height);
@@ -78,16 +78,17 @@ export class Grid2<TData extends Extent2> extends Extent2 {
 							this.#tree.remove(cell);
 							this.#emptyCells.delete(cell);
 
-							tmp.copy(cell).difference(query);
-							if (tmp.width > 0 && tmp.height > 0) {
-								const cellA = new Cell2<TData>(tmp.x, tmp.y, tmp.width, tmp.height, null);
-								this.#emptyCells.add(cellA);
-								this.#tree.insert(cellA);
+							for (const diff of cell.difference(query)) {
+								if (diff.width > 0 && diff.height > 0) {
+									const cellA = new Cell2<TData>(diff.x, diff.y, diff.width, diff.height, null);
+									this.#emptyCells.add(cellA);
+									this.#tree.insert(cellA);
+								}
 							}
 						}
 						const cellA = new Cell2<TData>(query.x, query.y, query.width, query.height, data);
 						this.#tree.insert(cellA);
-						return true;
+						return new Vec2(cellA.x, cellA.y);
 					}
 				}
 			}
@@ -95,7 +96,7 @@ export class Grid2<TData extends Extent2> extends Extent2 {
 		return false;
 	}
 
-	remove(data: TData) {
+	remove(data: TData): boolean {
 		for (const cell of this.#tree) {
 			if (cell.content === data) {
 				cell.content = null;
@@ -122,5 +123,3 @@ export class Grid2<TData extends Extent2> extends Extent2 {
 		}
 	}
 }
-
-const tmp: Rect = new Rect();
