@@ -1,10 +1,33 @@
-export class Blob {
-	#kind: string;
-	#content: Uint8Array;
+import { crypto } from "@std/crypto/crypto";
 
-	constructor(kind: string, content: Uint8Array) {
+export class Blob {
+	#hash: string;
+	#kind: string;
+	#content: Uint8Array<ArrayBuffer>;
+
+	constructor(hash: string, kind: string, content: Uint8Array<ArrayBuffer>) {
+		this.#hash = hash;
 		this.#kind = kind;
 		this.#content = content;
+	}
+
+	static async create(kind: string, content: Uint8Array<ArrayBuffer>): Promise<Blob> {
+		const hashBuffer = await crypto.subtle.digest("SHA-1", [
+			Blob.#getHeaderArrayBuffer(kind, content),
+			content,
+		]);
+		const hash = Array.from(new Uint8Array(hashBuffer))
+			.map((b) => b.toString(16).padStart(2, "0"))
+			.join("");
+		return new Blob(hash, kind, content);
+	}
+
+	static #getHeaderArrayBuffer(kind: string, content: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
+		return new TextEncoder().encode(`${kind} ${content.length}\0`);
+	}
+
+	get hash() {
+		return this.#hash;
 	}
 
 	get kind() {
@@ -15,23 +38,38 @@ export class Blob {
 		return this.#content;
 	}
 
-	static async fromArrayBuffer(buffer: ArrayBuffer) {
-		const uint8Array = new Uint8Array(buffer);
-		const nullIndex = uint8Array.indexOf(0);
-		if (nullIndex === -1) {
-			throw new Error("Invalid object format: missing null byte");
+	static async fromReadableStream(stream: ReadableStream<Uint8Array<ArrayBuffer>>): Promise<Blob> {
+		let inHeader = true;
+		let kind = "";
+		let size = 0;
+		const header = new Uint8Array(new ArrayBuffer(0, { maxByteLength: 128 }));
+		const content = new Uint8Array(new ArrayBuffer(0, { maxByteLength: 1024 * 1024 * 1024 }));
+		let offset = 0;
+		for await (let chunk of stream) {
+			if (inHeader) {
+				header.buffer.resize(header.buffer.byteLength + chunk.byteLength);
+				header.set(chunk, offset);
+				offset += chunk.byteLength;
+				const nullIndex = header.indexOf(0);
+				if (nullIndex > -1) {
+					const [kindPart, sizePart] = new TextDecoder().decode(header.slice(0, nullIndex)).split(" ");
+					kind = kindPart;
+					size = parseInt(sizePart, 10);
+					chunk = chunk.slice(nullIndex + 1);
+					inHeader = false;
+					offset = 0;
+				}
+			}
+			if (!inHeader) {
+				content.buffer.resize(content.buffer.byteLength + chunk.byteLength);
+				content.set(chunk, offset);
+				offset += chunk.byteLength;
+			}
 		}
-		const header = new TextDecoder().decode(uint8Array.slice(0, nullIndex));
-		const [kind, sizeStr] = header.split(" ");
-		const size = parseInt(sizeStr, 10);
-		return new Blob(kind, uint8Array.slice(nullIndex + 1, nullIndex + 1 + size));
+		return Blob.create(kind, content);
 	}
 
-	toArrayBuffer() {
-		const header = new TextEncoder().encode(`${this.#kind} ${this.#content.length}\0`);
-		const data = new Uint8Array(header.length + this.#content.length);
-		data.set(header, 0);
-		data.set(this.#content, header.length);
-		return data.buffer;
+	toReadableStream(): ReadableStream<Uint8Array<ArrayBuffer>> {
+		return ReadableStream.from([Blob.#getHeaderArrayBuffer(this.kind, this.content), this.#content]);
 	}
 }

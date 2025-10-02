@@ -3,14 +3,14 @@ import { ID } from "./id.ts";
 
 export interface NodeDeserializerOptions {
 	item: {
-		hash: ID;
+		hash: string;
 		id: ID;
 		kind: string;
 		name: string;
 	};
 	stream: ReadableStream<Uint8Array>;
 	getNodeByHash: (
-		hash: ID,
+		hash: string,
 		shallow: boolean,
 		abortSignal?: AbortSignal,
 	) => Promise<Node>;

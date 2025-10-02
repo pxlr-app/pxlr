@@ -8,18 +8,17 @@ export enum NodeIter {
 }
 
 export abstract class Node {
-	#hash: ID;
+	#hash: string;
 	#id: ID;
 	#kind: string;
 	#name: string;
 
 	public constructor(
-		hash: ID,
+		hash: string,
 		id: ID,
 		kind: string,
 		name: string,
 	) {
-		assertID(hash);
 		assertID(id);
 		this.#hash = hash;
 		this.#id = id;
@@ -60,7 +59,7 @@ export abstract class Node {
 
 export class UnloadedNode extends Node {
 	public constructor(
-		hash: ID,
+		hash: string,
 		id: ID,
 		kind: string,
 		name: string,
@@ -83,7 +82,7 @@ export class UnloadedNodeMethodError extends Error {
 
 export class NodeNotFoundError extends Error {
 	override name = "NodeNotFoundError";
-	public constructor(hash: ID) {
+	public constructor(hash: string) {
 		super(`Could not find node ${hash}.`);
 	}
 }

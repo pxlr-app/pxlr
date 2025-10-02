@@ -11,8 +11,7 @@ Deno.test("Reference", async (t) => {
 
 	await t.step("fromArrayBuffer", async () => {
 		const ref1 = new Reference("refs/heads/main");
-		const ref2 = await Reference.fromArrayBuffer(ref1.toArrayBuffer());
-		assertEquals(ref1.kind, ref2.kind);
-		assertEquals(ref1.reference, ref2.reference);
+		const ref2 = await Reference.fromReadableStream(ref1.toReadableStream());
+		assertEquals(ref1, ref2);
 	});
 });

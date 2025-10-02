@@ -240,7 +240,8 @@ export class MemoryFile extends File {
 			const newBuffer = new Uint8Array(Math.max(oldBuffer?.byteLength ?? 0, buffer.byteLength + offset));
 			oldBuffer && newBuffer.set(oldBuffer, 0);
 			newBuffer.set(buffer, offset);
-			storage.set(fullPath, { type: "file", content: newBuffer });
+			entry = { type: "file", content: newBuffer };
+			storage.set(fullPath, entry);
 			return buffer.byteLength;
 		}
 	}

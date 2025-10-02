@@ -1,17 +1,15 @@
-import { assertID, ID } from "../id.ts";
 import { Command } from "../command.ts";
 
 export class MoveChildCommand extends Command {
-	#childHash: ID;
+	#childHash: string;
 	#position: number;
 	public constructor(
-		hash: ID,
-		target: ID,
-		childHash: ID,
+		hash: string,
+		target: string,
+		childHash: string,
 		position: number,
 	) {
 		super(hash, target);
-		assertID(childHash);
 		this.#childHash = childHash;
 		this.#position = position;
 	}

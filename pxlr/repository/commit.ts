@@ -1,21 +1,56 @@
+import { crypto } from "@std/crypto/crypto";
+
 export class Commit {
+	#hash: string;
 	#parent: string | null;
 	#tree: string;
 	#commiter: string;
 	#date: Date;
 	#message: string;
 	constructor(
+		hash: string,
 		parent: string | null,
 		tree: string,
 		commiter: string,
 		date: Date,
 		message: string,
 	) {
+		this.#hash = hash;
 		this.#parent = parent;
 		this.#tree = tree;
 		this.#commiter = commiter;
 		this.#date = date;
 		this.#message = message;
+	}
+
+	static async create(
+		parent: string | null,
+		tree: string,
+		commiter: string,
+		date: Date,
+		message: string,
+	): Promise<Commit> {
+		const hashBuffer = await crypto.subtle.digest("SHA-1", Commit.#toArrayBuffer(parent, tree, commiter, date, message));
+		const hash = Array.from(new Uint8Array(hashBuffer))
+			.map((b) => b.toString(16).padStart(2, "0"))
+			.join("");
+		return new Commit(hash, parent, tree, commiter, date, message);
+	}
+
+	static #toArrayBuffer(
+		parent: string | null,
+		tree: string,
+		commiter: string,
+		date: Date,
+		message: string,
+	): Uint8Array<ArrayBuffer> {
+		// deno-fmt-ignore
+		return new TextEncoder()
+			.encode(`parent: ${parent ?? ""}\ntree: ${tree}\ncommiter: ${encodeURIComponent(commiter)}\ndate: ${date.toISOString()}\n\n${message}`);
+	}
+
+	get hash() {
+		return this.#hash;
 	}
 
 	get parent() {
@@ -38,8 +73,8 @@ export class Commit {
 		return this.#message;
 	}
 
-	static async fromArrayBuffer(buffer: ArrayBuffer) {
-		const payload = new TextDecoder().decode(buffer);
+	static async fromReadableStream(stream: ReadableStream<Uint8Array<ArrayBuffer>>) {
+		const payload = await new Response(stream).text();
 		const [headerLines, ...parts] = payload.split("\n\n");
 
 		const headers = headerLines
@@ -53,7 +88,7 @@ export class Commit {
 				{} as Record<string, string | null>,
 			);
 
-		return new Commit(
+		return Commit.create(
 			headers.parent || null,
 			headers.tree!,
 			decodeURIComponent(headers.commiter!),
@@ -62,10 +97,7 @@ export class Commit {
 		);
 	}
 
-	toArrayBuffer() {
-		// deno-fmt-ignore
-		const payload = `parent: ${this.#parent ?? ""}\ntree: ${this.#tree}\ncommiter: ${encodeURIComponent(this.#commiter)}\ndate: ${this.#date.toISOString()}\n\n${this.#message}`;
-		const data = new TextEncoder().encode(payload);
-		return data.buffer;
+	toReadableStream(): ReadableStream<Uint8Array<ArrayBuffer>> {
+		return ReadableStream.from([Commit.#toArrayBuffer(this.parent, this.tree, this.commiter, this.date, this.message)]);
 	}
 }

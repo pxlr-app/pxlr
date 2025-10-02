@@ -1,13 +1,12 @@
 import { assertID, ID } from "./id.ts";
 
 export abstract class Command {
-	#hash: ID;
-	#target: ID;
+	#hash: string;
+	#target: string;
 	public constructor(
-		hash: ID,
-		target: ID,
+		hash: string,
+		target: string,
 	) {
-		assertID(hash);
 		assertID(target);
 		this.#hash = hash;
 		this.#target = target;
