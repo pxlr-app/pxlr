@@ -1,4 +1,4 @@
-import { crypto } from "@std/crypto/crypto";
+import { sha1 } from "@noble/hashes/legacy.js";
 
 export class Blob {
 	#hash: string;
@@ -11,11 +11,11 @@ export class Blob {
 		this.#content = content;
 	}
 
-	static async create(kind: string, content: Uint8Array<ArrayBuffer>): Promise<Blob> {
-		const hashBuffer = await crypto.subtle.digest("SHA-1", [
-			Blob.#getHeaderArrayBuffer(kind, content),
-			content,
-		]);
+	static create(kind: string, content: Uint8Array<ArrayBuffer>): Blob {
+		const hashBuffer = sha1.create()
+			.update(Blob.#getHeaderArrayBuffer(kind, content))
+			.update(content)
+			.digest();
 		const hash = Array.from(new Uint8Array(hashBuffer))
 			.map((b) => b.toString(16).padStart(2, "0"))
 			.join("");

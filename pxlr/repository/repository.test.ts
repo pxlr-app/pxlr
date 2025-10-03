@@ -10,7 +10,7 @@ Deno.test("Repository", async (t) => {
 	await t.step("blob", async () => {
 		const root = new MemoryRootFolder();
 		const repo = new Repository(root);
-		const blob1 = await Blob.create("blob", new TextEncoder().encode("Hello World"));
+		const blob1 = Blob.create("blob", new TextEncoder().encode("Hello World"));
 		await repo.setBlob(blob1);
 		const blob2 = await repo.getBlob(blob1.hash);
 		assertEquals(blob2, blob1);
@@ -20,9 +20,9 @@ Deno.test("Repository", async (t) => {
 		const root = new MemoryRootFolder();
 		const repo = new Repository(root);
 
-		const commitA = await Commit.create(null, "", "commiter", new Date("2025-09-24T08:48:00.000Z"), "A");
-		const commitB = await Commit.create(commitA.hash, "", "commiter", new Date("2025-09-24T08:49:00.000Z"), "B");
-		const commitC = await Commit.create(commitB.hash, "", "commiter", new Date("2025-09-24T08:50:00.000Z"), "C");
+		const commitA = Commit.create(null, "", "commiter", new Date("2025-09-24T08:48:00.000Z"), "A");
+		const commitB = Commit.create(commitA.hash, "", "commiter", new Date("2025-09-24T08:49:00.000Z"), "B");
+		const commitC = Commit.create(commitB.hash, "", "commiter", new Date("2025-09-24T08:50:00.000Z"), "C");
 
 		await repo.setCommit(commitA);
 		await repo.setCommit(commitB);
@@ -58,14 +58,14 @@ Deno.test("Repository", async (t) => {
 		const root = new MemoryRootFolder();
 		const repo = new Repository(root);
 
-		const blobA = await Blob.create("blob", new TextEncoder().encode("A"));
-		const blobB = await Blob.create("blob", new TextEncoder().encode("B"));
-		const blobC = await Blob.create("blob", new TextEncoder().encode("C"));
-		const treeA = await Tree.create([
+		const blobA = Blob.create("blob", new TextEncoder().encode("A"));
+		const blobB = Blob.create("blob", new TextEncoder().encode("B"));
+		const blobC = Blob.create("blob", new TextEncoder().encode("C"));
+		const treeA = Tree.create([
 			{ hash: blobA.hash, kind: "blob", name: "fileA.txt" },
 			{ hash: blobB.hash, kind: "blob", name: "fileB.txt" },
 		]);
-		const treeB = await Tree.create([
+		const treeB = Tree.create([
 			{ hash: treeA.hash, kind: "tree", name: "folder" },
 			{ hash: blobC.hash, kind: "blob", name: "fileC.txt" },
 		]);

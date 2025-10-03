@@ -1,4 +1,4 @@
-import { crypto } from "@std/crypto/crypto";
+import { sha1 } from "@noble/hashes/legacy.js";
 
 export class Commit {
 	#hash: string;
@@ -23,14 +23,16 @@ export class Commit {
 		this.#message = message;
 	}
 
-	static async create(
+	static create(
 		parent: string | null,
 		tree: string,
 		commiter: string,
 		date: Date,
 		message: string,
-	): Promise<Commit> {
-		const hashBuffer = await crypto.subtle.digest("SHA-1", Commit.#toArrayBuffer(parent, tree, commiter, date, message));
+	): Commit {
+		const hashBuffer = sha1.create()
+			.update(Commit.#toArrayBuffer(parent, tree, commiter, date, message))
+			.digest();
 		const hash = Array.from(new Uint8Array(hashBuffer))
 			.map((b) => b.toString(16).padStart(2, "0"))
 			.join("");

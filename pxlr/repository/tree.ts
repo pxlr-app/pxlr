@@ -1,4 +1,4 @@
-import { crypto } from "@std/crypto/crypto";
+import { sha1 } from "@noble/hashes/legacy.js";
 
 export interface TreeItem {
 	hash: string;
@@ -17,10 +17,12 @@ export class Tree {
 		this.#items = [...items];
 	}
 
-	static async create(
+	static create(
 		items: ReadonlyArray<TreeItem>,
-	): Promise<Tree> {
-		const hashBuffer = await crypto.subtle.digest("SHA-1", Tree.#toArrayBuffer(items));
+	): Tree {
+		const hashBuffer = sha1.create()
+			.update(Tree.#toArrayBuffer(items))
+			.digest();
 		const hash = Array.from(new Uint8Array(hashBuffer))
 			.map((b) => b.toString(16).padStart(2, "0"))
 			.join("");
