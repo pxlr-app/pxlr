@@ -1,6 +1,7 @@
 import { assertID, ID, id } from "./id.ts";
 import { Command } from "./command.ts";
 import { RenameCommand } from "./commands/rename.ts";
+import { ReadonlyRect, Rect } from "@pxlr/math";
 
 export enum NodeIter {
 	Break = "break",
@@ -31,6 +32,8 @@ export abstract class Node {
 		return this.#kind;
 	}
 
+	abstract rect: ReadonlyRect;
+
 	get name() {
 		return this.#name;
 	}
@@ -50,16 +53,20 @@ export abstract class Node {
 }
 
 export class UnloadedNode extends Node {
+	#rect: ReadonlyRect;
+
 	public constructor(
 		id: ID,
 		kind: string,
+		rect: ReadonlyRect,
 		name: string,
 	) {
 		super(id, kind, name);
+		this.#rect = rect;
 	}
 
-	static new(kind: string, name: string) {
-		return new UnloadedNode(id(), kind, name);
+	get rect() {
+		return this.#rect;
 	}
 
 	override dispatch(_command: Command): Node {

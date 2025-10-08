@@ -10,7 +10,7 @@ Deno.test("Repository", async (t) => {
 	await t.step("blob", async () => {
 		const root = new MemoryRootFolder();
 		const repo = new Repository(root);
-		const blob1 = Blob.create("blob", new TextEncoder().encode("Hello World"));
+		const blob1 = Blob.create({ kind: "blob" }, new TextEncoder().encode("Hello World"));
 		await repo.setBlob(blob1);
 		const blob2 = await repo.getBlob(blob1.hash);
 		assertEquals(blob2, blob1);
@@ -58,9 +58,9 @@ Deno.test("Repository", async (t) => {
 		const root = new MemoryRootFolder();
 		const repo = new Repository(root);
 
-		const blobA = Blob.create("blob", new TextEncoder().encode("A"));
-		const blobB = Blob.create("blob", new TextEncoder().encode("B"));
-		const blobC = Blob.create("blob", new TextEncoder().encode("C"));
+		const blobA = Blob.create({ kind: "blob" }, new TextEncoder().encode("A"));
+		const blobB = Blob.create({ kind: "blob" }, new TextEncoder().encode("B"));
+		const blobC = Blob.create({ kind: "blob" }, new TextEncoder().encode("C"));
 		const treeA = Tree.create([
 			{ hash: blobA.hash, kind: "blob", name: "fileA.txt" },
 			{ hash: blobB.hash, kind: "blob", name: "fileB.txt" },

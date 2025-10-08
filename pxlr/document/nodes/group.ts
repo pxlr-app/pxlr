@@ -7,7 +7,7 @@ import { RenameCommand } from "../commands/rename.ts";
 import { ReplaceNodeCommand } from "../commands/replace_node.ts";
 import { Node, UnloadedNode } from "../node.ts";
 import { NodeRegistryEntry } from "../node_registry.ts";
-import { ReadonlyVec2, Vec2 } from "@pxlr/math";
+import { ReadonlyVec2, Rect, Vec2 } from "@pxlr/math";
 import { MoveCommand } from "../commands/move.ts";
 
 // export const GroupNodeRegistryEntry = new NodeRegistryEntry<GroupNode>(
@@ -43,29 +43,29 @@ import { MoveCommand } from "../commands/move.ts";
 // );
 
 export class GroupNode extends Node {
-	#position: ReadonlyVec2;
 	#children: ReadonlyArray<Node>;
+	#position: ReadonlyVec2;
 	public constructor(
 		id: ID,
 		name: string,
-		position: ReadonlyVec2,
 		children: ReadonlyArray<Node>,
+		position: ReadonlyVec2,
 	) {
 		super(id, "Group", name);
-		this.#position = position;
 		this.#children = children;
-	}
-
-	get position() {
-		return this.#position;
+		this.#position = position;
 	}
 
 	get children() {
 		return this.#children;
 	}
 
-	static new(name: string, position: ReadonlyVec2 = Vec2.ZERO, children: Node[] = []) {
-		return new GroupNode(id(), name, position, children);
+	get rect() {
+		return new Rect(this.#position.x, this.#position.y, 0, 0);
+	}
+
+	static new(name: string, children: Node[] = [], position: ReadonlyVec2 = Vec2.ZERO) {
+		return new GroupNode(id(), name, children, position);
 	}
 
 	override *iter(): Iterator<Node> {
@@ -81,8 +81,8 @@ export class GroupNode extends Node {
 				return new GroupNode(
 					this.id,
 					command.renameTo,
-					this.position,
 					this.children,
+					new Vec2(this.rect.x, this.rect.y),
 				);
 			} else if (command instanceof AddChildCommand) {
 				const name = command.childNode.name;
@@ -102,8 +102,8 @@ export class GroupNode extends Node {
 				return new GroupNode(
 					this.id,
 					this.name,
-					this.position,
 					children,
+					new Vec2(this.rect.x, this.rect.y),
 				);
 			} else if (command instanceof RemoveChildCommand) {
 				const childIndex = this.children.findIndex((node) => node.id === command.child);
@@ -117,8 +117,8 @@ export class GroupNode extends Node {
 				return new GroupNode(
 					this.id,
 					this.name,
-					this.position,
 					children,
+					new Vec2(this.rect.x, this.rect.y),
 				);
 			} else if (command instanceof MoveChildCommand) {
 				const childIndex = this.children.findIndex((node) => node.id === command.child);
@@ -135,15 +135,15 @@ export class GroupNode extends Node {
 				return new GroupNode(
 					this.id,
 					this.name,
-					this.position,
 					children,
+					new Vec2(this.rect.x, this.rect.y),
 				);
 			} else if (command instanceof MoveCommand) {
 				return new GroupNode(
 					this.id,
 					this.name,
-					new Vec2().copy(command.position),
 					this.children,
+					command.position,
 				);
 			} else if (command instanceof ReplaceNodeCommand) {
 				return command.node;
@@ -171,8 +171,8 @@ export class GroupNode extends Node {
 			return new GroupNode(
 				this.id,
 				this.name,
-				this.position,
 				children,
+				new Vec2(this.rect.x, this.rect.y),
 			);
 		}
 		return this;

@@ -5,7 +5,7 @@ import { Command } from "../command.ts";
 import { RenameCommand } from "../commands/rename.ts";
 import { ReplaceNodeCommand } from "../commands/replace_node.ts";
 import { SetContentCommand } from "../commands/set_content.ts";
-import { ReadonlyVec2, Vec2 } from "@pxlr/math";
+import { ReadonlyVec2, Rect, Vec2 } from "@pxlr/math";
 import { MoveCommand } from "../commands/move.ts";
 
 // export const NoteNodeRegistryEntry = new NodeRegistryEntry<NoteNode>(
@@ -41,8 +41,8 @@ export class NoteNode extends Node {
 		return this.#content;
 	}
 
-	get position() {
-		return this.#position;
+	get rect() {
+		return new Rect(this.#position.x, this.#position.y, 0, 0);
 	}
 
 	static new(name: string, content: string, position: ReadonlyVec2 = Vec2.ZERO) {
@@ -59,21 +59,21 @@ export class NoteNode extends Node {
 					this.id,
 					command.renameTo,
 					this.content,
-					this.position,
+					new Vec2(this.rect.x, this.rect.y),
 				);
 			} else if (command instanceof SetContentCommand) {
 				return new NoteNode(
 					this.id,
 					this.name,
 					command.content,
-					this.position,
+					new Vec2(this.rect.x, this.rect.y),
 				);
 			} else if (command instanceof MoveCommand) {
 				return new NoteNode(
 					this.id,
 					this.name,
 					this.content,
-					new Vec2().copy(command.position),
+					command.position,
 				);
 			} else if (command instanceof ReplaceNodeCommand) {
 				return command.node;
@@ -82,8 +82,8 @@ export class NoteNode extends Node {
 		return this;
 	}
 
-	setContent(newContent: string): SetContentCommand {
-		return new SetContentCommand(this.id, newContent);
+	setContent(content: string): SetContentCommand {
+		return new SetContentCommand(this.id, content);
 	}
 
 	moveTo(position: ReadonlyVec2): MoveCommand {

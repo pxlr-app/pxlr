@@ -1,8 +1,10 @@
 import { sha1 } from "@noble/hashes/legacy.js";
+import { Rect } from "@pxlr/math";
 
 export interface TreeItem {
 	hash: string;
 	kind: string;
+	rect?: Rect;
 	name: string;
 }
 
@@ -34,8 +36,10 @@ export class Tree {
 	): Uint8Array<ArrayBuffer> {
 		const payload = items
 			.map((item) => {
-				const { kind, hash, name } = item;
-				return `${encodeURIComponent(kind)} ${hash} ${encodeURIComponent(name)}`;
+				const { hash, kind, name, rect } = item;
+				return `${encodeURIComponent(kind)} ${hash} ${rect?.x ?? 0} ${rect?.y ?? 0} ${rect?.width ?? 0} ${rect?.height ?? 0} ${
+					encodeURIComponent(name)
+				}`;
 			})
 			.join(`\n`);
 		const data = new TextEncoder().encode(payload);
@@ -56,8 +60,8 @@ export class Tree {
 			.split(`\n`)
 			.reduce(
 				(acc, line) => {
-					const [kind, hash, name] = line.split(" ");
-					acc.push({ kind, hash, name });
+					const [kind, hash, x, y, width, height, name] = line.split(" ");
+					acc.push({ kind, hash, name, rect: new Rect(Number(x), Number(y), Number(width), Number(height)) });
 					return acc;
 				},
 				[] as Array<TreeItem>,

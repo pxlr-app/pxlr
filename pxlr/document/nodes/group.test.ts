@@ -32,7 +32,7 @@ Deno.test("GroupNode", async (t) => {
 
 	await t.step("handles remove child command", () => {
 		const node1 = GroupNode.new("A");
-		const node2 = GroupNode.new("B", Vec2.ZERO, [node1]);
+		const node2 = GroupNode.new("B", [node1]);
 		const node3 = node2.dispatch(
 			node2.removeChild(node1.id),
 		) as GroupNode;
@@ -45,7 +45,7 @@ Deno.test("GroupNode", async (t) => {
 		const node1 = GroupNode.new("A");
 		const node2 = GroupNode.new("B");
 		const node3 = GroupNode.new("C");
-		const node4 = GroupNode.new("D", Vec2.ZERO, [node1, node2, node3]);
+		const node4 = GroupNode.new("D", [node1, node2, node3]);
 		const node5 = node4.dispatch(
 			node4.moveChild(node2.id, 2),
 		) as GroupNode;
@@ -69,8 +69,8 @@ Deno.test("GroupNode", async (t) => {
 	await t.step("forward command to children", () => {
 		const child1 = GroupNode.new("Child1");
 		const child2 = GroupNode.new("Child2");
-		const parent1 = GroupNode.new("Parent", Vec2.ZERO, [child1, child2]);
-		const root1 = GroupNode.new("Root", Vec2.ZERO, [parent1]);
+		const parent1 = GroupNode.new("Parent", [child1, child2]);
+		const root1 = GroupNode.new("Root", [parent1]);
 		const root1p = root1.dispatch(child1.rename("NewChild")) as GroupNode;
 		assertEquals(root1p.id, root1.id);
 		assertEquals(root1p.name, root1.name);
@@ -91,8 +91,8 @@ Deno.test("GroupNode", async (t) => {
 	await t.step("iterate group", () => {
 		const child1 = GroupNode.new("Child1");
 		const child2 = GroupNode.new("Child2");
-		const parent1 = GroupNode.new("Parent", Vec2.ZERO, [child1, child2]);
-		const root1 = GroupNode.new("Root", Vec2.ZERO, [parent1]);
+		const parent1 = GroupNode.new("Parent", [child1, child2]);
+		const root1 = GroupNode.new("Root", [parent1]);
 		const iter1 = root1.iter();
 		assertEquals(iter1.next(), { done: false, value: parent1 });
 		// assertEquals(iter1.next(), { done: false, value: parent1 });
@@ -104,8 +104,8 @@ Deno.test("GroupNode", async (t) => {
 	await t.step("get child by id", () => {
 		const child1 = GroupNode.new("Child1");
 		const child2 = GroupNode.new("Child2");
-		const parent1 = GroupNode.new("Parent", Vec2.ZERO, [child1, child2]);
-		const root1 = GroupNode.new("Root", Vec2.ZERO, [parent1]);
+		const parent1 = GroupNode.new("Parent", [child1, child2]);
+		const root1 = GroupNode.new("Root", [parent1]);
 		assertEquals(root1.getChildById(parent1.id), parent1);
 		assertEquals(parent1.getChildById(child2.id), child2);
 	});
@@ -113,8 +113,8 @@ Deno.test("GroupNode", async (t) => {
 	await t.step("get child by name", () => {
 		const child1 = GroupNode.new("Child1");
 		const child2 = GroupNode.new("Child2");
-		const parent1 = GroupNode.new("Parent", Vec2.ZERO, [child1, child2]);
-		const root1 = GroupNode.new("Root", Vec2.ZERO, [parent1]);
+		const parent1 = GroupNode.new("Parent", [child1, child2]);
+		const root1 = GroupNode.new("Root", [parent1]);
 		assertEquals(root1.getChildByName("Parent"), parent1);
 		assertEquals(parent1.getChildByName("Child2"), child2);
 	});
@@ -122,8 +122,8 @@ Deno.test("GroupNode", async (t) => {
 	await t.step("get child at name path", () => {
 		const child1 = GroupNode.new("Child1");
 		const child2 = GroupNode.new("Child2");
-		const parent1 = GroupNode.new("Parent", Vec2.ZERO, [child1, child2]);
-		const root1 = GroupNode.new("Root", Vec2.ZERO, [parent1]);
+		const parent1 = GroupNode.new("Parent", [child1, child2]);
+		const root1 = GroupNode.new("Root", [parent1]);
 		assertEquals(root1.getChildAtNamePath([parent1.name, child1.name]), child1);
 		assertEquals(root1.getChildAtNamePath([parent1.name, child2.name]), child2);
 	});

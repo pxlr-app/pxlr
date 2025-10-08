@@ -1,9 +1,9 @@
 import { assertID, ID } from "./id.ts";
 
 export abstract class Command {
-	#target: string;
+	#target: ID;
 	public constructor(
-		target: string,
+		target: ID,
 	) {
 		assertID(target);
 		this.#target = target;
