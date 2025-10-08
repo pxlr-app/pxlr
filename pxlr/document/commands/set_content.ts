@@ -1,13 +1,14 @@
 import { Command } from "../command.ts";
+import { ID } from "../id.ts";
 
 export class SetContentCommand extends Command {
-	#newContent: string;
-	public constructor(hash: string, target: string, newContent: string) {
-		super(hash, target);
-		this.#newContent = newContent;
+	#content: string;
+	public constructor(target: ID, content: string) {
+		super(target);
+		this.#content = content;
 	}
 
-	get newContent() {
-		return this.#newContent;
+	get content() {
+		return this.#content;
 	}
 }

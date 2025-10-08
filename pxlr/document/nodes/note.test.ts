@@ -13,7 +13,6 @@ Deno.test("NoteNode", async (t) => {
 		const node1 = NoteNode.new("A", "Content");
 		const node2 = node1.dispatch(node1.rename("B")) as NoteNode;
 		assert(node2 !== node1);
-		assertNotEquals(node2.hash, node1.hash);
 		assertEquals(node2.id, node1.id);
 		assertEquals(node2.name, "B");
 	});
@@ -22,7 +21,6 @@ Deno.test("NoteNode", async (t) => {
 		const node1 = NoteNode.new("A", "Content");
 		const node2 = node1.dispatch(node1.setContent("New content")) as NoteNode;
 		assert(node2 !== node1);
-		assertNotEquals(node2.hash, node1.hash);
 		assertEquals(node2.id, node1.id);
 		assertEquals(node2.content, "New content");
 	});

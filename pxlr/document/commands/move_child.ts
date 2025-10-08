@@ -1,21 +1,21 @@
 import { Command } from "../command.ts";
+import { ID } from "../id.ts";
 
 export class MoveChildCommand extends Command {
-	#childHash: string;
+	#child: ID;
 	#position: number;
 	public constructor(
-		hash: string,
-		target: string,
-		childHash: string,
+		target: ID,
+		child: ID,
 		position: number,
 	) {
-		super(hash, target);
-		this.#childHash = childHash;
+		super(target);
+		this.#child = child;
 		this.#position = position;
 	}
 
-	get childHash() {
-		return this.#childHash;
+	get child() {
+		return this.#child;
 	}
 
 	get position() {

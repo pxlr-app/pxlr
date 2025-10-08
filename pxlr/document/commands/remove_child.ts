@@ -1,13 +1,15 @@
 import { Command } from "../command.ts";
+import { assertID, ID } from "../id.ts";
 
 export class RemoveChildCommand extends Command {
-	#childHash: string;
-	public constructor(hash: string, target: string, childHash: string) {
-		super(hash, target);
-		this.#childHash = childHash;
+	#child: ID;
+	public constructor(target: ID, child: ID) {
+		super(target);
+		assertID(child);
+		this.#child = child;
 	}
 
-	get childHash() {
-		return this.#childHash;
+	get child() {
+		return this.#child;
 	}
 }

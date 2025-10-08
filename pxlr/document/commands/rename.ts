@@ -1,9 +1,10 @@
 import { Command } from "../command.ts";
+import { ID } from "../id.ts";
 
 export class RenameCommand extends Command {
 	#renameTo: string;
-	public constructor(hash: string, target: string, renameTo: string) {
-		super(hash, target);
+	public constructor(target: ID, renameTo: string) {
+		super(target);
 		this.#renameTo = renameTo;
 	}
 

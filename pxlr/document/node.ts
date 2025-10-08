@@ -8,39 +8,31 @@ export enum NodeIter {
 }
 
 export abstract class Node {
-	#hash: string;
 	#id: ID;
 	#kind: string;
 	#name: string;
 
 	public constructor(
-		hash: string,
 		id: ID,
 		kind: string,
 		name: string,
 	) {
 		assertID(id);
-		this.#hash = hash;
 		this.#id = id;
 		this.#kind = kind;
 		this.#name = name;
 	}
 
-	get hash() {
-		return this.#hash;
-	}
 	get id() {
 		return this.#id;
 	}
+
 	get kind() {
 		return this.#kind;
 	}
+
 	get name() {
 		return this.#name;
-	}
-
-	equals(other: unknown): boolean {
-		return !!other && other instanceof Node && other.hash === this.hash;
 	}
 
 	*iter(): Iterator<Node> {
@@ -53,22 +45,21 @@ export abstract class Node {
 	abstract dispatch(_command: Command): Node;
 
 	rename(renameTo: string): RenameCommand {
-		return new RenameCommand(id(), this.hash, renameTo);
+		return new RenameCommand(this.id, renameTo);
 	}
 }
 
 export class UnloadedNode extends Node {
 	public constructor(
-		hash: string,
 		id: ID,
 		kind: string,
 		name: string,
 	) {
-		super(hash, id, kind, name);
+		super(id, kind, name);
 	}
 
 	static new(kind: string, name: string) {
-		return new UnloadedNode(id(), id(), kind, name);
+		return new UnloadedNode(id(), kind, name);
 	}
 
 	override dispatch(_command: Command): Node {

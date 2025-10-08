@@ -46,13 +46,12 @@ export class GroupNode extends Node {
 	#position: ReadonlyVec2;
 	#children: ReadonlyArray<Node>;
 	public constructor(
-		hash: string,
 		id: ID,
 		name: string,
 		position: ReadonlyVec2,
 		children: ReadonlyArray<Node>,
 	) {
-		super(hash, id, "Group", name);
+		super(id, "Group", name);
 		this.#position = position;
 		this.#children = children;
 	}
@@ -66,7 +65,7 @@ export class GroupNode extends Node {
 	}
 
 	static new(name: string, position: ReadonlyVec2 = Vec2.ZERO, children: Node[] = []) {
-		return new GroupNode(id(), id(), name, position, children);
+		return new GroupNode(id(), name, position, children);
 	}
 
 	override *iter(): Iterator<Node> {
@@ -74,13 +73,12 @@ export class GroupNode extends Node {
 	}
 
 	dispatch(command: Command): Node {
-		if (command.target === this.hash) {
+		if (command.target === this.id) {
 			if (command instanceof RenameCommand) {
 				if (command.renameTo === this.name) {
 					return this;
 				}
 				return new GroupNode(
-					id(),
 					this.id,
 					command.renameTo,
 					this.position,
@@ -102,14 +100,13 @@ export class GroupNode extends Node {
 					new Set(this.children.concat(command.childNode)),
 				);
 				return new GroupNode(
-					id(),
 					this.id,
 					this.name,
 					this.position,
 					children,
 				);
 			} else if (command instanceof RemoveChildCommand) {
-				const childIndex = this.children.findIndex((node) => node.id === command.childHash);
+				const childIndex = this.children.findIndex((node) => node.id === command.child);
 				if (childIndex === -1) {
 					return this;
 				}
@@ -118,14 +115,13 @@ export class GroupNode extends Node {
 					...this.children.slice(childIndex + 1),
 				];
 				return new GroupNode(
-					id(),
 					this.id,
 					this.name,
 					this.position,
 					children,
 				);
 			} else if (command instanceof MoveChildCommand) {
-				const childIndex = this.children.findIndex((node) => node.id === command.childHash);
+				const childIndex = this.children.findIndex((node) => node.id === command.child);
 				if (childIndex === -1) {
 					return this;
 				}
@@ -137,7 +133,6 @@ export class GroupNode extends Node {
 					children.splice(command.position, 0, child);
 				}
 				return new GroupNode(
-					id(),
 					this.id,
 					this.name,
 					this.position,
@@ -145,7 +140,6 @@ export class GroupNode extends Node {
 				);
 			} else if (command instanceof MoveCommand) {
 				return new GroupNode(
-					id(),
 					this.id,
 					this.name,
 					new Vec2().copy(command.position),
@@ -158,7 +152,7 @@ export class GroupNode extends Node {
 		}
 		if (
 			command instanceof RenameCommand &&
-			this.children.find((child) => child.hash === command.target)
+			this.children.find((child) => child.id === command.target)
 		) {
 			const name = command.renameTo;
 			if (this.children.find((child) => child.name === name)) {
@@ -175,7 +169,6 @@ export class GroupNode extends Node {
 		});
 		if (mutated) {
 			return new GroupNode(
-				command instanceof ReplaceNodeCommand ? this.hash : id(),
 				this.id,
 				this.name,
 				this.position,
@@ -186,23 +179,19 @@ export class GroupNode extends Node {
 	}
 
 	moveTo(position: ReadonlyVec2): MoveCommand {
-		return new MoveCommand(id(), this.hash, new Vec2().copy(position));
+		return new MoveCommand(this.id, new Vec2().copy(position));
 	}
 
 	addChild(childNode: Node): AddChildCommand {
-		return new AddChildCommand(id(), this.hash, childNode);
+		return new AddChildCommand(this.id, childNode);
 	}
 
-	moveChild(childhash: string, position: number): MoveChildCommand {
-		return new MoveChildCommand(id(), this.hash, childhash, position);
+	moveChild(child: ID, position: number): MoveChildCommand {
+		return new MoveChildCommand(this.id, child, position);
 	}
 
-	removeChild(childhash: string): RemoveChildCommand {
-		return new RemoveChildCommand(id(), this.hash, childhash);
-	}
-
-	getChildByHash(hash: string): Node | undefined {
-		return this.children.find((child) => child.hash === hash);
+	removeChild(child: ID): RemoveChildCommand {
+		return new RemoveChildCommand(this.id, child);
 	}
 
 	getChildById(id: ID): Node | undefined {

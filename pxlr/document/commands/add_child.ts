@@ -1,10 +1,11 @@
 import { Node } from "../node.ts";
 import { Command } from "../command.ts";
+import { ID } from "../id.ts";
 
 export class AddChildCommand extends Command {
 	#childNode: Node;
-	public constructor(hash: string, target: string, childNode: Node) {
-		super(hash, target);
+	public constructor(target: ID, childNode: Node) {
+		super(target);
 		this.#childNode = childNode;
 	}
 

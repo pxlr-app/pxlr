@@ -27,13 +27,12 @@ export class NoteNode extends Node {
 	#content: string;
 	#position: ReadonlyVec2;
 	public constructor(
-		hash: string,
 		id: ID,
 		name: string,
 		content: string,
 		position: ReadonlyVec2,
 	) {
-		super(hash, id, "Note", name);
+		super(id, "Note", name);
 		this.#content = content;
 		this.#position = position;
 	}
@@ -47,17 +46,16 @@ export class NoteNode extends Node {
 	}
 
 	static new(name: string, content: string, position: ReadonlyVec2 = Vec2.ZERO) {
-		return new NoteNode(id(), id(), name, content, position);
+		return new NoteNode(id(), name, content, position);
 	}
 
 	dispatch(command: Command): Node {
-		if (command.target === this.hash) {
+		if (command.target === this.id) {
 			if (command instanceof RenameCommand) {
 				if (command.renameTo === this.name) {
 					return this;
 				}
 				return new NoteNode(
-					id(),
 					this.id,
 					command.renameTo,
 					this.content,
@@ -65,15 +63,13 @@ export class NoteNode extends Node {
 				);
 			} else if (command instanceof SetContentCommand) {
 				return new NoteNode(
-					id(),
 					this.id,
 					this.name,
-					command.newContent,
+					command.content,
 					this.position,
 				);
 			} else if (command instanceof MoveCommand) {
 				return new NoteNode(
-					id(),
 					this.id,
 					this.name,
 					this.content,
@@ -87,10 +83,10 @@ export class NoteNode extends Node {
 	}
 
 	setContent(newContent: string): SetContentCommand {
-		return new SetContentCommand(id(), this.hash, newContent);
+		return new SetContentCommand(this.id, newContent);
 	}
 
 	moveTo(position: ReadonlyVec2): MoveCommand {
-		return new MoveCommand(id(), this.hash, new Vec2().copy(position));
+		return new MoveCommand(this.id, new Vec2().copy(position));
 	}
 }

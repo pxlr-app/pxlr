@@ -3,8 +3,8 @@ import { Command } from "../command.ts";
 
 export class ReplaceNodeCommand extends Command {
 	#node: Node;
-	public constructor(hash: string, node: Node) {
-		super(hash, node.hash);
+	public constructor(node: Node) {
+		super(node.id);
 		this.#node = node;
 	}
 
