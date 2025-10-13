@@ -51,6 +51,10 @@ export class Vec2 {
 		return this.set(other.buffer[0], other.buffer[1]);
 	}
 
+	clone(): Vec2 {
+		return new Vec2(this.#buffer.slice());
+	}
+
 	length() {
 		return Math.sqrt(this.#buffer[0] * this.#buffer[0] + this.#buffer[1] * this.#buffer[1]);
 	}

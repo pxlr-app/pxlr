@@ -1,15 +1,16 @@
 import { Node } from "./node.ts";
 import { ID } from "./id.ts";
+import { Tree } from "../repository/tree.ts";
+import { Blob } from "../repository/blob.ts";
+
+export interface NodeSerializerOptions<T extends Node> {
+	node: T;
+	getObjectHashByNodeId: (id: ID) => string | undefined;
+}
 
 export interface NodeDeserializerOptions {
-	item: {
-		hash: string;
-		id: ID;
-		kind: string;
-		name: string;
-	};
-	stream: ReadableStream<Uint8Array>;
-	getNodeByHash: (
+	stream: ReadableStream<Uint8Array<ArrayBuffer>>;
+	getNodeByObjectHash: (
 		hash: string,
 		shallow: boolean,
 		abortSignal?: AbortSignal,
@@ -18,17 +19,14 @@ export interface NodeDeserializerOptions {
 	abortSignal?: AbortSignal;
 }
 
-export type NodeDeserializer<T extends Node> = (
-	options: NodeDeserializerOptions,
-) => T | Promise<T>;
+export type NodeDeserializer<TNode extends Node> = (options: NodeDeserializerOptions) => TNode | Promise<TNode>;
+export type NodeSerializer<TNode extends Node> = (options: NodeSerializerOptions<TNode>) => Tree | Blob | Promise<Tree | Blob>;
 
-export type NodeSerializer<T extends Node> = (node: T) => ReadableStream<Uint8Array>;
-
-export class NodeRegistryEntry<T extends Node> {
+export class NodeRegistryEntry<TNode extends Node> {
 	#kind: string;
-	#deserializer: NodeDeserializer<T>;
-	#serializer: NodeSerializer<T>;
-	constructor(kind: string, nodeDeserializer: NodeDeserializer<T>, nodeSerializer: NodeSerializer<T>) {
+	#deserializer: NodeDeserializer<TNode>;
+	#serializer: NodeSerializer<TNode>;
+	constructor(kind: string, nodeDeserializer: NodeDeserializer<TNode>, nodeSerializer: NodeSerializer<TNode>) {
 		this.#kind = kind;
 		this.#deserializer = nodeDeserializer;
 		this.#serializer = nodeSerializer;
@@ -50,7 +48,7 @@ export class NodeRegistryEntry<T extends Node> {
 export class NodeRegistry {
 	#entryMap = new Map<string, NodeRegistryEntry<Node>>();
 
-	register<T extends Node>(entry: NodeRegistryEntry<T>): void {
+	register<TNode extends Node>(entry: NodeRegistryEntry<TNode>): void {
 		// deno-lint-ignore no-explicit-any
 		this.#entryMap.set(entry.kind, entry as any);
 	}

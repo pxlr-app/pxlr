@@ -32,20 +32,17 @@ export abstract class Node {
 		return this.#kind;
 	}
 
-	abstract rect: ReadonlyRect;
-
 	get name() {
 		return this.#name;
 	}
 
-	*iter(): Iterator<Node> {
-	}
+	*iter(): Iterator<Node> {}
 
 	[Symbol.iterator](): Iterator<Node> {
 		return this.iter();
 	}
 
-	abstract dispatch(_command: Command): Node;
+	abstract execCommand(_command: Command): Node;
 
 	rename(renameTo: string): RenameCommand {
 		return new RenameCommand(this.id, renameTo);
@@ -53,23 +50,15 @@ export abstract class Node {
 }
 
 export class UnloadedNode extends Node {
-	#rect: ReadonlyRect;
-
 	public constructor(
 		id: ID,
 		kind: string,
-		rect: ReadonlyRect,
 		name: string,
 	) {
 		super(id, kind, name);
-		this.#rect = rect;
 	}
 
-	get rect() {
-		return this.#rect;
-	}
-
-	override dispatch(_command: Command): Node {
+	override execCommand(_command: Command): Node {
 		throw new UnloadedNodeMethodError();
 	}
 }

@@ -47,21 +47,18 @@ Deno.test("KDTree2", async (t) => {
 		tree.insert(new Data(0, 0, 5, 5, "A"));
 		tree.insert(new Data(5, 0, 5, 5, "B"));
 		tree.insert(new Data(0, 5, 10, 5, "C"));
-		// tree.insert(new Data(8, 8, 5, 5, "D"));
 
 		const result1 = Array.from(tree.search(new Rect(5, 0, 5, 10)));
 		assertEquals(result1.length, 2);
-		assertEquals(result1[0].data, "A");
-		assertEquals(result1[1].data, "B");
+		assertEquals(result1[0].data, "B");
+		assertEquals(result1[1].data, "C");
 
 		const result2 = Array.from(tree.search(new Rect(6, 6, 1, 1)));
-		assertEquals(result2.length, 2);
-		assertEquals(result2[0].data, "A");
-		assertEquals(result2[1].data, "C");
+		assertEquals(result2.length, 1);
+		assertEquals(result2[0].data, "C");
 
 		const result3 = Array.from(tree.search(new Rect(10, 10, 8, 8)));
-		assertEquals(result3.length, 1);
-		assertEquals(result3[0].data, "D");
+		assertEquals(result3.length, 0);
 	});
 });
 

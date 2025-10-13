@@ -9,7 +9,45 @@ import { Node, UnloadedNode } from "../node.ts";
 import { NodeRegistryEntry } from "../node_registry.ts";
 import { ReadonlyVec2, Rect, Vec2 } from "@pxlr/math";
 import { MoveCommand } from "../commands/move.ts";
+import { Tree, TreeItem } from "../../repository/tree.ts";
+import { assert } from "@std/assert/assert";
 
+export const GroupNodeRegistryEntry = new NodeRegistryEntry<GroupNode>(
+	"Group",
+	async ({ abortSignal, getNodeByObjectHash, shallow, stream }) => {
+		const tree = await Tree.fromReadableStream(stream);
+		const id = tree.headers.get("id");
+		const name = tree.headers.get("name");
+		const kind = tree.headers.get("kind");
+		const x = Number(tree.headers.get("x"));
+		const y = Number(tree.headers.get("y"));
+		assertID(id);
+		assert(kind === "Group");
+		assert(name);
+		const children: Node[] = [];
+		for (const item of tree.items) {
+			let node: Node;
+			if (item.kind === "tree") {
+				node = await getNodeByObjectHash(item.hash, shallow, abortSignal);
+			} else if (shallow) {
+				node = new UnloadedNode(id, "Group", name);
+			} else {
+				node = await getNodeByObjectHash(item.hash, false, abortSignal);
+			}
+			children.push(node);
+		}
+		return new GroupNode(id, name, children, new Vec2(x, y));
+	},
+	({ node, getObjectHashByNodeId }) => {
+		const rect = node.rect;
+		const items = node.children.map((node) => ({
+			hash: getObjectHashByNodeId(node.id),
+			kind: node.kind,
+			name: node.name,
+		} as TreeItem));
+		return Tree.new({ kind: node.kind, id: node.id, name: node.name, x: rect.x.toString(), y: rect.y.toString() }, items);
+	},
+);
 // export const GroupNodeRegistryEntry = new NodeRegistryEntry<GroupNode>(
 // 	"Group",
 // 	async ({ item, stream, getNodeByHash, shallow, abortSignal }) => {
@@ -64,7 +102,15 @@ export class GroupNode extends Node {
 		return new Rect(this.#position.x, this.#position.y, 0, 0);
 	}
 
-	static new(name: string, children: Node[] = [], position: ReadonlyVec2 = Vec2.ZERO) {
+	static new({
+		name,
+		children = [],
+		position = Vec2.ZERO,
+	}: {
+		name: string;
+		children?: Node[];
+		position?: ReadonlyVec2;
+	}) {
 		return new GroupNode(id(), name, children, position);
 	}
 
@@ -72,7 +118,7 @@ export class GroupNode extends Node {
 		yield* this.children;
 	}
 
-	dispatch(command: Command): Node {
+	execCommand(command: Command): Node {
 		if (command.target === this.id) {
 			if (command instanceof RenameCommand) {
 				if (command.renameTo === this.name) {
@@ -161,7 +207,7 @@ export class GroupNode extends Node {
 		}
 		let mutated = false;
 		const children = this.children.map((node) => {
-			const newNode = node.dispatch(command);
+			const newNode = node.execCommand(command);
 			if (newNode !== node) {
 				mutated = true;
 			}

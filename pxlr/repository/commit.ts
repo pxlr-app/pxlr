@@ -23,20 +23,20 @@ export class Commit {
 		this.#message = message;
 	}
 
-	static create(
-		parent: string | null,
-		tree: string,
-		commiter: string,
-		date: Date,
-		message: string,
-	): Commit {
+	static new(options: {
+		parent?: string;
+		tree: string;
+		commiter: string;
+		date: Date;
+		message: string;
+	}): Commit {
 		const hashBuffer = sha1.create()
-			.update(Commit.#toArrayBuffer(parent, tree, commiter, date, message))
+			.update(Commit.#toArrayBuffer(options.parent ?? null, options.tree, options.commiter, options.date, options.message))
 			.digest();
 		const hash = Array.from(new Uint8Array(hashBuffer))
 			.map((b) => b.toString(16).padStart(2, "0"))
 			.join("");
-		return new Commit(hash, parent, tree, commiter, date, message);
+		return new Commit(hash, options.parent ?? null, options.tree, options.commiter, options.date, options.message);
 	}
 
 	static #toArrayBuffer(
@@ -90,13 +90,13 @@ export class Commit {
 				{} as Record<string, string | null>,
 			);
 
-		return Commit.create(
-			headers.parent || null,
-			headers.tree!,
-			decodeURIComponent(headers.commiter!),
-			new Date(headers.date!),
-			parts.join("\n\n"),
-		);
+		return Commit.new({
+			parent: headers.parent || undefined,
+			tree: headers.tree!,
+			commiter: decodeURIComponent(headers.commiter!),
+			date: new Date(headers.date!),
+			message: parts.join("\n\n"),
+		});
 	}
 
 	toReadableStream(): ReadableStream<Uint8Array<ArrayBuffer>> {

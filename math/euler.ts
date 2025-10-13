@@ -16,7 +16,7 @@ export enum RotationOrder {
 export class Euler {
 	#buffer: NumberArray;
 	#order: RotationOrder;
-	constructor(buffer: NumberArray, order?: RotationOrder.XYZ);
+	constructor(buffer: NumberArray, order?: RotationOrder);
 	constructor(x?: number, y?: number, z?: number, order?: RotationOrder.XYZ, ctor?: NumberArrayConstructor);
 	constructor(
 		buffer_or_x: NumberArray | number = 0,
@@ -111,6 +111,10 @@ export class Euler {
 		this.#buffer[2] = other.buffer[2];
 		this.#order = other.order;
 		return this;
+	}
+
+	clone(): Euler {
+		return new Euler(this.#buffer.slice(), this.#order);
 	}
 
 	setFromRotationMatrix(mat4: ReadonlyMat4, order = this.#order) {

@@ -61,6 +61,10 @@ export class Vec3 {
 		return this.set(other.buffer[0], other.buffer[1], other.buffer[2]);
 	}
 
+	clone(): Vec3 {
+		return new Vec3(this.#buffer.slice());
+	}
+
 	length() {
 		return Math.sqrt(this.#buffer[0] * this.#buffer[0] + this.#buffer[1] * this.#buffer[1] + this.#buffer[2] * this.#buffer[2]);
 	}

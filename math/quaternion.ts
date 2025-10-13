@@ -66,6 +66,10 @@ export class Quaternion {
 		return this.set(other.buffer[0], other.buffer[1], other.buffer[2], other.buffer[3]);
 	}
 
+	clone(): Quaternion {
+		return new Quaternion(this.#buffer.slice());
+	}
+
 	setFromEuler(euler: ReadonlyEuler) {
 		const c1 = Math.cos(euler.x / 2);
 		const c2 = Math.cos(euler.y / 2);

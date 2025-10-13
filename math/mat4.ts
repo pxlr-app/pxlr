@@ -86,6 +86,10 @@ export class Mat4 {
 		);
 	}
 
+	clone(): Mat4 {
+		return new Mat4(this.#buffer.slice());
+	}
+
 	mul(other: ReadonlyMat4) {
 		const a11 = this.#buffer[0];
 		const a12 = this.#buffer[4];

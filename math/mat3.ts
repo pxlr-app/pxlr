@@ -51,6 +51,10 @@ export class Mat3 {
 		);
 	}
 
+	clone(): Mat3 {
+		return new Mat3(this.#buffer.slice());
+	}
+
 	mul(other: ReadonlyMat3) {
 		const a11 = this.#buffer[0];
 		const a12 = this.#buffer[1];

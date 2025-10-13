@@ -20,20 +20,24 @@ export class Repository {
 		return this.setReference("HEAD", new Reference(ref), abortSignal);
 	}
 
-	async setBlob(blob: Blob, abortSignal?: AbortSignal): Promise<void> {
-		const file = await this.#root.getFile(`objects/${blob.hash.slice(0, 2)}/${blob.hash.slice(2)}`, abortSignal);
-		await blob.toReadableStream().pipeTo(await file.write(0, abortSignal));
-	}
-
 	async getBlob(hash: string, abortSignal?: AbortSignal): Promise<Blob> {
 		const file = await this.#root.getFile(`objects/${hash.slice(0, 2)}/${hash.slice(2)}`, abortSignal);
 		const blob = await Blob.fromReadableStream(await file.read(1024 * 1024 * 1024, 0, abortSignal));
 		return blob;
 	}
 
-	async setCommit(commit: Commit, abortSignal?: AbortSignal): Promise<void> {
-		const file = await this.#root.getFile(`objects/${commit.hash.slice(0, 2)}/${commit.hash.slice(2)}`, abortSignal);
-		await commit.toReadableStream().pipeTo(await file.write(0, abortSignal));
+	async hasObject(hash: string, abortSignal?: AbortSignal): Promise<boolean> {
+		try {
+			const file = await this.#root.getFile(`objects/${hash.slice(0, 2)}/${hash.slice(2)}`, abortSignal);
+			return file.exists(abortSignal);
+		} catch {
+			return false;
+		}
+	}
+
+	async setObject(object: Tree | Blob | Commit, abortSignal?: AbortSignal): Promise<void> {
+		const file = await this.#root.getFile(`objects/${object.hash.slice(0, 2)}/${object.hash.slice(2)}`, abortSignal);
+		await object.toReadableStream().pipeTo(await file.write(0, abortSignal));
 	}
 
 	async getCommit(hash: string, abortSignal?: AbortSignal): Promise<Commit> {
@@ -51,11 +55,6 @@ export class Repository {
 		const file = await this.#root.getFile(path, abortSignal);
 		const ref = await Reference.fromReadableStream(await file.read(1024 * 1024 * 1024, 0, abortSignal));
 		return ref;
-	}
-
-	async setTree(tree: Tree, abortSignal?: AbortSignal): Promise<void> {
-		const file = await this.#root.getFile(`objects/${tree.hash.slice(0, 2)}/${tree.hash.slice(2)}`, abortSignal);
-		await tree.toReadableStream().pipeTo(await file.write(0, abortSignal));
 	}
 
 	async getTree(hash: string, abortSignal?: AbortSignal): Promise<Tree> {

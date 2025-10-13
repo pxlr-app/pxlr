@@ -20,6 +20,10 @@ class Cell2<TData extends Extent2> extends Rect {
 	set content(value: TData | null) {
 		this.#content = value;
 	}
+
+	override clone(): Cell2<TData> {
+		return new Cell2<TData>(this.x, this.y, this.width, this.height, this.#content);
+	}
 }
 
 export class Grid2<TData extends Extent2> extends Extent2 {
@@ -121,5 +125,19 @@ export class Grid2<TData extends Extent2> extends Extent2 {
 				yield [cell.content, new Vec2(cell.x, cell.y)];
 			}
 		}
+	}
+
+	override clone(): Grid2<TData> {
+		const tree = this.#tree.clone();
+		const emptyCells = new Set<Cell2<TData>>();
+		for (const cell of tree) {
+			if (cell.isEmpty) {
+				emptyCells.add(cell);
+			}
+		}
+		const grid = new Grid2<TData>(this.width, this.height);
+		grid.#tree = tree;
+		grid.#emptyCells = emptyCells;
+		return grid;
 	}
 }

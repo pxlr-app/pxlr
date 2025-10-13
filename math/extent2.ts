@@ -44,6 +44,10 @@ export class Extent2 {
 	copy(other: ReadonlyExtent2) {
 		return this.set(other.buffer[0], other.buffer[1]);
 	}
+
+	clone(): Extent2 {
+		return new Extent2(this.#buffer.slice());
+	}
 }
 
 export type ReadonlyExtent2 = Pick<Extent2, "buffer" | "width" | "height">;

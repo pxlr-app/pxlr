@@ -96,6 +96,10 @@ export class Rect {
 		return this.set(rect.x, rect.y, rect.width, rect.height);
 	}
 
+	clone(): Rect {
+		return new Rect(this.#buffer.slice());
+	}
+
 	union(rect: Rect) {
 		const x1 = Math.min(this.left, rect.left);
 		const y1 = Math.min(this.top, rect.top);

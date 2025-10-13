@@ -1,7 +1,8 @@
+import { clamp } from "@pxlr/math";
 import { Command } from "./command.ts";
 import { Node } from "./node.ts";
 
-export class History {
+export class NodeHistory {
 	#cursor: number;
 	#entries: Node[];
 
@@ -26,7 +27,7 @@ export class History {
 	}
 
 	get tail() {
-		return this.#entries.at(0);
+		return this.#entries.at(0)!;
 	}
 
 	get head() {
@@ -37,20 +38,21 @@ export class History {
 		return this.#entries.at(this.#cursor)!;
 	}
 
-	dispatch(command: Command) {
-		const newNode = this.current.dispatch(command);
-		return new History([...this.#entries.slice(0, this.#cursor + 1), newNode]);
+	execCommand(command: Command) {
+		const newNode = this.current.execCommand(command);
+		return new NodeHistory([...this.#entries.slice(0, this.#cursor + 1), newNode]);
 	}
 
-	seek(delta = 1) {
-		const newCursor = Math.max(0, Math.min(this.#entries.length - 1, this.#cursor + delta));
+	seek(delta: number) {
+		const newCursor = clamp(this.#cursor + delta, 0, this.#entries.length - 1);
 		return this.goto(newCursor);
 	}
 
 	goto(cursor: number) {
+		cursor = clamp(cursor, 0, this.#entries.length - 1);
 		if (cursor === this.#cursor) {
 			return this;
 		}
-		return new History(this.#entries, cursor);
+		return new NodeHistory(this.#entries, cursor);
 	}
 }

@@ -3,30 +3,23 @@ import { Node } from "../node.ts";
 import { ReadonlyExtent2, ReadonlyVec2, Rect, Vec2 } from "@pxlr/math";
 import { ID, id } from "../id.ts";
 import { Command } from "../command.ts";
+import { ImageChannelNode } from "./image_channel.ts";
 import { RenameCommand } from "../commands/rename.ts";
 import { MoveCommand } from "../commands/move.ts";
 import { ReplaceNodeCommand } from "../commands/replace_node.ts";
-
-export const ImageChannel = {
-	PALETTE: "palette",
-	UV: "uv",
-	RGB: "rgb",
-	RGBA: "rgba",
-} as const;
-
-export type ImageChannel = (typeof ImageChannel)[keyof typeof ImageChannel];
+import { GroupNode } from "./group.ts";
 
 export class ImageNode extends Node {
-	#channels: ImageChannel[];
-	#layers: unknown[];
+	#channels: ImageChannelNode[];
+	#layers: GroupNode;
 	#position: ReadonlyVec2;
 	#size: ReadonlyExtent2;
 	public constructor(
 		id: ID,
 		name: string,
 		size: ReadonlyExtent2,
-		channels: ImageChannel[],
-		layers: unknown[],
+		channels: ImageChannelNode[],
+		layers: GroupNode,
 		position: ReadonlyVec2,
 	) {
 		super(id, "Image", name);
@@ -56,11 +49,28 @@ export class ImageNode extends Node {
 		return this.#layers;
 	}
 
-	static new(name: string, size: ReadonlyExtent2, channels: ImageChannel[], layers: unknown[] = [], position: ReadonlyVec2 = Vec2.ZERO) {
-		return new ImageNode(id(), name, size, channels, layers, position);
+	static new({
+		name,
+		size,
+		channels,
+		layers = [],
+		position = Vec2.ZERO,
+	}: {
+		name: string;
+		size: ReadonlyExtent2;
+		channels: ImageChannelNode[];
+		layers?: Node[];
+		position?: ReadonlyVec2;
+	}) {
+		return new ImageNode(id(), name, size, channels, GroupNode.new({ name: "", children: layers }), position);
 	}
 
-	dispatch(command: Command): Node {
+	override *iter(): Iterator<Node> {
+		yield* this.channels;
+		yield this.layers;
+	}
+
+	execCommand(command: Command): Node {
 		// if (command.target === this.hash) {
 		// 	if (command instanceof RenameCommand) {
 		// 		if (command.renameTo === this.name) {

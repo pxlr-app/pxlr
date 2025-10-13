@@ -92,6 +92,13 @@ class Node<TData extends Rect> {
 			yield* this.#right.search(query);
 		}
 	}
+
+	clone(): Node<TData> {
+		const clone = new Node<TData>(this.#content, this.#axis);
+		clone.#left = this.#left?.clone() ?? null;
+		clone.#right = this.#right?.clone() ?? null;
+		return clone;
+	}
 }
 
 export class KDTree2<TData extends Rect> extends Rect {
@@ -104,12 +111,9 @@ export class KDTree2<TData extends Rect> extends Rect {
 	insert(data: TData): void {
 		if (this.#root === null) {
 			this.#root = new Node(data);
-		} else {
-			this.#root.insert(data);
-		}
-		if (this.width === 0 && this.height === 0) {
 			this.set(data.x, data.y, data.width, data.height);
 		} else {
+			this.#root.insert(data);
 			this.union(data);
 		}
 	}
@@ -133,6 +137,13 @@ export class KDTree2<TData extends Rect> extends Rect {
 		if (this.#root) {
 			yield* this.#root;
 		}
+	}
+
+	override clone(): KDTree2<TData> {
+		const tree = new KDTree2<TData>();
+		tree.#root = this.#root?.clone() ?? null;
+		tree.set(this.x, this.y, this.width, this.height);
+		return tree;
 	}
 }
 
@@ -201,5 +212,14 @@ export class KDLayeredTree2<TData extends Rect> extends Rect {
 
 	*[Symbol.iterator](): IterableIterator<KDTree2<TData>> {
 		yield* this.#layers;
+	}
+
+	override clone(): KDLayeredTree2<TData> {
+		const tree = new KDLayeredTree2<TData>();
+		for (const layer of this.#layers) {
+			tree.#layers.push(layer.clone());
+		}
+		tree.set(this.x, this.y, this.width, this.height);
+		return tree;
 	}
 }
