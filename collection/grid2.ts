@@ -76,23 +76,25 @@ export class Grid2<TData extends Extent2> extends Extent2 {
 				} else {
 					// Try to merge empty cells to fit
 					const query = new Rect(cell.x, cell.y, data.width, data.height);
-					const cells = Array.from(this.#tree.search(query));
-					if (cells.length > 0 && cells.every((c) => c.isEmpty)) {
-						for (const cell of cells) {
-							this.#tree.remove(cell);
-							this.#emptyCells.delete(cell);
+					if (this.#tree.contains(query)) {
+						const cells = Array.from(this.#tree.search(query));
+						if (cells.length > 0 && cells.every((c) => c.isEmpty)) {
+							for (const cell of cells) {
+								this.#tree.remove(cell);
+								this.#emptyCells.delete(cell);
 
-							for (const diff of cell.difference(query)) {
-								if (diff.width > 0 && diff.height > 0) {
-									const cellA = new Cell2<TData>(diff.x, diff.y, diff.width, diff.height, null);
-									this.#emptyCells.add(cellA);
-									this.#tree.insert(cellA);
+								for (const diff of cell.difference(query)) {
+									if (diff.width > 0 && diff.height > 0) {
+										const cellA = new Cell2<TData>(diff.x, diff.y, diff.width, diff.height, null);
+										this.#emptyCells.add(cellA);
+										this.#tree.insert(cellA);
+									}
 								}
 							}
+							const cellA = new Cell2<TData>(query.x, query.y, query.width, query.height, data);
+							this.#tree.insert(cellA);
+							return new Vec2(cellA.x, cellA.y);
 						}
-						const cellA = new Cell2<TData>(query.x, query.y, query.width, query.height, data);
-						this.#tree.insert(cellA);
-						return new Vec2(cellA.x, cellA.y);
 					}
 				}
 			}
