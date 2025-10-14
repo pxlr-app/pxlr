@@ -11,26 +11,30 @@ import { Tree } from "./repository/tree.ts";
 import { Blob } from "./repository/blob.ts";
 import { assert } from "@std/assert/assert";
 import { Commit } from "./repository/commit.ts";
+import { Reference } from "./repository/reference.ts";
 
 export class Workspace {
 	#repository: Repository;
 	#registry: NodeRegistry;
 	#cache: NodeCache;
 	#history: NodeHistory;
-	#ref: string;
+	#commit: string | null;
+	#reference: string | null;
 
 	constructor(options: {
 		repository: Repository;
 		registry: NodeRegistry;
 		history: NodeHistory;
 		cache: NodeCache;
-		ref: string;
+		commit: string | null;
+		reference: string | null;
 	}) {
 		this.#repository = options.repository;
 		this.#registry = options.registry;
 		this.#cache = options.cache;
 		this.#history = options.history;
-		this.#ref = options.ref;
+		this.#commit = options.commit;
+		this.#reference = options.reference;
 	}
 
 	get repository() {
@@ -39,6 +43,14 @@ export class Workspace {
 
 	get registry() {
 		return this.#registry;
+	}
+
+	get commit() {
+		return this.#commit;
+	}
+
+	get reference() {
+		return this.#reference;
 	}
 
 	get history() {
@@ -53,21 +65,22 @@ export class Workspace {
 			registry: options.registry,
 			history,
 			cache: options.cache,
-			ref: "refs/heads/main",
+			commit: null,
+			reference: "refs/heads/main",
 		});
 	}
 
 	static async checkout(options: {
 		repository: Repository;
 		registry: NodeRegistry;
-		ref: string;
+		reference: string;
 		cache: NodeCache;
 	}): Promise<Workspace> {
 		throw "TODO!";
 	}
 
-	async commit(options: {
-		author: string;
+	async commitChanges(options: {
+		committer: string;
 		message: string;
 		allowEmpty?: boolean;
 		abortSignal?: AbortSignal;
@@ -75,38 +88,49 @@ export class Workspace {
 		const current = this.history.current;
 		assert(current instanceof GroupNode, "Current node must be a GroupNode");
 
+		const idToHash = new Map<ID, string>();
+		let emptyCommit = true;
+
+		// TODO: parallelize this with Promise.allSettled
+		// but limit concurrency to avoid too many open files
+		// and too much memory usage
+
+		// We do a post-order traversal to ensure children are processed before parents
+		// so that parent hashes can be computed from child hashes
+		// This way, we only need to store one hash per node in memory at a time
 		const nodes = visit(current, {
 			leave: (node, ctx) => {
 				ctx.push(node);
 			},
 		}, [] as Node[]);
 
-		const idToHash = new Map<ID, string>();
-		let emptyCommit = true;
-
 		for (const node of nodes) {
 			const registryEntry = this.registry.get(node.kind);
 			const object = await registryEntry.serialize({ node, getObjectHashByNodeId: (id) => idToHash.get(id) });
-			idToHash.set(node.id, object.hash);
-			if (!await this.repository.hasObject(object.hash, options.abortSignal)) {
-				await this.repository.setObject(object, options.abortSignal);
+			const hash = await this.repository.getObjectHash(object, options.abortSignal);
+			if (!await this.repository.hasObject(hash, options.abortSignal)) {
+				await this.repository.unsafe_setObject(hash, object, options.abortSignal);
 				emptyCommit = false;
 			}
+			idToHash.set(node.id, hash);
 		}
 
 		if (emptyCommit && !options.allowEmpty) {
 			throw new NothingToCommitError();
 		}
 
-		// TODO on what ref are we pointing to?
-		// TODO create new commit
-		// TODO move ref to new commit
-
-		// const commit = Commit.new({
-		// 	parent: idToHash.get(current.id)!,
-		// })
-
-		throw "TODO!";
+		const commit = new Commit({
+			parent: this.#commit,
+			tree: idToHash.get(current.id)!,
+			commiter: options.committer,
+			date: new Date(),
+			message: options.message,
+		});
+		const commitHash = await this.repository.setObject(commit, options.abortSignal);
+		if (this.#reference) {
+			await this.repository.setReference(this.#reference, new Reference(commitHash), options.abortSignal);
+		}
+		this.#commit = commitHash;
 	}
 
 	getNodeById(id: ID): Node | undefined {

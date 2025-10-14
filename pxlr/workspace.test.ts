@@ -5,6 +5,7 @@ import { NodeRegistry } from "./document/node_registry.ts";
 import { NodeCache } from "./document/node_cache.ts";
 import { NoteNodeRegistryEntry } from "./document/nodes/note.ts";
 import { GroupNodeRegistryEntry } from "./document/nodes/group.ts";
+import { assert } from "@std/assert/assert";
 
 Deno.test("Workspace", async (t) => {
 	await t.step("test", async () => {
@@ -19,9 +20,11 @@ Deno.test("Workspace", async (t) => {
 			registry,
 			cache,
 		});
-		await workspace.commit({
-			author: "system",
+		await repository.setHead(workspace.reference!);
+		await workspace.commitChanges({
+			committer: "system",
 			message: "Initial commit",
 		});
+		assert(workspace.commit);
 	});
 });

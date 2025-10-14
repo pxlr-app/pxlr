@@ -10,12 +10,14 @@ Deno.test("ImageNode", async (t) => {
 		const patch1 = ImageLayerPatchNode.new({
 			position: new Vec2(0, 0),
 			size: new Extent2(2, 2),
-			data: new Uint8Array([1, 2, 3, 4]).buffer,
+			storageFormat: "rg8uint",
+			data: new Uint8Array([1, 1, 2, 1, 3, 1, 4, 1]).buffer,
 		});
 		const patch2 = ImageLayerPatchNode.new({
 			position: new Vec2(2, 2),
 			size: new Extent2(2, 2),
-			data: new Uint8Array([5, 6, 7, 8]).buffer,
+			storageFormat: "rg8uint",
+			data: new Uint8Array([5, 1, 6, 1, 7, 1, 8, 1]).buffer,
 		});
 		const layer1 = ImageLayerNode.new({
 			name: "Layer 1",
@@ -27,7 +29,7 @@ Deno.test("ImageNode", async (t) => {
 		const channel1 = ImageChannelNode.new({
 			name: "Diffuse",
 			identifier: "gray",
-			storageFormat: "r8uint",
+			storageFormat: "rg8uint",
 			renderAs: "grayscale",
 		});
 		const img1 = ImageNode.new({

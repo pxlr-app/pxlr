@@ -45,7 +45,7 @@ export const GroupNodeRegistryEntry = new NodeRegistryEntry<GroupNode>(
 			kind: node.kind,
 			name: node.name,
 		} as TreeItem));
-		return Tree.new({ kind: node.kind, id: node.id, name: node.name, x: rect.x.toString(), y: rect.y.toString() }, items);
+		return new Tree({ kind: node.kind, id: node.id, name: node.name, x: rect.x.toString(), y: rect.y.toString() }, items);
 	},
 );
 // export const GroupNodeRegistryEntry = new NodeRegistryEntry<GroupNode>(

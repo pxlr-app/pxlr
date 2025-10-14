@@ -4,6 +4,7 @@ import { ID, id } from "../id.ts";
 import { Command } from "../command.ts";
 import { RenameCommand } from "../commands/rename.ts";
 import { ReplaceNodeCommand } from "../commands/replace_node.ts";
+import { ImageLayerPatchFormat } from "./image_layer_patch.ts";
 
 // export const NoteNodeRegistryEntry = new NodeRegistryEntry<NoteNode>(
 // 	"Note",
@@ -20,24 +21,16 @@ import { ReplaceNodeCommand } from "../commands/replace_node.ts";
 // 	},
 // );
 
-export type ImageChannelFormat =
-	| "r8uint"
-	| "depth32float"
-	| "rg16unorm"
-	| "rgba8unorm"
-	| "rgba8uint";
-
 export type ImageChannelRenderAs =
 	| "grayscale"
-	| "rg"
-	| "rgb"
-	| "rgba"
 	| "palette"
-	| "uv";
+	| "uv"
+	| "rgb"
+	| "rgba";
 
 export class ImageChannelNode extends Node {
 	#identifier: string;
-	#storageFormat: ImageChannelFormat;
+	#storageFormat: ImageLayerPatchFormat;
 	#renderAs: ImageChannelRenderAs;
 	#palette: ID | null;
 	#sourceImage: ID | null;
@@ -46,7 +39,7 @@ export class ImageChannelNode extends Node {
 		id: ID,
 		name: string,
 		identifier: string,
-		storageFormat: ImageChannelFormat,
+		storageFormat: ImageLayerPatchFormat,
 		renderAs: ImageChannelRenderAs,
 		palette: ID | null,
 		sourceImage: ID | null = null,
@@ -89,7 +82,7 @@ export class ImageChannelNode extends Node {
 	}: {
 		name: string;
 		identifier: string;
-		storageFormat: ImageChannelFormat;
+		storageFormat: ImageLayerPatchFormat;
 		renderAs: ImageChannelRenderAs;
 		palette?: ID | null;
 		sourceImage?: ID | null;

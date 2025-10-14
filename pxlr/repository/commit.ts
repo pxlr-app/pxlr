@@ -1,58 +1,23 @@
-import { sha1 } from "@noble/hashes/legacy.js";
+import { Blob } from "./blob.ts";
 
 export class Commit {
-	#hash: string;
 	#parent: string | null;
 	#tree: string;
 	#commiter: string;
 	#date: Date;
 	#message: string;
-	constructor(
-		hash: string,
-		parent: string | null,
-		tree: string,
-		commiter: string,
-		date: Date,
-		message: string,
-	) {
-		this.#hash = hash;
-		this.#parent = parent;
-		this.#tree = tree;
-		this.#commiter = commiter;
-		this.#date = date;
-		this.#message = message;
-	}
-
-	static new(options: {
-		parent?: string;
+	constructor(options: {
+		parent?: string | null;
 		tree: string;
 		commiter: string;
 		date: Date;
 		message: string;
-	}): Commit {
-		const hashBuffer = sha1.create()
-			.update(Commit.#toArrayBuffer(options.parent ?? null, options.tree, options.commiter, options.date, options.message))
-			.digest();
-		const hash = Array.from(new Uint8Array(hashBuffer))
-			.map((b) => b.toString(16).padStart(2, "0"))
-			.join("");
-		return new Commit(hash, options.parent ?? null, options.tree, options.commiter, options.date, options.message);
-	}
-
-	static #toArrayBuffer(
-		parent: string | null,
-		tree: string,
-		commiter: string,
-		date: Date,
-		message: string,
-	): Uint8Array<ArrayBuffer> {
-		// deno-fmt-ignore
-		return new TextEncoder()
-			.encode(`parent: ${parent ?? ""}\ntree: ${tree}\ncommiter: ${encodeURIComponent(commiter)}\ndate: ${date.toISOString()}\n\n${message}`);
-	}
-
-	get hash() {
-		return this.#hash;
+	}) {
+		this.#parent = options.parent ?? null;
+		this.#tree = options.tree;
+		this.#commiter = options.commiter;
+		this.#date = options.date;
+		this.#message = options.message;
 	}
 
 	get parent() {
@@ -76,30 +41,27 @@ export class Commit {
 	}
 
 	static async fromReadableStream(stream: ReadableStream<Uint8Array<ArrayBuffer>>) {
-		const payload = await new Response(stream).text();
-		const [headerLines, ...parts] = payload.split("\n\n");
+		const blob = await Blob.fromReadableStream(stream);
 
-		const headers = headerLines
-			.split(`\n`)
-			.reduce(
-				(acc, line) => {
-					const [key, value] = line.split(": ");
-					acc[key] = value;
-					return acc;
-				},
-				{} as Record<string, string | null>,
-			);
-
-		return Commit.new({
-			parent: headers.parent || undefined,
-			tree: headers.tree!,
-			commiter: decodeURIComponent(headers.commiter!),
-			date: new Date(headers.date!),
-			message: parts.join("\n\n"),
+		return new Commit({
+			parent: blob.headers.get("parent") || null,
+			tree: blob.headers.get("tree")!,
+			commiter: decodeURIComponent(blob.headers.get("commiter")!),
+			date: new Date(blob.headers.get("date")!),
+			message: new TextDecoder().decode(blob.content),
 		});
 	}
 
 	toReadableStream(): ReadableStream<Uint8Array<ArrayBuffer>> {
-		return ReadableStream.from([Commit.#toArrayBuffer(this.parent, this.tree, this.commiter, this.date, this.message)]);
+		return new Blob(
+			{
+				"content-type": "application/x-pxlr-commit",
+				"parent": this.#parent ?? "",
+				"tree": this.#tree,
+				"commiter": encodeURIComponent(this.#commiter),
+				"date": this.#date.toISOString(),
+			},
+			new TextEncoder().encode(this.#message),
+		).toReadableStream();
 	}
 }

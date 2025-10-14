@@ -10,41 +10,40 @@ Deno.test("Repository", async (t) => {
 	await t.step("blob", async () => {
 		const root = new MemoryRootFolder();
 		const repo = new Repository(root);
-		const blob1 = await Blob.new(new TextEncoder().encode("Hello World"));
-		await repo.setObject(blob1);
-		const blob2 = await repo.getBlob(blob1.hash);
-		assertEquals(blob2, blob1);
+		const blob1 = new Blob(new TextEncoder().encode("Hello World"));
+		const blob1h = await repo.setObject(blob1);
+		const blob2 = await repo.getBlob(blob1h);
+		assertEquals(blob2.content, blob1.content);
 	});
 
 	await t.step("commit", async () => {
 		const root = new MemoryRootFolder();
 		const repo = new Repository(root);
 
-		const commitA = Commit.new({ tree: "", commiter: "commiter", date: new Date("2025-09-24T08:48:00.000Z"), message: "A" });
-		const commitB = Commit.new({
-			parent: commitA.hash,
+		const commitA = new Commit({ tree: "", commiter: "commiter", date: new Date("2025-09-24T08:48:00.000Z"), message: "A" });
+		const commitAh = await repo.setObject(commitA);
+		const commitB = new Commit({
+			parent: commitAh,
 			tree: "",
 			commiter: "commiter",
 			date: new Date("2025-09-24T08:49:00.000Z"),
 			message: "B",
 		});
-		const commitC = Commit.new({
-			parent: commitB.hash,
+		const commitBh = await repo.setObject(commitB);
+		const commitC = new Commit({
+			parent: commitBh,
 			tree: "",
 			commiter: "commiter",
 			date: new Date("2025-09-24T08:50:00.000Z"),
 			message: "C",
 		});
+		const commitCh = await repo.setObject(commitC);
 
-		await repo.setObject(commitA);
-		await repo.setObject(commitB);
-		await repo.setObject(commitC);
-
-		const chains = await Array.fromAsync(repo.iterCommitChain(commitC.hash));
+		const chains = await Array.fromAsync(repo.iterCommitChain(commitCh));
 		assertEquals(chains.length, 3);
-		assertEquals(chains[0][0], commitC.hash);
-		assertEquals(chains[1][0], commitB.hash);
-		assertEquals(chains[2][0], commitA.hash);
+		assertEquals(chains[0].hash, commitCh);
+		assertEquals(chains[1].hash, commitBh);
+		assertEquals(chains[2].hash, commitAh);
 	});
 
 	await t.step("reference", async () => {
@@ -70,30 +69,27 @@ Deno.test("Repository", async (t) => {
 		const root = new MemoryRootFolder();
 		const repo = new Repository(root);
 
-		const blobA = await Blob.new(new TextEncoder().encode("A"));
-		const blobB = await Blob.new(new TextEncoder().encode("B"));
-		const blobC = await Blob.new(new TextEncoder().encode("C"));
-		const treeA = await Tree.new([
-			{ hash: blobA.hash, kind: "blob", name: "fileA.txt" },
-			{ hash: blobB.hash, kind: "blob", name: "fileB.txt" },
+		const blobA = new Blob(new TextEncoder().encode("A"));
+		const blobAh = await repo.setObject(blobA);
+		const blobB = new Blob(new TextEncoder().encode("B"));
+		const blobBh = await repo.setObject(blobB);
+		const blobC = new Blob(new TextEncoder().encode("C"));
+		const blobCh = await repo.setObject(blobC);
+		const treeA = new Tree([
+			{ hash: blobAh, kind: "blob", name: "fileA.txt" },
+			{ hash: blobBh, kind: "blob", name: "fileB.txt" },
 		]);
-		const treeB = await Tree.new([
-			{ hash: treeA.hash, kind: "tree", name: "folder" },
-			{ hash: blobC.hash, kind: "blob", name: "fileC.txt" },
+		const treeAh = await repo.setObject(treeA);
+		const treeB = new Tree([
+			{ hash: treeAh, kind: "tree", name: "folder" },
+			{ hash: blobCh, kind: "blob", name: "fileC.txt" },
 		]);
+		const treeBh = await repo.setObject(treeB);
 
-		await Promise.all([
-			repo.setObject(blobA),
-			repo.setObject(blobB),
-			repo.setObject(blobC),
-			repo.setObject(treeA),
-			repo.setObject(treeB),
-		]);
-
-		const items = await Array.fromAsync(repo.iterTree(treeB.hash));
+		const items = await Array.fromAsync(repo.iterTree(treeBh));
 
 		assertEquals(items.length, 2);
-		assertEquals(items[0][0], treeB.hash);
-		assertEquals(items[1][0], treeA.hash);
+		assertEquals(items[0].hash, treeBh);
+		assertEquals(items[1].hash, treeAh);
 	});
 });

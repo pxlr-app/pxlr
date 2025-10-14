@@ -27,7 +27,7 @@ export const NoteNodeRegistryEntry = new NodeRegistryEntry<NoteNode>(
 	},
 	({ node }) => {
 		const rect = node.rect;
-		return Blob.new(
+		return new Blob(
 			{ "content-type": "text/plain", kind: node.kind, id: node.id, name: node.name, x: rect.x.toString(), y: rect.y.toString() },
 			new TextEncoder().encode(node.content),
 		);

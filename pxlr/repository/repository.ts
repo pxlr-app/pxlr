@@ -4,6 +4,8 @@ import { Commit } from "./commit.ts";
 import { Tree } from "./tree.ts";
 import { Reference } from "./reference.ts";
 import { join } from "@std/path/join";
+import { sha1 } from "@noble/hashes/legacy.js";
+import { ObjectWithHash } from "./object.ts";
 
 export class Repository {
 	#root: Folder;
@@ -35,9 +37,26 @@ export class Repository {
 		}
 	}
 
-	async setObject(object: Tree | Blob | Commit, abortSignal?: AbortSignal): Promise<void> {
-		const file = await this.#root.getFile(`objects/${object.hash.slice(0, 2)}/${object.hash.slice(2)}`, abortSignal);
+	async getObjectHash(object: Tree | Blob | Commit, abortSignal?: AbortSignal): Promise<string> {
+		const hasher = sha1.create();
+		for await (const chunk of object.toReadableStream()) {
+			hasher.update(chunk);
+		}
+		const hash = Array.from(new Uint8Array(hasher.digest()))
+			.map((b) => b.toString(16).padStart(2, "0"))
+			.join("");
+		return hash;
+	}
+
+	async setObject(object: Tree | Blob | Commit, abortSignal?: AbortSignal): Promise<string> {
+		const hash = await this.getObjectHash(object, abortSignal);
+		return this.unsafe_setObject(hash, object, abortSignal);
+	}
+
+	async unsafe_setObject(hash: string, object: Tree | Blob | Commit, abortSignal?: AbortSignal): Promise<string> {
+		const file = await this.#root.getFile(`objects/${hash.slice(0, 2)}/${hash.slice(2)}`, abortSignal);
 		await object.toReadableStream().pipeTo(await file.write(0, abortSignal));
+		return hash;
 	}
 
 	async getCommit(hash: string, abortSignal?: AbortSignal): Promise<Commit> {
@@ -63,7 +82,7 @@ export class Repository {
 		return tree;
 	}
 
-	async *iterTree(tree: string, abortSignal?: AbortSignal): AsyncIterableIterator<[hash: string, Tree]> {
+	async *iterTree(tree: string, abortSignal?: AbortSignal): AsyncIterableIterator<ObjectWithHash<Tree>> {
 		const queue: string[] = [tree];
 		for (let hash = queue.shift(); hash; hash = queue.shift()) {
 			if (abortSignal?.aborted === true) {
@@ -75,18 +94,20 @@ export class Repository {
 					queue.push(item.hash);
 				}
 			}
-			yield [hash, tree] as const;
+			Object.assign(tree, { hash });
+			yield tree as ObjectWithHash<Tree>;
 		}
 	}
 
-	async *iterCommitChain(commit: string, abortSignal?: AbortSignal): AsyncIterableIterator<[hash: string, Commit]> {
+	async *iterCommitChain(commit: string, abortSignal?: AbortSignal): AsyncIterableIterator<ObjectWithHash<Commit>> {
 		const queue: string[] = [commit];
 		for (let hash = queue.shift(); hash; hash = queue.shift()) {
 			if (abortSignal?.aborted === true) {
 				break;
 			}
 			const commit = await this.getCommit(hash, abortSignal);
-			yield [hash, commit] as const;
+			Object.assign(commit, { hash });
+			yield commit as ObjectWithHash<Commit>;
 			if (!commit.parent) {
 				break;
 			}

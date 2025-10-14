@@ -7,20 +7,28 @@ import { RenameCommand } from "../commands/rename.ts";
 import { MoveCommand } from "../commands/move.ts";
 import { ReplaceNodeCommand } from "../commands/replace_node.ts";
 
+export type ImageLayerPatchFormat =
+	| "rg8uint"
+	| "rgba16unorm"
+	| "rgba8uint";
+
 export class ImageLayerPatchNode extends Node {
 	#position: ReadonlyVec2;
 	#size: ReadonlyExtent2;
+	#storageFormat: ImageLayerPatchFormat;
 	#data: ArrayBuffer;
 
 	public constructor(
 		id: ID,
 		position: ReadonlyVec2,
 		size: ReadonlyExtent2,
+		storageFormat: ImageLayerPatchFormat,
 		data: ArrayBuffer,
 	) {
 		super(id, "ImageLayer", "");
 		this.#position = position;
 		this.#size = size;
+		this.#storageFormat = storageFormat;
 		this.#data = data;
 	}
 
@@ -30,6 +38,10 @@ export class ImageLayerPatchNode extends Node {
 
 	get size() {
 		return this.#size;
+	}
+
+	get storageFormat() {
+		return this.#storageFormat;
 	}
 
 	get data() {
@@ -43,13 +55,15 @@ export class ImageLayerPatchNode extends Node {
 	static new({
 		position,
 		size,
+		storageFormat,
 		data,
 	}: {
 		position: ReadonlyVec2;
 		size: ReadonlyExtent2;
+		storageFormat: ImageLayerPatchFormat;
 		data: ArrayBuffer;
 	}) {
-		return new ImageLayerPatchNode(id(), position, size, data);
+		return new ImageLayerPatchNode(id(), position, size, storageFormat, data);
 	}
 
 	execCommand(command: Command): Node {
@@ -59,6 +73,7 @@ export class ImageLayerPatchNode extends Node {
 					this.id,
 					command.position,
 					this.size,
+					this.storageFormat,
 					this.data,
 				);
 			} else if (command instanceof ReplaceNodeCommand) {
