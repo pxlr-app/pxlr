@@ -42,7 +42,10 @@ export class Commit {
 
 	static async fromReadableStream(stream: ReadableStream<Uint8Array<ArrayBuffer>>) {
 		const blob = await Blob.fromReadableStream(stream);
+		return Commit.fromBlob(blob);
+	}
 
+	static async fromBlob(blob: Blob) {
 		return new Commit({
 			parent: blob.headers.get("parent") || null,
 			tree: blob.headers.get("tree")!,

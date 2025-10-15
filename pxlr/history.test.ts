@@ -1,11 +1,12 @@
 import { assert } from "@std/assert";
-import { NoteNode } from "./nodes/note.ts";
-import { NodeHistory } from "./node_history.ts";
+import { Node } from "./document/node.ts";
+import { NoteNode } from "./document/nodes/note.ts";
+import { History } from "./history.ts";
 
 Deno.test("History", async (t) => {
 	await t.step("initialize", () => {
 		const node1 = NoteNode.new({ name: "A", content: "Content" });
-		const history1 = new NodeHistory([node1]);
+		const history1 = new History<Node>([node1]);
 		assert(history1.length === 1);
 		assert(history1.tail === node1);
 		assert(history1.head === node1);
@@ -14,7 +15,7 @@ Deno.test("History", async (t) => {
 
 	await t.step("dispatch", () => {
 		const node1 = NoteNode.new({ name: "A", content: "Content" });
-		const history1 = new NodeHistory([node1]);
+		const history1 = new History<Node>([node1]);
 		const history2 = history1.execCommand(node1.rename("B"));
 		assert(history1 !== history2);
 		assert(history2.length === 2);
@@ -26,7 +27,7 @@ Deno.test("History", async (t) => {
 
 	await t.step("seek", () => {
 		const node1 = NoteNode.new({ name: "A", content: "Content" });
-		const history1 = new NodeHistory([node1]);
+		const history1 = new History<Node>([node1]);
 		const history2 = history1.execCommand(node1.rename("B"));
 		const history3 = history2.seek(-1);
 		assert(history3 !== history2);

@@ -30,10 +30,14 @@ export class Tree {
 
 	static async fromReadableStream(stream: ReadableStream<Uint8Array<ArrayBuffer>>) {
 		const blob = await Blob.fromReadableStream(stream);
+		return Tree.fromBlob(blob);
+	}
 
+	static async fromBlob(blob: Blob) {
 		const payload = new TextDecoder().decode(blob.content);
 		const items = payload
 			.split(`\n`)
+			.filter(Boolean)
 			.reduce(
 				(acc, line) => {
 					const [kind, hash, name] = line.split(" ");
@@ -53,11 +57,9 @@ export class Tree {
 				return `${encodeURIComponent(kind)} ${hash} ${encodeURIComponent(name)}`;
 			})
 			.join(`\n`);
-		return new Blob(
-			{
-				"content-type": "application/x-pxlr-tree",
-			},
-			new TextEncoder().encode(payload),
-		).toReadableStream();
+		const headers = new Headers(this.headers);
+		headers.set("content-type", "text/x-pxlr-tree");
+		const content = new TextEncoder().encode(payload);
+		return new Blob(headers, content).toReadableStream();
 	}
 }

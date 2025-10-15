@@ -14,8 +14,8 @@ import { assert } from "@std/assert/assert";
 
 export const GroupNodeRegistryEntry = new NodeRegistryEntry<GroupNode>(
 	"Group",
-	async ({ abortSignal, getNodeByObjectHash, shallow, stream }) => {
-		const tree = await Tree.fromReadableStream(stream);
+	async ({ abortSignal, getNodeByObjectHash, shallow, blob }) => {
+		const tree = await Tree.fromBlob(blob);
 		const id = tree.headers.get("id");
 		const name = tree.headers.get("name");
 		const kind = tree.headers.get("kind");
@@ -48,37 +48,6 @@ export const GroupNodeRegistryEntry = new NodeRegistryEntry<GroupNode>(
 		return new Tree({ kind: node.kind, id: node.id, name: node.name, x: rect.x.toString(), y: rect.y.toString() }, items);
 	},
 );
-// export const GroupNodeRegistryEntry = new NodeRegistryEntry<GroupNode>(
-// 	"Group",
-// 	async ({ item, stream, getNodeByHash, shallow, abortSignal }) => {
-// 		const tree = await Tree.fromStream(item.hash, stream);
-// 		const children: Node[] = [];
-// 		for (const item of tree.items) {
-// 			let node: Node;
-// 			if (item.kind === "tree") {
-// 				node = await getNodeByHash(item.hash, shallow, abortSignal);
-// 			} else if (shallow) {
-// 				node = new UnloadedNode(item.hash, item.id, item.kind, item.name);
-// 			} else {
-// 				node = await getNodeByHash(item.hash, false, abortSignal);
-// 			}
-// 			children.push(node);
-// 		}
-// 		return new GroupNode(tree.hash, item.id, item.name, children);
-// 	},
-// 	(node) => {
-// 		return new Tree(
-// 			node.hash,
-// 			"Group",
-// 			node.children.map((node) => ({
-// 				hash: node.hash,
-// 				id: node.id,
-// 				kind: node.kind,
-// 				name: node.name,
-// 			})),
-// 		).toStream();
-// 	},
-// );
 
 export class GroupNode extends Node {
 	#children: ReadonlyArray<Node>;

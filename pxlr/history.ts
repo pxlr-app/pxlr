@@ -1,12 +1,15 @@
 import { clamp } from "@pxlr/math";
-import { Command } from "./command.ts";
-import { Node } from "./node.ts";
+import { Command } from "./document/command.ts";
 
-export class NodeHistory {
+export interface HistoryItem {
+	execCommand(command: Command): this;
+}
+
+export class History<TItem extends HistoryItem> {
 	#cursor: number;
-	#entries: Node[];
+	#entries: TItem[];
 
-	public constructor(initialEntries: Node[], cursor = initialEntries.length - 1) {
+	public constructor(initialEntries: TItem[], cursor = initialEntries.length - 1) {
 		if (initialEntries.length === 0) {
 			throw new RangeError(`Expected "initialEntries" to contain at least one Node.`);
 		}
@@ -39,8 +42,8 @@ export class NodeHistory {
 	}
 
 	execCommand(command: Command) {
-		const newNode = this.current.execCommand(command);
-		return new NodeHistory([...this.#entries.slice(0, this.#cursor + 1), newNode]);
+		const item = this.current.execCommand(command);
+		return new History([...this.#entries.slice(0, this.#cursor + 1), item]);
 	}
 
 	seek(delta: number) {
@@ -53,6 +56,6 @@ export class NodeHistory {
 		if (cursor === this.#cursor) {
 			return this;
 		}
-		return new NodeHistory(this.#entries, cursor);
+		return new History(this.#entries, cursor);
 	}
 }

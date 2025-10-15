@@ -2,13 +2,11 @@ import { Command } from "./document/command.ts";
 import { ID } from "./document/id.ts";
 import { Node } from "./document/node.ts";
 import { NodeCache } from "./document/node_cache.ts";
-import { NodeHistory } from "./document/node_history.ts";
-import { NodeRegistry } from "./document/node_registry.ts";
+import { History } from "./history.ts";
+import { NodeDeserializerOptions, NodeRegistry } from "./document/node_registry.ts";
 import { visit, VisitorResult } from "./document/node_visit.ts";
 import { GroupNode } from "./document/nodes/group.ts";
 import { Repository } from "./repository/repository.ts";
-import { Tree } from "./repository/tree.ts";
-import { Blob } from "./repository/blob.ts";
 import { assert } from "@std/assert/assert";
 import { Commit } from "./repository/commit.ts";
 import { Reference } from "./repository/reference.ts";
@@ -17,22 +15,22 @@ export class Workspace {
 	#repository: Repository;
 	#registry: NodeRegistry;
 	#cache: NodeCache;
-	#history: NodeHistory;
+	#rootNode: GroupNode;
 	#commit: string | null;
 	#reference: string | null;
 
 	constructor(options: {
 		repository: Repository;
 		registry: NodeRegistry;
-		history: NodeHistory;
 		cache: NodeCache;
+		rootNode: GroupNode;
 		commit: string | null;
 		reference: string | null;
 	}) {
 		this.#repository = options.repository;
 		this.#registry = options.registry;
 		this.#cache = options.cache;
-		this.#history = options.history;
+		this.#rootNode = options.rootNode;
 		this.#commit = options.commit;
 		this.#reference = options.reference;
 	}
@@ -45,6 +43,10 @@ export class Workspace {
 		return this.#registry;
 	}
 
+	get rootNode() {
+		return this.#rootNode;
+	}
+
 	get commit() {
 		return this.#commit;
 	}
@@ -53,17 +55,12 @@ export class Workspace {
 		return this.#reference;
 	}
 
-	get history() {
-		return this.#history;
-	}
-
 	static async init(options: { repository: Repository; registry: NodeRegistry; cache: NodeCache }): Promise<Workspace> {
-		const rootNode = GroupNode.new({ name: "Document" });
-		const history = new NodeHistory([rootNode]);
+		const rootNode = GroupNode.new({ name: "Workspace" });
 		return new Workspace({
 			repository: options.repository,
 			registry: options.registry,
-			history,
+			rootNode,
 			cache: options.cache,
 			commit: null,
 			reference: "refs/heads/main",
@@ -75,19 +72,45 @@ export class Workspace {
 		registry: NodeRegistry;
 		reference: string;
 		cache: NodeCache;
+		abortSignal?: AbortSignal;
 	}): Promise<Workspace> {
-		throw "TODO!";
+		const reference = await options.repository.getReference(options.reference, options.abortSignal);
+		assert(reference.kind === "hash", "Reference must be a hash");
+		const commit = await options.repository.getCommit(reference.reference, options.abortSignal);
+		const blob = await options.repository.getBlob(commit.tree, options.abortSignal);
+		const deserializer: NodeDeserializerOptions = {
+			abortSignal: options.abortSignal,
+			shallow: false,
+			blob,
+			async getNodeByObjectHash(hash, _shallow, abortSignal) {
+				const blob = await options.repository.getBlob(hash, abortSignal);
+				const kind = blob.headers.get("kind");
+				assert(kind, "Blob must have a kind");
+				const registryEntry = options.registry.get(kind);
+				assert(registryEntry, `No registry entry for kind ${kind}`);
+				return registryEntry.deserialize({ ...deserializer, blob });
+			},
+		};
+		const rootNode = await options.registry.get("Group").deserialize(deserializer);
+		assert(rootNode instanceof GroupNode, "Root node must be a GroupNode");
+
+		return new Workspace({
+			repository: options.repository,
+			registry: options.registry,
+			rootNode,
+			cache: options.cache,
+			commit: reference.reference,
+			reference: options.reference,
+		});
 	}
 
 	async commitChanges(options: {
 		committer: string;
 		message: string;
+		date?: Date;
 		allowEmpty?: boolean;
 		abortSignal?: AbortSignal;
 	}): Promise<void> {
-		const current = this.history.current;
-		assert(current instanceof GroupNode, "Current node must be a GroupNode");
-
 		const idToHash = new Map<ID, string>();
 		let emptyCommit = true;
 
@@ -98,7 +121,7 @@ export class Workspace {
 		// We do a post-order traversal to ensure children are processed before parents
 		// so that parent hashes can be computed from child hashes
 		// This way, we only need to store one hash per node in memory at a time
-		const nodes = visit(current, {
+		const nodes = visit(this.rootNode, {
 			leave: (node, ctx) => {
 				ctx.push(node);
 			},
@@ -121,9 +144,9 @@ export class Workspace {
 
 		const commit = new Commit({
 			parent: this.#commit,
-			tree: idToHash.get(current.id)!,
+			tree: idToHash.get(this.rootNode.id)!,
 			commiter: options.committer,
-			date: new Date(),
+			date: options.date ?? new Date(),
 			message: options.message,
 		});
 		const commitHash = await this.repository.setObject(commit, options.abortSignal);
@@ -134,11 +157,7 @@ export class Workspace {
 	}
 
 	getNodeById(id: ID): Node | undefined {
-		const head = this.history.head;
-		if (!head) {
-			return undefined;
-		}
-		const search = visit(head, (node, ctx) => {
+		const search = visit(this.rootNode, (node, ctx) => {
 			if (node.id === id) {
 				ctx.result = node;
 				return VisitorResult.Break;
@@ -149,16 +168,23 @@ export class Workspace {
 	}
 
 	getNodeAtNamePath(path: string[]): Node | undefined {
-		const head = this.history.head;
-		if (head && head instanceof GroupNode) {
-			return head.getChildAtNamePath(path);
-		}
-		return undefined;
+		return this.rootNode.getChildAtNamePath(path);
 	}
 
 	execCommand(command: Command): Workspace {
-		this.#history = this.#history.execCommand(command);
-		return this;
+		const newRoot = this.rootNode.execCommand(command);
+		assert(newRoot instanceof GroupNode, "Root node must be a GroupNode");
+		if (newRoot === this.rootNode) {
+			return this;
+		}
+		return new Workspace({
+			repository: this.repository,
+			registry: this.registry,
+			cache: this.#cache,
+			rootNode: newRoot,
+			commit: this.commit,
+			reference: this.reference,
+		});
 	}
 }
 

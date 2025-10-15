@@ -12,8 +12,7 @@ import { assert } from "@std/assert/assert";
 
 export const NoteNodeRegistryEntry = new NodeRegistryEntry<NoteNode>(
 	"Note",
-	async ({ stream }) => {
-		const blob = await Blob.fromReadableStream(stream);
+	async ({ blob }) => {
 		const id = blob.headers.get("id");
 		const name = blob.headers.get("name");
 		const kind = blob.headers.get("kind");

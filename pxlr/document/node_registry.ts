@@ -9,7 +9,7 @@ export interface NodeSerializerOptions<T extends Node> {
 }
 
 export interface NodeDeserializerOptions {
-	stream: ReadableStream<Uint8Array<ArrayBuffer>>;
+	blob: Blob;
 	getNodeByObjectHash: (
 		hash: string,
 		shallow: boolean,

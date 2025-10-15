@@ -60,9 +60,15 @@ export class Repository {
 	}
 
 	async getCommit(hash: string, abortSignal?: AbortSignal): Promise<Commit> {
-		const file = await this.#root.getFile(`objects/${hash.slice(0, 2)}/${hash.slice(2)}`, abortSignal);
-		const commit = await Commit.fromReadableStream(await file.read(1024 * 1024 * 1024, 0, abortSignal));
+		const blob = await this.getBlob(hash, abortSignal);
+		const commit = await Commit.fromBlob(blob);
 		return commit;
+	}
+
+	async getTree(hash: string, abortSignal?: AbortSignal): Promise<Tree> {
+		const blob = await this.getBlob(hash, abortSignal);
+		const tree = await Tree.fromBlob(blob);
+		return tree;
 	}
 
 	async setReference(path: string, ref: Reference, abortSignal?: AbortSignal): Promise<void> {
@@ -74,12 +80,6 @@ export class Repository {
 		const file = await this.#root.getFile(path, abortSignal);
 		const ref = await Reference.fromReadableStream(await file.read(1024 * 1024 * 1024, 0, abortSignal));
 		return ref;
-	}
-
-	async getTree(hash: string, abortSignal?: AbortSignal): Promise<Tree> {
-		const file = await this.#root.getFile(`objects/${hash.slice(0, 2)}/${hash.slice(2)}`, abortSignal);
-		const tree = await Tree.fromReadableStream(await file.read(1024 * 1024 * 1024, 0, abortSignal));
-		return tree;
 	}
 
 	async *iterTree(tree: string, abortSignal?: AbortSignal): AsyncIterableIterator<ObjectWithHash<Tree>> {
